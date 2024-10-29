@@ -10,7 +10,7 @@
       (are [value valid] (= valid (s/valid? ::specs/semitone value))
         -1 false
         0 true
-        24 true
+        21 true
         :C  false))
     (testing "with pitch"
       (are [value valid] (= valid (s/valid? ::specs/pitch value))
@@ -24,4 +24,3 @@
         :1 true
         :13 false
         :M13 true))))
-

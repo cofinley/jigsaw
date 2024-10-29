@@ -9,7 +9,9 @@
   (:require
    [com.brunobonacci.mulog :as mulog]))
 
-(defn greet [] "Hello, World")
+(defn greet
+  []
+  "Hello, World")
 
 (defn -main
   "Entry point into the application via clojure.main -M"

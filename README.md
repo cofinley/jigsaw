@@ -124,5 +124,3 @@ Or build and run the service via the multi-stage `Dockerfile` configuration as p
 ## License
 
 Copyright © 2024 Connor Finley
-
-[Creative Commons Attribution Share-Alike 4.0 International](http://creativecommons.org/licenses/by-sa/4.0/")
