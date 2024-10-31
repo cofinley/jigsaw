@@ -1,10 +1,8 @@
 ;; ---------------------------------------------------------
-;; jigsaw.jigsaw
-;;
 ;; Jigsaw: determining a musical idea's potential harmonic functions by putting the multidimensional music theory jigsaw puzzle pieces together
 ;; ---------------------------------------------------------
 
-(ns jigsaw.jigsaw
+(ns jigsaw.core
   (:gen-class)
   (:require
    [com.brunobonacci.mulog :as mulog]))

@@ -30,9 +30,9 @@
 (def project-config
   "Project configuration to support all tasks"
   {:class-directory "target/classes"
-   :main-namespace  'jigsaw/jigsaw
+   :main-namespace  'jigsaw/core
    :project-basis   (build-api/create-basis)
-   :uberjar-file    "target/jigsaw-jigsaw-standalone.jar"})
+   :uberjar-file    "target/jigsaw-standalone.jar"})
 
 (defn config
   "Display build configuration"
@@ -55,7 +55,6 @@
   (when
    (not (contains? #{"." "/"} directory))
     (build-api/delete {:path (or (:path directory) "target")})))
-
 
 (defn uberjar
   "Create an archive containing Clojure and the build of the project
