@@ -9,19 +9,25 @@
 ;; Pitch (class): C, C#, Db, etc.
 ;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
 (def pitches
-  #{:C :B#
-    :C# :Db
-    :D
-    :D# :Eb
-    :E
-    :E# :F
-    :F# :Gb
-    :G
-    :G# :Ab
-    :A
-    :A# :Bb
-    :B :Cb})
+  {:C  0  :B# 0
+   :C# 1  :Db 1
+   :D  2
+   :D# 3  :Eb 3
+   :E  4
+   :E# 5  :F  5
+   :F# 6  :Gb 6
+   :G  7
+   :G# 8  :Ab 8
+   :A  9
+   :A# 10 :Bb 10
+   :B  11 :Cb 11})
 (s/def ::pitch #(and (keyword? %) (contains? pitches %))) ; pitch in isolation or root (chord) or tonic (scale)
+(def pitches-by-index
+  (reduce
+   (fn [acc [pitch index]]
+     (update acc index conj pitch))
+   {}
+   pitches))
 ;; Derived: enharmonic spelling (e.g. C# vs. Db)
 
 ;; Interval: 1, m3, M3, A5, d5, 5, etc.
@@ -31,7 +37,7 @@
 ;;        e.g. C->F# is an augmented 4th (C->F + 1), and C->Gb is diminished (C->G - 1)
 ;;   Can be arabic (m3), roman (iii) numerals
 (def intervals
-  {:1   {::name "Root" ::semitone 0}
+  {:P1  {::name "Root" ::semitone 0}
    :d2  {::name "Diminished 2nd" ::semitone 0}
    :m2  {::name "Minor 2nd" ::semitone 1}
    :M2  {::name "Major 2nd" ::semitone 2}
@@ -40,12 +46,12 @@
    :A2  {::name "Augmented 2nd" ::semitone 3}
    :M3  {::name "Major 3rd" ::semitone 4}
    :d4  {::name "Diminished 4th" ::semitone 4}
-   :4   {::name "Perfect 4th" ::semitone 5}
+   :P4  {::name "Perfect 4th" ::semitone 5}
    :A3  {::name "Augmented 3rd" ::semitone 5}
    :d5  {::name "Diminished 5th" ::semitone 6}
    :A4  {::name "Augmented 4th" ::semitone 6}
    :TT  {::name "Tritone" ::semitone 6}
-   :5   {::name "Perfect 5th" ::semitone 7}
+   :P5  {::name "Perfect 5th" ::semitone 7}
    :d6  {::name "Diminished 6th" ::semitone 7}
    :m6  {::name "Minor 6th" ::semitone 8}
    :A5  {::name "Augmented 5th" ::semitone 8}
@@ -54,7 +60,7 @@
    :m7  {::name "Minor 7th" ::semitone 10}
    :A6  {::name "Augmented 6th" ::semitone 10}
    :M7  {::name "Major 7th" ::semitone 11}
-   :8   {::name "Octave" ::semitone 12}
+   :P8  {::name "Octave" ::semitone 12}
    :m9  {::name "Minor 9th" ::semitone 13}
    :M9  {::name "Major 9th" ::semitone 14}
    :m10 {::name "Minor 10th" ::semitone 15}
@@ -63,11 +69,18 @@
    :d11 {::name "Diminished 11th" ::semitone 16}
    :11  {::name "Perfect 11th" ::semitone 17}
    :A11 {::name "Augmented 11th" ::semitone 18}
-   :12  {::name "Perfect 12th" ::semitone 19}
+   :P12 {::name "Perfect 12th" ::semitone 19}
    :m13 {::name "Minor 13th" ::semitone 20}
    :M13 {::name "Major 13th" ::semitone 21}})
 (s/def ::interval #(and (keyword? %) (contains? intervals %)))
 (s/def ::intervals (s/coll-of ::intervals))  ; Can be one (in isolation) or more (e.g. chords, scales)
+
+(def intervals-by-semitone
+  (reduce
+   (fn [acc [interval details]]
+     (update acc (::semitone details) conj interval))
+   {}
+   intervals))
 
 (s/def ::name string?)
 (s/def ::aliases (s/coll-of string?))
@@ -79,10 +92,15 @@
 (s/def ::inversion #(and (int? %) (<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
 
 (s/def ::octave #(and (int? %) (<= -1 % 9)))
+
+;; Note: pitch+octave
+(def note-pattern #"^([A-G][#b]?)(\d{1})$")
+(defn is-note [s] (some? (re-find (re-matcher note-pattern s))))
+(s/def ::note #(and (keyword? %) (is-note (name %))))
 ;; Note (midi): position of a pitch+octave on the keyboard
 ;;   Represented as an integer
 ;;   Probably applicable only to piano?
-(s/def ::note #(and (int? %) (<= 0 % 127)))
+(s/def ::midi #(and (int? %) (<= 0 % 127)))
 
 (def chords
   {;; Major

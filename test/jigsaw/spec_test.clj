@@ -21,6 +21,15 @@
         :C# true))
     (testing "with interval"
       (are [value valid] (= valid (s/valid? ::specs/interval value))
-        :1 true
+        :P1 true
         :13 false
-        :M13 true))))
+        :M13 true))
+    (testing "with note"
+      (are [value valid] (= valid (s/valid? ::specs/note value))
+        :C false
+        :C2 true
+        :c2 false
+        :C#2 true
+        :Db2 true
+        :D11 false
+        :T2 false))))
