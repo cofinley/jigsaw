@@ -28,7 +28,20 @@
      (update acc index conj pitch))
    {}
    pitches))
-;; Derived: enharmonic spelling (e.g. C# vs. Db)
+
+(def default-pitch-by-index
+  {0 :C
+   1 :C#
+   2 :D
+   3 :Eb
+   4 :E
+   5 :F
+   6 :F#
+   7 :G
+   8 :Ab
+   9 :A
+   10 :Bb
+   11 :B})
 
 ;; Interval: 1, m3, M3, A5, d5, 5, etc.
 ;;   Distance between two pitches
@@ -67,7 +80,7 @@
    :A9  {::name "Augmented 9th" ::semitone 15}
    :M10 {::name "Major 10th" ::semitone 16}
    :d11 {::name "Diminished 11th" ::semitone 16}
-   :11  {::name "Perfect 11th" ::semitone 17}
+   :P11  {::name "Perfect 11th" ::semitone 17}
    :A11 {::name "Augmented 11th" ::semitone 18}
    :P12 {::name "Perfect 12th" ::semitone 19}
    :m13 {::name "Minor 13th" ::semitone 20}
@@ -96,6 +109,10 @@
 ;; Note: pitch+octave
 (def note-pattern #"^([A-G][#b]?)(\d{1})$")
 (defn is-note [s] (some? (re-find (re-matcher note-pattern s))))
+(defn note-parts [n]
+  (let [[_ pitch-letter octave-letter] (re-find (re-matcher note-pattern (name n)))]
+    (list (keyword pitch-letter) (Integer/parseInt octave-letter))))
+
 (s/def ::note #(and (keyword? %) (is-note (name %))))
 ;; Note (midi): position of a pitch+octave on the keyboard
 ;;   Represented as an integer

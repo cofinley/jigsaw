@@ -78,3 +78,20 @@
         (if (= 1 (count equivalents))
           (first equivalents)
           p)))))
+
+(defn note->midi
+  [note]
+  {:pre [(s/valid? ::specs/note note)]
+   :post [(s/valid? ::specs/midi %)]}
+  (let [[p octave] (specs/note-parts note)
+        index (get specs/pitches p)]
+    (+ index (* 12 (inc octave)))))
+
+(defn midi->note
+  [midi]
+  {:pre [(s/valid? ::specs/midi midi)]
+   :post [(s/valid? ::specs/note %)]}
+  (let [octave (dec (int (/ midi 12)))
+        index (mod midi 12)
+        p (get specs/default-pitch-by-index index)]
+    (keyword (str (name p) octave))))

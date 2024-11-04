@@ -48,4 +48,17 @@
         :C :A  :M6
         :C :A# :A6
         :C :Bb :m7
-        :C :B  :M7))))
+        :C :B  :M7))
+    (testing "with note->midi"
+      (are [note want] (= want (algo/note->midi note))
+        :C4 60
+        :C#4 61
+        :Db4 61
+        :C0 12))
+    (testing "with midi->note"
+      (are [midi want] (= want (algo/midi->note midi))
+        60 :C4
+        61 :C#4
+        62 :D4
+        63 :Eb4
+        12 :C0))))
