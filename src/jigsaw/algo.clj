@@ -3,12 +3,12 @@
             [clojure.spec.alpha :as s]
             [clojure.string :as string]))
 
-(defn pitch->letter
+(defn- pitch->letter
   [p]
   {:pre [(s/valid? ::specs/pitch p)]}
   (first (name p)))
 
-(defn staff-distance
+(defn- staff-distance
   [p1 p2]
   {:pre [(s/valid? ::specs/pitch p1) (s/valid? ::specs/pitch p2)]}
   (let [letter1 (pitch->letter p1)
@@ -17,21 +17,21 @@
         i2 (int letter2)]
     (inc (mod (- i2 i1) 7))))
 
-(defn get-cyclic-distance [a b len]
+(defn- get-cyclic-distance [a b len]
   (let [distance (mod (- b a) len)
         reverse-distance (mod (- a b) len)]
     (min distance reverse-distance)))
 
-(defn semitone-distance
+(defn- semitone-distance
   [p1 p2]
   {:pre [(s/valid? ::specs/pitch p1) (s/valid? ::specs/pitch p2)]}
   (mod (- (get specs/pitches p2) (get specs/pitches p1)) 12))
 
-(defn lesser? [s]
+(defn- lesser? [s]
   (any? (map #(string/includes? s %) ["d" "m"])))
-(defn greater? [s]
+(defn- greater? [s]
   (any? (map #(string/includes? s %) ["A" "M"])))
-(defn altered? [s] (or (lesser? s) (greater? s)))
+(defn- altered? [s] (or (lesser? s) (greater? s)))
 
 (defn pitches->interval
   [p1 p2]
@@ -53,16 +53,23 @@
           (let [staff-distance (staff-distance p1 p2)]
             (first (filter #(string/includes? % (str staff-distance)) altered-intervals))))))))
 
-(def pitch-pattern #"^([A-G])([#b]?)$")
-(defn get-pitch-regex-groups [p]
-  (rest (re-matches pitch-pattern (name p))))
-(defn accidental-match? [accidental-string]
+(defn- get-pitch-regex-groups [p]
+  (rest (re-matches specs/pitch-pattern (name p))))
+(defn- accidental-match? [accidental-string]
   (fn [p]
     (let [[_ accidental] (get-pitch-regex-groups p)]
       (= accidental accidental-string))))
 (def flat? (accidental-match? "b"))
 (def natural? (accidental-match? ""))
 (def sharp? (accidental-match? "#"))
+
+(defn- pitch->accidental
+  [p]
+  {:pre [(s/valid? ::specs/pitch p)]}
+  (let [accidental-str (last (get-pitch-regex-groups p))]
+    (case accidental-str
+      "" nil
+      accidental-str)))
 
 (defn enharmonic
   [p notation]
@@ -79,14 +86,21 @@
           (first equivalents)
           p)))))
 
+(defn parse-int [x]
+  (when-some [int-str (re-find #"\d{1}" (str x))]
+    (Integer/parseInt int-str)))
+
+; TODO: multi-method
 (defn note->midi
   [note]
   {:pre [(s/valid? ::specs/note note)]
    :post [(s/valid? ::specs/midi %)]}
-  (let [[p octave] (specs/note-parts note)
+  (let [octave (parse-int (last (name note)))
+        p (keyword (string/join "" (butlast (name note))))
         index (get specs/pitches p)]
     (+ index (* 12 (inc octave)))))
 
+; TODO: multi-method
 (defn midi->note
   [midi]
   {:pre [(s/valid? ::specs/midi midi)]
@@ -95,3 +109,58 @@
         index (mod midi 12)
         p (get specs/default-pitch-by-index index)]
     (keyword (str (name p) octave))))
+
+(defn letter+
+  "Given a letter (as a capital character, like \\A) and an interval to move
+   up, returns the resulting letter (A-G), ignoring accidentals.
+
+   e.g. F + 1 == F (unison)
+        F + 2 == G (2nd)
+        F + 3 == A (3rd)
+        F + 4 == B (4th)
+        F + 8 == F (octave)
+
+   If multiplier is -1, moves down instead of up.
+
+   e.g. F - 1 == F (unison)
+        F - 2 == E (2nd)
+        F - 3 == D (3rd)
+        F - 4 == C (4th)
+        F - 8 == F (octave)"
+  [letter interval & [multiplier]]
+  {:pre [(char? letter)]}
+  (let [letters (if (= multiplier -1) (reverse "ABCDEFG") "ABCDEFG")
+        letters (drop-while (partial not= letter) (cycle letters))]
+    (nth letters (dec interval))))
+
+(defn pitch+interval
+  [p interval & [multiplier]]
+  {:pre [(s/valid? ::specs/pitch p) (s/valid? ::specs/interval interval)]
+   :post [(s/valid? ::specs/pitch %)]}
+  (if (or (= interval :P1) (= interval :P8))
+    p
+    (let [letter (pitch->letter p)
+          interval-staff-distance (parse-int interval)
+          new-letter (letter+ letter interval-staff-distance multiplier)
+          interval-semitone (get-in specs/intervals [interval ::specs/semitone])
+          semitone (specs/pitches p)
+          new-semitone ((if (= multiplier -1) - +) semitone interval-semitone)
+          difference (* (or multiplier 1)
+                        (- (mod new-semitone 12) (specs/pitches (keyword (str new-letter)))))
+          new-difference (cond
+                           (< difference -2) (+ difference 12)
+                           (< 2 difference) (- difference 12)
+                           :else difference)
+          accidental-str (string/join "" (take (abs new-difference)
+                                               (repeat (if (neg? new-difference)
+                                                         (if (= multiplier -1) \# \b)
+                                                         (if (= multiplier -1) \b \#)))))]
+      (keyword (str new-letter accidental-str)))))
+
+(defn resolve-intervals
+  [x intervals]
+  {:pre [(or (s/valid? ::specs/pitch x) (s/valid? ::specs/note x)) (every? #(s/valid? ::specs/interval %) intervals)]
+   :post [(or (s/valid? (s/coll-of ::specs/pitch) %) (s/valid? (s/coll-of ::specs/note) %))]}
+  (if (s/valid? ::specs/pitch x)
+    x))
+

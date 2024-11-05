@@ -18,7 +18,10 @@
         "a" false
         :C true
         :c false
-        :C# true))
+        :C# true
+        :C## true
+        :Db true
+        :Dbb true))
     (testing "with interval"
       (are [value valid] (= valid (s/valid? ::specs/interval value))
         :P1 true
