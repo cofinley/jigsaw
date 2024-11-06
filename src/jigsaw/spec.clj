@@ -103,16 +103,12 @@
 ;;  e.g. a pitch with intervals is a chord or a scale (think ECS)
 ;;    maybe use degrees instead of intervals for scale to be able to differentiate
 
-(s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
-
 (s/def ::octave (s/and int? #(<= -1 % 9)))
 
 ;; Note: pitch+octave
 (def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
-(defn is-note [n] (some? (re-find note-pattern (name n))))
-
-;; Note: pitch + octave
+(defn- is-note [n] (some? (re-find note-pattern (name n))))
 (s/def ::note (s/and keyword? is-note))
 
 ;; Midi: position of a note on the keyboard
@@ -236,6 +232,8 @@
    :7sus4b9b13 {::intervals [:P1 :P4 :P5 :m7 :m9 :m13]       ::aliases ["7b9b13sus4"]}
    :P4         {::intervals [:P1 :P4 :m7 :m10]               ::aliases ["quartal"]}
    :11b9       {::intervals [:P1 :P5 :m7 :m9 :P11]}})
+
+(s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
 
 ;; Derived
 ;; Chord: Maj, Maj7, min7, minMaj7

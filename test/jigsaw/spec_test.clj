@@ -11,6 +11,7 @@
         -1 false
         0 true
         21 true
+        22 false
         :C  false))
     (testing "with pitch"
       (are [value valid] (= valid (s/valid? ::specs/pitch value))
@@ -33,6 +34,7 @@
         :C2 true
         :c2 false
         :C#2 true
+        :C##2 true
         :Db2 true
         :D11 false
         :T2 false))))

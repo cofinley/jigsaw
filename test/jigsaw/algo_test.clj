@@ -20,40 +20,40 @@
     (testing "parts"
       (testing "starting from a pitch"
         (are+ [p m] (= m (algo/parts p))
-          :C {:pitch :C :letter \C :accidental ""}
-          :C# {:pitch :C# :letter \C :accidental "#"}
+          :C   {:pitch :C   :letter \C :accidental ""}
+          :C#  {:pitch :C#  :letter \C :accidental "#"}
           :C## {:pitch :C## :letter \C :accidental "##"}
           :Dbb {:pitch :Dbb :letter \D :accidental "bb"}))
       (testing "starting from a note"
         (are+ [n m] (= m (algo/parts n))
-          :C4 {:pitch :C :letter \C :accidental "" :octave 4}
-          :C#4 {:pitch :C# :letter \C :accidental "#" :octave 4}
+          :C4   {:pitch :C   :letter \C :accidental ""   :octave 4}
+          :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4}
           :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4}
           :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4})))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
-        :C false
+        :C  false
         :C# false
         :Db true
         :Ab true))
     (testing "with natural?"
       (are+ [p want] (= want (algo/natural? p))
-        :C true
+        :C  true
         :C# false
         :Db false
-        :A true))
+        :A  true))
     (testing "with sharp?"
       (are+ [p want] (= want (algo/sharp? p))
-        :C false
+        :C  false
         :C# true
         :Db false
         :Ab false))
     (testing "with enharmonic"
       (are+ [p notation want] (= want (algo/enharmonic p notation))
-        :C :flat :C
-        :C :sharp :B#
+        :C :flat   :C
+        :C :sharp  :B#
         :C# :sharp :C#
-        :C# :flat :Db))
+        :C# :flat  :Db))
     (testing "with pitches->interval"
       (are+ [p1 p2 want] (= want (algo/pitches->interval p1 p2))
         :C :C  :P1
@@ -76,10 +76,10 @@
         :C :B  :M7))
     (testing "with note->midi"
       (are+ [note want] (= want (algo/note->midi note))
-        :C4 60
+        :C4  60
         :C#4 61
         :Db4 61
-        :C0 12))
+        :C0  12))
     (testing "with midi->note"
       (are+ [midi want] (= want (algo/midi->note midi))
         60 :C4
