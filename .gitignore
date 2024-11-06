@@ -36,6 +36,11 @@
 !Makefile
 !tests.edn
 
+# Include clojure_lsp, but only config
+!.lsp
+.lsp/*
+!.lsp/config.edn
+
 # ------------------------
 # Include Git & CI workflow
 !.gitattributes
@@ -46,9 +51,3 @@
 # Include ClojureScript Figwheel
 !figwheel-main.edn
 !*.cljs.edn
-
-.nrepl-port
-.rebel_readline_history
-.clj-kondo/
-.cpcache/
-.lsp/

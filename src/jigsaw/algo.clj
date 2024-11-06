@@ -1,8 +1,10 @@
 (ns jigsaw.algo
   (:require [jigsaw.spec :as specs]
             [clojure.spec.alpha :as s]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [clojure.math :as math]))
 
+; TODO: break out in specs/pitch-parts
 (defn- pitch->letter
   [p]
   {:pre [(s/valid? ::specs/pitch p)]}
@@ -27,10 +29,8 @@
   {:pre [(s/valid? ::specs/pitch p1) (s/valid? ::specs/pitch p2)]}
   (mod (- (get specs/pitches p2) (get specs/pitches p1)) 12))
 
-(defn- lesser? [s]
-  (any? (map #(string/includes? s %) ["d" "m"])))
-(defn- greater? [s]
-  (any? (map #(string/includes? s %) ["A" "M"])))
+(defn- lesser? [s] (any? (map #(string/includes? s %) ["d" "m"])))
+(defn- greater? [s] (any? (map #(string/includes? s %) ["A" "M"])))
 (defn- altered? [s] (or (lesser? s) (greater? s)))
 
 (defn pitches->interval
@@ -63,14 +63,6 @@
 (def natural? (accidental-match? ""))
 (def sharp? (accidental-match? "#"))
 
-(defn- pitch->accidental
-  [p]
-  {:pre [(s/valid? ::specs/pitch p)]}
-  (let [accidental-str (last (get-pitch-regex-groups p))]
-    (case accidental-str
-      "" nil
-      accidental-str)))
-
 (defn enharmonic
   [p notation]
   {:pre [(s/valid? ::specs/pitch p)]
@@ -87,12 +79,11 @@
           p)))))
 
 (defn parse-int [x]
-  (when-some [int-str (re-find #"\d{1}" (str x))]
+  (when-some [int-str (re-find #"\d+" (str x))]
     (Integer/parseInt int-str)))
 
-; TODO: multi-method
-(defn note->midi
-  [note]
+;; TODO: multi-method
+(defn note->midi [note]
   {:pre [(s/valid? ::specs/note note)]
    :post [(s/valid? ::specs/midi %)]}
   (let [octave (parse-int (last (name note)))
@@ -100,9 +91,8 @@
         index (get specs/pitches p)]
     (+ index (* 12 (inc octave)))))
 
-; TODO: multi-method
-(defn midi->note
-  [midi]
+;; TODO: multi-method
+(defn midi->note [midi]
   {:pre [(s/valid? ::specs/midi midi)]
    :post [(s/valid? ::specs/note %)]}
   (let [octave (dec (int (/ midi 12)))
@@ -146,7 +136,7 @@
           semitone (specs/pitches p)
           new-semitone ((if (= multiplier -1) - +) semitone interval-semitone)
           difference (* (or multiplier 1)
-                        (- (mod new-semitone 12) (specs/pitches (keyword (str new-letter)))))
+                        (mod (- new-semitone (specs/pitches (keyword (str new-letter)))) 12))
           new-difference (cond
                            (< difference -2) (+ difference 12)
                            (< 2 difference) (- difference 12)
@@ -157,10 +147,24 @@
                                                          (if (= multiplier -1) \b \#)))))]
       (keyword (str new-letter accidental-str)))))
 
+(defn note+interval
+  [n interval & [multiplier]]
+  {:pre [(s/valid? ::specs/note n) (s/valid? ::specs/interval interval)]
+   :post [(s/valid? ::specs/note %)]}
+  (let [{:keys [pitch octave]} (specs/note-parts n)
+        interval-semitone (get-in specs/intervals [interval ::specs/semitone])
+        new-pitch (pitch+interval pitch interval multiplier)
+        new-pitch-str (name new-pitch)
+        new-octave (+ octave (* (or multiplier 1) (math/floor-div interval-semitone 12)))]
+    (keyword (str new-pitch-str new-octave))))
+
 (defn resolve-intervals
   [x intervals]
-  {:pre [(or (s/valid? ::specs/pitch x) (s/valid? ::specs/note x)) (every? #(s/valid? ::specs/interval %) intervals)]
-   :post [(or (s/valid? (s/coll-of ::specs/pitch) %) (s/valid? (s/coll-of ::specs/note) %))]}
-  (if (s/valid? ::specs/pitch x)
-    x))
-
+  {:pre [(or (s/valid? ::specs/pitch x) (s/valid? ::specs/note x))
+         (every? #(s/valid? ::specs/interval %) intervals)]
+   :post [(or (s/valid? (s/coll-of ::specs/pitch) %)
+              (s/valid? (s/coll-of ::specs/note) %))]}
+  (cond
+    (s/valid? ::specs/pitch x) (map #(pitch+interval x %) intervals)
+    (s/valid? ::specs/note x) (map #(note+interval x %) intervals)
+    :else nil))

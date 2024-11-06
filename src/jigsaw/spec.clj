@@ -64,7 +64,7 @@
    :A3  {::name "Augmented 3rd" ::semitone 5}
    :d5  {::name "Diminished 5th" ::semitone 6} ; Tritone
    :A4  {::name "Augmented 4th" ::semitone 6} ; Tritone
-   ; :TT  {::name "Tritone" ::semitone 6}
+   ;; :TT  {::name "Tritone" ::semitone 6}
    :P5  {::name "Perfect 5th" ::semitone 7}
    :d6  {::name "Diminished 6th" ::semitone 7}
    :m6  {::name "Minor 6th" ::semitone 8}
@@ -108,11 +108,24 @@
 (s/def ::octave (s/and int? #(<= -1 % 9)))
 
 ;; Note: pitch+octave
-(def note-pattern #"^([A-G])(b{0,2}|#{0,2})(\d{1})$")
-(defn is-note [n] (some? (re-find (re-matcher note-pattern (name n)))))
+(def note-pattern #"^(([A-G])(b{0,2}|#{0,2}))(\d{1})$")
+(comment (re-find note-pattern (name :C#4)))
+(defn is-note [n] (some? (re-find note-pattern (name n))))
 (defn note-parts [n]
-  (let [[_ pitch accidentals octave-letter] (re-find (re-matcher note-pattern (name n)))]
-    (list (keyword pitch) accidentals (Integer/parseInt octave-letter))))
+  (let [[_ pitch pitch-class accidentals octave-letter] (re-find note-pattern (name n))]
+    {:pitch (keyword pitch)
+     :pitch-class pitch-class
+     :accidentals accidentals
+     :octave (Integer/parseInt octave-letter)}))
+
+(defn octave [x]
+  (cond
+    (s/valid? ::note x) (let [{:keys [octave]} (note-parts x)] octave)
+    :else nil))
+(defn pitch [x]
+  (cond
+    (s/valid? ::note x) (let [{:keys [pitch]} (note-parts x)] pitch)
+    :else nil))
 
 (s/def ::note (s/and keyword? is-note))
 ;; Note (midi): position of a pitch+octave on the keyboard
