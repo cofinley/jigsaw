@@ -4,17 +4,35 @@
             [clojure.string :as string]
             [clojure.math :as math]))
 
-; TODO: break out in specs/pitch-parts
-(defn- pitch->letter
+(defn- pitch-parts
   [p]
   {:pre [(s/valid? ::specs/pitch p)]}
-  (first (name p)))
+  (let [[_ pitch-str letter accidental] (re-find specs/pitch-pattern (name p))]
+    {:pitch (keyword pitch-str)
+     :letter (first letter)
+     :accidental accidental}))
+
+(defn- note-parts
+  [n]
+  {:pre [(s/valid? ::specs/note n)]}
+  (let [note-str (name n)
+        pitch (keyword (subs note-str 0 (dec (count note-str))))
+        octave (Integer/parseInt (str (last note-str)))]
+    (assoc (pitch-parts pitch) :octave octave)))
+
+(defn parts
+  [x]
+  {:pre [(or (s/valid? ::specs/pitch x) (s/valid? ::specs/note x))]}
+  (cond
+    (s/valid? ::specs/pitch x) (pitch-parts x)
+    (s/valid? ::specs/note x) (note-parts x)
+    :else (throw (IllegalArgumentException. "x must be either a pitch or note"))))
 
 (defn- staff-distance
   [p1 p2]
   {:pre [(s/valid? ::specs/pitch p1) (s/valid? ::specs/pitch p2)]}
-  (let [letter1 (pitch->letter p1)
-        letter2 (pitch->letter p2)
+  (let [{letter1 :letter} (parts p1)
+        {letter2 :letter} (parts p2)
         i1 (int letter1)
         i2 (int letter2)]
     (inc (mod (- i2 i1) 7))))
@@ -53,11 +71,9 @@
           (let [staff-distance (staff-distance p1 p2)]
             (first (filter #(string/includes? % (str staff-distance)) altered-intervals))))))))
 
-(defn- get-pitch-regex-groups [p]
-  (rest (re-matches specs/pitch-pattern (name p))))
 (defn- accidental-match? [accidental-string]
   (fn [p]
-    (let [[_ accidental] (get-pitch-regex-groups p)]
+    (let [{:keys [accidental]} (parts p)]
       (= accidental accidental-string))))
 (def flat? (accidental-match? "b"))
 (def natural? (accidental-match? ""))
@@ -78,7 +94,7 @@
           (first equivalents)
           p)))))
 
-(defn parse-int [x]
+(defn- parse-int [x]
   (when-some [int-str (re-find #"\d+" (str x))]
     (Integer/parseInt int-str)))
 
@@ -100,7 +116,7 @@
         p (get specs/default-pitch-by-index index)]
     (keyword (str (name p) octave))))
 
-(defn letter+
+(defn- letter+
   "Given a letter (as a capital character, like \\A) and an interval to move
    up, returns the resulting letter (A-G), ignoring accidentals.
 
@@ -123,13 +139,13 @@
         letters (drop-while (partial not= letter) (cycle letters))]
     (nth letters (dec interval))))
 
-(defn pitch+interval
+(defn- pitch+interval
   [p interval & [multiplier]]
   {:pre [(s/valid? ::specs/pitch p) (s/valid? ::specs/interval interval)]
    :post [(s/valid? ::specs/pitch %)]}
   (if (or (= interval :P1) (= interval :P8))
     p
-    (let [letter (pitch->letter p)
+    (let [{:keys [letter]} (parts p)
           interval-staff-distance (parse-int interval)
           new-letter (letter+ letter interval-staff-distance multiplier)
           interval-semitone (get-in specs/intervals [interval ::specs/semitone])
@@ -147,24 +163,32 @@
                                                          (if (= multiplier -1) \b \#)))))]
       (keyword (str new-letter accidental-str)))))
 
-(defn note+interval
+(defn- note+interval
   [n interval & [multiplier]]
   {:pre [(s/valid? ::specs/note n) (s/valid? ::specs/interval interval)]
    :post [(s/valid? ::specs/note %)]}
-  (let [{:keys [pitch octave]} (specs/note-parts n)
+  (let [{:keys [pitch octave]} (note-parts n)
         interval-semitone (get-in specs/intervals [interval ::specs/semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
         new-octave (+ octave (* (or multiplier 1) (math/floor-div interval-semitone 12)))]
     (keyword (str new-pitch-str new-octave))))
 
-(defn resolve-intervals
-  [x intervals]
+(defn +interval
+  [x interval & [multiplier]]
+  {:pre [(or (s/valid? ::specs/pitch x) (s/valid? ::specs/note x))
+         (s/valid? ::specs/interval interval)]
+   :post [(or (s/valid? ::specs/pitch %)
+              (s/valid? ::specs/note %))]}
+  (cond
+    (s/valid? ::specs/pitch x) (pitch+interval x interval multiplier)
+    (s/valid? ::specs/note x) (note+interval x interval multiplier)
+    :else (throw (IllegalArgumentException. "x must be either a pitch or note"))))
+
+(defn +intervals
+  [x intervals & [multiplier]]
   {:pre [(or (s/valid? ::specs/pitch x) (s/valid? ::specs/note x))
          (every? #(s/valid? ::specs/interval %) intervals)]
    :post [(or (s/valid? (s/coll-of ::specs/pitch) %)
               (s/valid? (s/coll-of ::specs/note) %))]}
-  (cond
-    (s/valid? ::specs/pitch x) (map #(pitch+interval x %) intervals)
-    (s/valid? ::specs/note x) (map #(note+interval x %) intervals)
-    :else nil))
+  (map #(+interval x % multiplier) intervals))

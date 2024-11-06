@@ -17,6 +17,19 @@
 
 (deftest algo-test
   (testing "Algo"
+    (testing "parts"
+      (testing "starting from a pitch"
+        (are+ [p m] (= m (algo/parts p))
+          :C {:pitch :C :letter \C :accidental ""}
+          :C# {:pitch :C# :letter \C :accidental "#"}
+          :C## {:pitch :C## :letter \C :accidental "##"}
+          :Dbb {:pitch :Dbb :letter \D :accidental "bb"}))
+      (testing "starting from a note"
+        (are+ [n m] (= m (algo/parts n))
+          :C4 {:pitch :C :letter \C :accidental "" :octave 4}
+          :C#4 {:pitch :C# :letter \C :accidental "#" :octave 4}
+          :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4}
+          :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4})))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
         :C false
@@ -74,129 +87,130 @@
         62 :D4
         63 :Eb4
         12 :C0))
-    (testing "with pitch+interval"
-      (testing "adding"
-        (are+ [p interval want] (= want (algo/pitch+interval p interval))
-          :C :d2  :Dbb
-          :C :m2  :Db
-          :C :M2  :D
-          :C :d3  :Ebb
-          :C :m3  :Eb
-          :C :A2  :D#
-          :C :M3  :E
-          :C :d4  :Fb
-          :C :P4  :F
-          :C :A3  :E#
-          :C :d5  :Gb
-          :C :A4  :F#
-          :C :P5  :G
-          :C :d6  :Abb
-          :C :m6  :Ab
-          :C :A5  :G#
-          :C :M6  :A
-          :C :d7  :Bbb
-          :C :m7  :Bb
-          :C :A6  :A#
-          :C :M7  :B
-          :C :P8  :C
-          :C :P11 :F
-          :C :M13 :A
+    (testing "with +interval"
+      (testing "starting from a pitch"
+        (testing "adding"
+          (are+ [p interval want] (= want (algo/+interval p interval))
+            :C :d2  :Dbb
+            :C :m2  :Db
+            :C :M2  :D
+            :C :d3  :Ebb
+            :C :m3  :Eb
+            :C :A2  :D#
+            :C :M3  :E
+            :C :d4  :Fb
+            :C :P4  :F
+            :C :A3  :E#
+            :C :d5  :Gb
+            :C :A4  :F#
+            :C :P5  :G
+            :C :d6  :Abb
+            :C :m6  :Ab
+            :C :A5  :G#
+            :C :M6  :A
+            :C :d7  :Bbb
+            :C :m7  :Bb
+            :C :A6  :A#
+            :C :M7  :B
+            :C :P8  :C
+            :C :P11 :F
+            :C :M13 :A
 
-          :C# :P1 :C#
-          :C# :d2 :Db
-          :C# :m2 :D
-          :C# :M2 :D#
-          :C# :d3 :Eb
-          :C# :m3 :E
-          :C# :A2 :D##
-          :C# :M3 :E#
-          :C# :d4 :F
-          :C# :P4 :F#
-          :C# :A3 :E##
-          :C# :d5 :G
-          :C# :A4 :F##
-          :C# :P5 :G#
-          :C# :d6 :Ab
-          :C# :m6 :A
-          :C# :A5 :G##
-          :C# :M6 :A#
-          :C# :d7 :Bb
-          :C# :m7 :B
-          :C# :A6 :A##
-          :C# :M7 :B#
+            :C# :P1 :C#
+            :C# :d2 :Db
+            :C# :m2 :D
+            :C# :M2 :D#
+            :C# :d3 :Eb
+            :C# :m3 :E
+            :C# :A2 :D##
+            :C# :M3 :E#
+            :C# :d4 :F
+            :C# :P4 :F#
+            :C# :A3 :E##
+            :C# :d5 :G
+            :C# :A4 :F##
+            :C# :P5 :G#
+            :C# :d6 :Ab
+            :C# :m6 :A
+            :C# :A5 :G##
+            :C# :M6 :A#
+            :C# :d7 :Bb
+            :C# :m7 :B
+            :C# :A6 :A##
+            :C# :M7 :B#
 
-          :F :d4 :Bbb))
-      (testing "subtracting"
-        (are+ [p interval want] (= want (algo/pitch+interval p interval -1))
-          :C :d2  :B#
-          :C :m2  :B
-          :C :M2  :Bb
-          :C :d3  :A#
-          :C :m3  :A
-          :C :A2  :Bbb
-          :C :M3  :Ab
-          :C :d4  :G#
-          :C :P4  :G
-          :C :A3  :Abb
-          :C :d5  :F#
-          :C :A4  :Gb
-          :C :P5  :F
-          :C :d6  :E#
-          :C :m6  :E
-          :C :A5  :Fb
-          :C :M6  :Eb
-          :C :d7  :D#
-          :C :m7  :D
-          :C :A6  :Ebb
-          :C :M7  :Db
-          :C :P8  :C
-          :C :P11 :G
-          :C :M13 :Eb
+            :F :d4 :Bbb))
+        (testing "subtracting"
+          (are+ [p interval want] (= want (algo/+interval p interval -1))
+            :C :d2  :B#
+            :C :m2  :B
+            :C :M2  :Bb
+            :C :d3  :A#
+            :C :m3  :A
+            :C :A2  :Bbb
+            :C :M3  :Ab
+            :C :d4  :G#
+            :C :P4  :G
+            :C :A3  :Abb
+            :C :d5  :F#
+            :C :A4  :Gb
+            :C :P5  :F
+            :C :d6  :E#
+            :C :m6  :E
+            :C :A5  :Fb
+            :C :M6  :Eb
+            :C :d7  :D#
+            :C :m7  :D
+            :C :A6  :Ebb
+            :C :M7  :Db
+            :C :P8  :C
+            :C :P11 :G
+            :C :M13 :Eb
 
-          :C# :P1 :C#
-          :C# :d2 :B##
-          :C# :m2 :B#
-          :C# :M2 :B
-          :C# :d3 :A##
-          :C# :m3 :A#
-          :C# :A2 :Bb
-          :C# :M3 :A
-          :C# :d4 :G##
-          :C# :P4 :G#
-          :C# :A3 :Ab
-          :C# :d5 :F##
-          :C# :A4 :G
-          :C# :P5 :F#
-          :C# :d6 :E##
-          :C# :m6 :E#
-          :C# :A5 :F
-          :C# :M6 :E
-          :C# :d7 :D##
-          :C# :m7 :D#
-          :C# :A6 :Eb
-          :C# :M7 :D
-          :C# :P8 :C#)))
-    (testing "with note+interval"
-      (testing "adding"
-        (are+ [n interval want] (= want (algo/note+interval n interval))
-          :C4 :P1  :C4
-          :C4 :P8  :C5
-          :C4 :P11 :F5))
-      (testing "subtracting"
-        (are+ [n interval want] (= want (algo/note+interval n interval -1))
-          :C4 :P1  :C4
-          :C4 :P8  :C3
-          :C4 :P11 :G3)))
-    (testing "with resolve-intervals"
+            :C# :P1 :C#
+            :C# :d2 :B##
+            :C# :m2 :B#
+            :C# :M2 :B
+            :C# :d3 :A##
+            :C# :m3 :A#
+            :C# :A2 :Bb
+            :C# :M3 :A
+            :C# :d4 :G##
+            :C# :P4 :G#
+            :C# :A3 :Ab
+            :C# :d5 :F##
+            :C# :A4 :G
+            :C# :P5 :F#
+            :C# :d6 :E##
+            :C# :m6 :E#
+            :C# :A5 :F
+            :C# :M6 :E
+            :C# :d7 :D##
+            :C# :m7 :D#
+            :C# :A6 :Eb
+            :C# :M7 :D
+            :C# :P8 :C#)))
+      (testing "starting from a note"
+        (testing "adding"
+          (are+ [n interval want] (= want (algo/+interval n interval))
+            :C4 :P1  :C4
+            :C4 :P8  :C5
+            :C4 :P11 :F5))
+        (testing "subtracting"
+          (are+ [n interval want] (= want (algo/+interval n interval -1))
+            :C4 :P1  :C4
+            :C4 :P8  :C3
+            :C4 :P11 :G3))))
+    (testing "with +intervals"
       (testing "from pitch"
-        (are+ [p intervals want] (= want (algo/resolve-intervals p intervals))
+        (are+ [p intervals want] (= want (algo/+intervals p intervals))
           :C  [:P1]         [:C]
           :C  [:P1 :M3 :P5] [:C :E :G]
           :C  [:P1 :m3 :P5] [:C :Eb :G]
           :C# [:P1 :m3 :P5] [:C# :E :G#]
           :C# [:A3 :d5]     [:E## :G]))
       (testing "from note"
-        (are+ [n intervals want] (= want (algo/resolve-intervals n intervals))
+        (are+ [n intervals want] (= want (algo/+intervals n intervals))
           :C4  [:P1]                        [:C4]
           :C4  [:P8]                        [:C5]
           :C4  [:P1 :M3 :P5]                [:C4 :E4 :G4]

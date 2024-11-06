@@ -21,7 +21,8 @@
            ))
      {}
      letters->semitones)))
-(def pitch-pattern #"^([A-G])(b{0,2}|#{0,2})$")
+(def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
+(def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
 (def pitches-by-index
   (reduce
@@ -107,25 +108,9 @@
 (s/def ::octave (s/and int? #(<= -1 % 9)))
 
 ;; Note: pitch+octave
-(def note-pattern #"^(([A-G])(b{0,2}|#{0,2}))(\d{1})$")
+(def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
+(def note-pattern (re-pattern (str "^" note-pattern-str "$")))
 (defn is-note [n] (some? (re-find note-pattern (name n))))
-(defn note-parts [n]
-  (let [[_ pitch pitch-class accidentals octave-letter] (re-find note-pattern (name n))]
-    {:pitch (keyword pitch)
-     :pitch-class pitch-class
-     :accidentals accidentals
-     :octave (Integer/parseInt octave-letter)}))
-
-(defn octave [x]
-  {:post [(s/valid? ::octave %)]}
-  (cond
-    (s/valid? ::note x) (let [{:keys [octave]} (note-parts x)] octave)
-    :else nil))
-(defn pitch [x]
-  {:post [(s/valid? ::pitch %)]}
-  (cond
-    (s/valid? ::note x) (let [{:keys [pitch]} (note-parts x)] pitch)
-    :else nil))
 
 ;; Note: pitch + octave
 (s/def ::note (s/and keyword? is-note))
