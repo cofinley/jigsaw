@@ -217,4 +217,17 @@
           :C4  [:P1 :m3 :P5]                [:C4 :Eb4 :G4]
           :C4  [:P1 :M3 :P5 :M7 :P11 :M13]  [:C4 :E4 :G4 :B4 :F5 :A5]
           :C#4 [:P1 :m3 :P5]                [:C#4 :E4 :G#4]
-          :C#4 [:A3 :d5]                    [:E##4 :G4])))))
+          :C#4 [:A3 :d5]                    [:E##4 :G4])))
+    (testing "with clamp-pitch"
+      (are+ [p want] (= want (algo/clamp-pitch p))
+        :C      :C
+        :C#     :C#
+        :C##    :C##
+        :C###   :D#
+        :C####  :D##
+        :C##### :E#
+        :Db     :Db
+        :Dbb    :Dbb
+        :Dbbb   :Cb
+        :Dbbbb  :Cbb
+        :Dbbbbb :Bb))))

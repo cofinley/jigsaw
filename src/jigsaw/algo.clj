@@ -4,6 +4,11 @@
             [clojure.string :as string]
             [clojure.math :as math]))
 
+(defn in?
+  "Returns true if v in coll, else false."
+  [coll v]
+  (some? (some #(= v %) coll)))
+
 (defn- pitch-parts
   [p]
   {:pre [(s/valid? ::specs/pitch p)]}
@@ -81,18 +86,19 @@
 
 (defn enharmonic
   [p notation]
-  {:pre [(s/valid? ::specs/pitch p)]
-   :post [(s/valid? ::specs/pitch %)]}
-  (let [index (get specs/pitches p)
+  {:post [(s/valid? ::specs/pitch %)]}
+  (let [index (specs/pitches p)
         equivalent-pitches (specs/pitches-by-index index)]
-    (if (= 1 (count equivalent-pitches))
-      p
-      (let [equivalents (case notation
-                          :flat (filter flat? equivalent-pitches)
-                          :sharp (filter sharp? equivalent-pitches))]
-        (if (= 1 (count equivalents))
-          (first equivalents)
-          p)))))
+    (when (pos? (count equivalent-pitches))
+      (if (= 1 (count equivalent-pitches))
+        p
+        (let [equivalents (case notation
+                            :flat (filter flat? equivalent-pitches)
+                            :natural (filter natural? equivalent-pitches)
+                            :sharp (filter sharp? equivalent-pitches))]
+          (if (= 1 (count equivalents))
+            (first equivalents)
+            p))))))
 
 (defn- parse-int [x]
   (when-some [int-str (re-find #"\d+" (str x))]
@@ -139,6 +145,22 @@
         letters (drop-while (partial not= letter) (cycle letters))]
     (nth letters (dec interval))))
 
+(defn clamp-pitch
+  "Convert pitch with an extended accidental (more than two flats/sharps) to enharmonic equivalent with max 2 accidental symbols
+  This is because we're not supporting triple/quadruple flats/sharps"
+  [p]
+  {:post [(s/valid? ::specs/pitch %)]}
+  (let [extended-pitch-pattern #"^(([A-G])(b*|#*))$"
+        [_ _ letter-str accidental] (re-find extended-pitch-pattern (name p))
+        letter (first letter-str)
+        multiplier (when (string/includes? accidental "b") -1)]
+    (loop [letter letter
+           accidental accidental]
+      (let [new-pitch (keyword (str letter accidental))]
+        (if (contains? specs/pitches new-pitch)
+          new-pitch
+          (recur (letter+ letter 2 multiplier) (subs accidental 2)))))))
+
 (defn- pitch+interval
   [p interval & [multiplier]]
   {:pre [(s/valid? ::specs/pitch p) (s/valid? ::specs/interval interval)]
@@ -160,8 +182,9 @@
           accidental-str (string/join "" (take (abs new-difference)
                                                (repeat (if (neg? new-difference)
                                                          (if (= multiplier -1) \# \b)
-                                                         (if (= multiplier -1) \b \#)))))]
-      (keyword (str new-letter accidental-str)))))
+                                                         (if (= multiplier -1) \b \#)))))
+          new-pitch (keyword (str new-letter accidental-str))]
+      (clamp-pitch new-pitch))))
 
 (defn- note+interval
   [n interval & [multiplier]]
