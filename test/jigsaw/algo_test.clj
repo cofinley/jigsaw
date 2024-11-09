@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest testing is are]]
    [jigsaw.algo :as algo]
+   [jigsaw.spec :as specs]
    [clojure.template :as temp]))
 
 (defmacro are+
@@ -195,7 +196,8 @@
           (are+ [n interval want] (= want (algo/+interval n interval))
             :C4 :P1  :C4
             :C4 :P8  :C5
-            :C4 :P11 :F5))
+            :C4 :P11 :F5
+            :F#4 :A5 :C##5))
         (testing "subtracting"
           (are+ [n interval want] (= want (algo/+interval n interval -1))
             :C4 :P1  :C4
@@ -230,4 +232,15 @@
         :Dbb    :Dbb
         :Dbbb   :Cb
         :Dbbbb  :Cbb
-        :Dbbbbb :Bb))))
+        :Dbbbbb :Bb))
+    (testing "with resolve-chord"
+      (testing "starting from a pitch"
+        (are+ [pitch chord-name want] (= want (algo/resolve-chord pitch chord-name))
+          :C  :maj #::specs{:name :maj :root :C  :interval-mapping {:P1 :C,  :M3 :E   :P5 :G}}
+          :C# :m   #::specs{:name :m   :root :C# :interval-mapping {:P1 :C#, :m3 :E,  :P5 :G#}}
+          :F# :aug #::specs{:name :aug :root :F# :interval-mapping {:P1 :F#, :M3 :A#, :A5 :C##}}))
+      (testing "starting from a note"
+        (are+ [note chord-name want] (= want (algo/resolve-chord note chord-name))
+          :C3  :maj #::specs{:name :maj :root :C  :interval-mapping {:P1 :C3,  :M3 :E3,  :P5 :G3}}
+          :C#4 :m   #::specs{:name :m   :root :C# :interval-mapping {:P1 :C#4, :m3 :E4,  :P5 :G#4}}
+          :F#5 :aug #::specs{:name :aug :root :F# :interval-mapping {:P1 :F#5, :M3 :A#5, :A5 :C##6}})))))

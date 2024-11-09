@@ -24,6 +24,7 @@
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
+(defn pitch? [p] (s/valid? ::pitch p))
 (def pitches-by-index
   (reduce
    (fn [acc [pitch index]]
@@ -87,6 +88,7 @@
    :m13 {::name "Minor 13th" ::semitone 20}
    :M13 {::name "Major 13th" ::semitone 21}})
 (s/def ::interval (s/and keyword? #(contains? intervals %)))
+(defn interval? [interval] (s/valid? ::interval interval))
 (s/def ::intervals (s/coll-of ::intervals))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
 (def intervals-by-semitone
@@ -108,8 +110,13 @@
 ;; Note: pitch+octave
 (def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
-(defn- is-note [n] (some? (re-find note-pattern (name n))))
-(s/def ::note (s/and keyword? is-note))
+(s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
+(defn note? [n] (s/valid? ::note n))
+(s/def ::pitch-or-note (s/or :pitch pitch? :note note?))
+(defn pitch-or-note? [x] (s/valid? ::pitch-or-note x))
+
+(let [{pitch :pitch} (s/conform ::pitch-or-note :C)]
+  pitch)
 
 ;; Midi: position of a note on the keyboard
 ;;   Represented as an integer
@@ -117,8 +124,9 @@
 (s/def ::midi (s/and int? #(<= 0 % 127)))
 
 (def chords
-  {;; Major
-   :M          {::intervals [:P1 :M3 :P5]                    ::aliases ["maj", "major"]}
+  (array-map
+    ;; Major
+   :maj        {::intervals [:P1 :M3 :P5]                    ::aliases ["M", "major"]}
    :maj7       {::intervals [:P1 :M3 :P5 :M7]                ::aliases ["Δ","ma7","M7","Maj7","^7", "major seventh"]}
    :maj9       {::intervals [:P1 :M3 :P5 :M7 :M9]            ::aliases ["Δ9","^9", "major ninth"]}
    :maj13      {::intervals [:P1 :M3 :P5 :M7 :M9 :M13]       ::aliases ["Maj13","^13", "major thirteenth"]}
@@ -137,9 +145,9 @@
    :m11        {::intervals [:P1 :m3 :P5 :m7 :M9 :P11]       ::aliases ["-11", "minor eleventh"]}
    :m13        {::intervals [:P1 :m3 :P5 :m7 :M9 :M13]       ::aliases ["-13", "minor thirteenth"]}
    ;;; Diminished
-   :dim        {::intervals [:P1 :m3 :d5]                    ::aliases ["°","o", "diminished"]}
-   :dim7       {::intervals [:P1 :m3 :d5 :d7]                ::aliases ["°7","o7", "diminished seventh"]}
-   :m7b5       {::intervals [:P1 :m3 :d5 :m7]                ::aliases ["ø","-7b5","h7","h", "half-diminished"]}
+   :dim        {::intervals [:P1 :m3 :d5]                    ::aliases ["°", "diminished"]}
+   :dim7       {::intervals [:P1 :m3 :d5 :d7]                ::aliases ["°7", "diminished seventh"]}
+   :m7b5       {::intervals [:P1 :m3 :d5 :m7]                ::aliases ["ø", "-7b5", "half-diminished"]}
    ;; Dominant/Seventh
    ;;; Normal
    :7          {::intervals [:P1 :M3 :P5 :m7]                ::aliases ["dom", "dominant seventh"]}
@@ -154,7 +162,7 @@
    :sus4       {::intervals [:P1 :P4 :P5]                    ::aliases ["sus", "suspended fourth"]}
    :sus2       {::intervals [:P1 :M2 :P5]                    ::aliases ["suspended second"]}
    :7sus4      {::intervals [:P1 :P4 :P5 :m7]                ::aliases ["7sus", "suspended fourth seventh"]}
-   :11         {::intervals [:P1 :P5 :m7 :M9 :11]            ::aliases ["eleventh"]}
+   :11         {::intervals [:P1 :P5 :m7 :M9 :P11]           ::aliases ["eleventh"]}
    :b9sus      {::intervals [:P1 :P4 :P5 :m7 :m9]            ::aliases ["phryg","7b9sus","7b9sus4", "suspended fourth flat ninth"]}
    ;; Other
    :P5         {::intervals [:P1 :P5]                        ::aliases ["fifth"]}
@@ -212,14 +220,14 @@
    :madd4      {::intervals [:P1 :m3 :P4 :P5]}
    :mMaj7b6    {::intervals [:P1 :m3 :P5 :m6 :M7]}
    :mMaj9b6    {::intervals [:P1 :m3 :P5 :m6 :M7 :M9]}
-   :m7add11    {::intervals [:P1 :m3 :P5 :m7 :11]            ::aliases ["m7add4"]}
+   :m7add11    {::intervals [:P1 :m3 :P5 :m7 :P11]           ::aliases ["m7add4"]}
    :madd9      {::intervals [:P1 :m3 :P5 :M9]}
    :dim7M7     {::intervals [:P1 :m3 :d5 :M6 :M7]            ::aliases ["o7M7"]}
    :dimM7      {::intervals [:P1 :m3 :d5 :M7]                ::aliases ["oM7"]}
    :mb6M7      {::intervals [:P1 :m3 :m6 :M7]}
    :m7#5       {::intervals [:P1 :m3 :m6 :m7]}
    :m9#5       {::intervals [:P1 :m3 :m6 :m7 :M9]}
-   :m11A       {::intervals [:P1 :m3 :A5 :m7 :M9 :11]}
+   :m11A       {::intervals [:P1 :m3 :A5 :m7 :M9 :P11]}
    :mb6b9      {::intervals [:P1 :m3 :m6 :m9]}
    :m9b5       {::intervals [:P1 :M2 :m3 :d5 :m7]}
    :M7#5sus4   {::intervals [:P1 :P4 :A5 :M7]}
@@ -231,9 +239,10 @@
    :13sus4     {::intervals [:P1 :P4 :P5 :m7 :M9 :M13]       ::aliases ["13sus"]}
    :7sus4b9b13 {::intervals [:P1 :P4 :P5 :m7 :m9 :m13]       ::aliases ["7b9b13sus4"]}
    :P4         {::intervals [:P1 :P4 :m7 :m10]               ::aliases ["quartal"]}
-   :11b9       {::intervals [:P1 :P5 :m7 :m9 :P11]}})
+   :11b9       {::intervals [:P1 :P5 :m7 :m9 :P11]}))
 
 (s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
+(s/def ::interval-mapping (s/map-of interval? pitch-or-note?))
 
 ;; Derived
 ;; Chord: Maj, Maj7, min7, minMaj7
