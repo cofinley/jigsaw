@@ -194,6 +194,7 @@
         interval-semitone (get-in specs/intervals [interval ::specs/semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
+        ;; TODO: don't change octave if letter on octave boundary (B# going up, Cb going down)
         new-octave (+ octave (* (or multiplier 1) (math/floor-div (+ semitone interval-semitone) 12)))]
     (keyword (str new-pitch-str new-octave))))
 
@@ -224,4 +225,16 @@
                                  {} (::specs/intervals chord))]
     #::specs{:name chord-name
              :root pitch
+             :interval-mapping interval-mapping}))
+
+(defn resolve-scale
+  [x scale-name]
+  {:pre [(specs/pitch-or-note? x)]}
+  (let [{:keys [pitch]} (parts x)
+        scale (specs/scales scale-name)
+        interval-mapping (reduce (fn [m interval]
+                                   (assoc m interval (+interval x interval)))
+                                 {} (::specs/intervals scale))]
+    #::specs{:tonic pitch
+             :name scale-name
              :interval-mapping interval-mapping}))
