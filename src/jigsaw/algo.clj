@@ -209,10 +209,6 @@
 
 (defn +intervals
   [x intervals & [multiplier]]
-  {:pre [(specs/pitch-or-note? x)
-         (every? #(specs/interval? %) intervals)]
-   :post [(or (s/valid? (s/coll-of ::specs/pitch) %)
-              (s/valid? (s/coll-of ::specs/note) %))]}
   (map #(+interval x % multiplier) intervals))
 
 (defn resolve-chord
@@ -223,8 +219,8 @@
         interval-mapping (reduce (fn [m interval]
                                    (assoc m interval (+interval x interval)))
                                  {} (::specs/intervals chord))]
-    #::specs{:name chord-name
-             :root pitch
+    #::specs{:pitch pitch
+             :name chord-name
              :interval-mapping interval-mapping}))
 
 (defn resolve-scale
@@ -235,6 +231,6 @@
         interval-mapping (reduce (fn [m interval]
                                    (assoc m interval (+interval x interval)))
                                  {} (::specs/intervals scale))]
-    #::specs{:tonic pitch
+    #::specs{:pitch pitch
              :name scale-name
              :interval-mapping interval-mapping}))

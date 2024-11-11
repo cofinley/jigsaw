@@ -32,6 +32,13 @@
      `nav #'nav-chord
      :portal.viewer/default :portal.viewer/table}))
 
+(defn get-scales [x]
+  (with-meta
+    (keys specs/scales)
+    {:x x
+     `nav #'nav-chord
+     :portal.viewer/default :portal.viewer/table}))
+
 (defn nav-pitch [pitches k p]
   {:pitch p
    :intervals (with-meta
@@ -44,6 +51,11 @@
              (reduce (fn [m chord-name]
                        (assoc m chord-name (algo/resolve-chord p chord-name)))
                      {} (get-chords p))
+             {:portal.viewer/default :portal.viewer/table})
+   :scales (with-meta
+             (reduce (fn [m scale-name]
+                       (assoc m scale-name (algo/resolve-scale p scale-name)))
+                     {} (get-scales p))
              {:portal.viewer/default :portal.viewer/table})})
 
 (defn nav-interval [intervals k interval]

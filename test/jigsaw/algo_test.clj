@@ -236,19 +236,19 @@
     (testing "with resolve-chord"
       (testing "starting from a pitch"
         (are+ [pitch chord-name want] (= want (algo/resolve-chord pitch chord-name))
-          :C  :maj #::specs{:name :maj :root :C  :interval-mapping {:P1 :C,  :M3 :E   :P5 :G}}
-          :C# :m   #::specs{:name :m   :root :C# :interval-mapping {:P1 :C#, :m3 :E,  :P5 :G#}}
-          :F# :aug #::specs{:name :aug :root :F# :interval-mapping {:P1 :F#, :M3 :A#, :A5 :C##}}))
+          :C  :maj #::specs{:name :maj :pitch :C  :interval-mapping {:P1 :C,  :M3 :E   :P5 :G}}
+          :C# :m   #::specs{:name :m   :pitch :C# :interval-mapping {:P1 :C#, :m3 :E,  :P5 :G#}}
+          :F# :aug #::specs{:name :aug :pitch :F# :interval-mapping {:P1 :F#, :M3 :A#, :A5 :C##}}))
       (testing "starting from a note"
         (are+ [note chord-name want] (= want (algo/resolve-chord note chord-name))
-          :C3  :maj #::specs{:name :maj :root :C  :interval-mapping {:P1 :C3,  :M3 :E3,  :P5 :G3}}
-          :C#4 :m   #::specs{:name :m   :root :C# :interval-mapping {:P1 :C#4, :m3 :E4,  :P5 :G#4}}
-          :F#5 :aug #::specs{:name :aug :root :F# :interval-mapping {:P1 :F#5, :M3 :A#5, :A5 :C##6}})))
+          :C3  :maj #::specs{:name :maj :pitch :C  :interval-mapping {:P1 :C3,  :M3 :E3,  :P5 :G3}}
+          :C#4 :m   #::specs{:name :m   :pitch :C# :interval-mapping {:P1 :C#4, :m3 :E4,  :P5 :G#4}}
+          :F#5 :aug #::specs{:name :aug :pitch :F# :interval-mapping {:P1 :F#5, :M3 :A#5, :A5 :C##6}})))
     (testing "with resolve-scale"
       (testing "starting from a pitch"
         (are+ [pitch scale-name want] (= want (algo/resolve-scale pitch scale-name))
           :C :major #::specs{:name :major
-                             :tonic :C
+                             :pitch :C
                              :interval-mapping {:P1 :C
                                                 :M2 :D
                                                 :M3 :E
@@ -257,7 +257,7 @@
                                                 :M6 :A
                                                 :M7 :B}}
           :C :minor #::specs{:name :minor
-                             :tonic :C
+                             :pitch :C
                              :interval-mapping {:P1 :C
                                                 :M2 :D
                                                 :m3 :Eb
@@ -266,7 +266,7 @@
                                                 :m6 :Ab
                                                 :m7 :Bb}}
           :C# :major #::specs{:name :major
-                              :tonic :C#
+                              :pitch :C#
                               :interval-mapping {:P1 :C#
                                                  :M2 :D#
                                                  :M3 :E#
@@ -275,7 +275,7 @@
                                                  :M6 :A#
                                                  :M7 :B#}}
           :F# :major #::specs{:name :major
-                              :tonic :F#
+                              :pitch :F#
                               :interval-mapping {:P1 :F#
                                                  :M2 :G#
                                                  :M3 :A#
@@ -286,7 +286,7 @@
       (testing "starting from a note"
         (are+ [note scale-name want] (= want (algo/resolve-scale note scale-name))
           :C4 :major #::specs{:name :major
-                              :tonic :C
+                              :pitch :C
                               :interval-mapping {:P1 :C4
                                                  :M2 :D4
                                                  :M3 :E4
@@ -295,7 +295,7 @@
                                                  :M6 :A4
                                                  :M7 :B4}}
           :C4 :minor #::specs{:name :minor
-                              :tonic :C
+                              :pitch :C
                               :interval-mapping {:P1 :C4
                                                  :M2 :D4
                                                  :m3 :Eb4
@@ -304,7 +304,7 @@
                                                  :m6 :Ab4
                                                  :m7 :Bb4}}
           :C#4 :major #::specs{:name :major
-                               :tonic :C#
+                               :pitch :C#
                                :interval-mapping {:P1 :C#4
                                                   :M2 :D#4
                                                   :M3 :E#4
@@ -313,7 +313,7 @@
                                                   :M6 :A#4
                                                   :M7 :B#5}}  ;; C5 but should it be B#4?
           :F#4 :major #::specs{:name :major
-                               :tonic :F#
+                               :pitch :F#
                                :interval-mapping {:P1 :F#4
                                                   :M2 :G#4
                                                   :M3 :A#4

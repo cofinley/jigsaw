@@ -252,7 +252,6 @@
 ;; Scale: Maj, min
 ;;   Absolute distances: degrees
 ;;   Relative distances: intervals
-;;      Can rely solely on semitones since scales are about steps
 ;;   Has modes, which are similar to inversions (same intervals as base scale, new tonic)
 ;;   Tonic (1) is the key
 ;;   Chords can be derived from a scale
@@ -339,12 +338,12 @@
 ;; From tonal.js scale-type
 (def scales
   (array-map
-    ;; Basic
+   ;; Basic
    :major {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7], ::aliases ["ionian"]}
    :minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7], ::aliases ["aeolian"]}
    :major-pentatonic {::intervals [:P1 :M2 :M3 :P5 :M6], ::aliases ["pentatonic"]}
 
-   ; Jazz common
+   ;; Jazz common
    :major-blues {::intervals [:P1 :M2 :m3 :M3 :P5 :M6]}
    :minor-blues {::intervals [:P1 :m3 :P4 :d5 :P5 :m7], ::aliases ["blues"]}
    :melodic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :M7]}
