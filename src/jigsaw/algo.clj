@@ -2,6 +2,7 @@
   (:require [jigsaw.spec :as specs]
             [clojure.spec.alpha :as s]
             [clojure.string :as string]
+            [clojure.set]
             [clojure.math :as math]))
 
 (defn in?
@@ -230,3 +231,14 @@
     #::specs{:pitch pitch
              :name scale-name
              :interval-mapping interval-mapping}))
+
+(defn intervals->chord [intervals]
+  (when (seq intervals)
+    (let [interval-set (set intervals)]
+      (specs/chords-by-intervals interval-set))))
+
+(defn intervals->chords [intervals]
+  (if (seq intervals)
+    (let [interval-set (set intervals)]
+      (set (map last (filter (fn [[k _]] (clojure.set/subset? interval-set k)) specs/chords-by-intervals))))
+    []))

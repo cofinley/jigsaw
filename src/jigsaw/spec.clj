@@ -243,6 +243,13 @@
    :P4         {::intervals [:P1 :P4 :m7 :m10]               ::aliases ["quartal"]}
    :11b9       {::intervals [:P1 :P5 :m7 :m9 :P11]}))
 
+(def chords-by-intervals
+  (reduce
+   (fn [acc [chord details]]
+     (assoc acc (set (::intervals details)) chord))
+   {}
+   chords))
+
 (s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
 (s/def ::interval-mapping (s/map-of interval? pitch-or-note?))
 

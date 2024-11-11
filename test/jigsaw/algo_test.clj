@@ -322,4 +322,14 @@
                                                   :P4 :B4
                                                   :P5 :C#5
                                                   :M6 :D#5
-                                                  :M7 :E#5}})))))
+                                                  :M7 :E#5}})))
+    (testing "with intervals->chord"
+      (are+ [intervals want] (= want (algo/intervals->chord intervals))
+        [] nil
+        [:P1 :M3] nil
+        [:P1 :M3 :P5] :maj
+        [:P1 :m3 :P5] :m))
+    (testing "with intervals->chords"
+      (are+ [intervals want] (= want (algo/intervals->chords intervals))
+        [] []
+        [:P1 :m3 :P5 :m7 :P11] #{:m11 :m7add11}))))
