@@ -242,3 +242,17 @@
     (let [interval-set (set intervals)]
       (set (map last (filter (fn [[k _]] (clojure.set/subset? interval-set k)) specs/chords-by-intervals))))
     []))
+
+(defn scale-chords [{:keys [::specs/pitch ::specs/name]}]
+  (let [scale (specs/scales name)
+        scale-intervals (::specs/intervals scale)
+        scale-pitches (set (map (partial +interval pitch) scale-intervals))]
+    (reduce
+     (fn [m interval]
+       (let [pitch (+interval pitch interval)]
+         (assoc m interval (mapv first (filter
+                                        (fn [[k {chord-intervals ::specs/intervals}]]
+                                          (let [chord-pitches (set (+intervals pitch chord-intervals))]
+                                            (clojure.set/subset? chord-pitches scale-pitches)))
+                                        specs/chords)))))
+     {} scale-intervals)))
