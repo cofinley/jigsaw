@@ -39,7 +39,7 @@
         {letter2 :letter} (parts p2)
         i1 (int letter1)
         i2 (int letter2)]
-    (inc (mod (- i2 i1) 7))))
+    (+ 2 (mod (dec (- i2 i1)) 7))))
 
 (defn- get-cyclic-distance [a b len]
   (let [distance (mod (- b a) len)
@@ -47,9 +47,10 @@
     (min distance reverse-distance)))
 
 (defn- semitone-distance
+  "Semitone distance, preserving 12, but modulo 12 otherwise"
   [p1 p2]
   {:pre [(specs/pitch? p1) (specs/pitch? p2)]}
-  (mod (- (get specs/pitches p2) (get specs/pitches p1)) 12))
+  (inc (mod (dec (- (specs/pitches p2) (specs/pitches p1))) 12)))
 
 (defn- lesser? [s] (any? (map #(string/includes? s %) ["d" "m"])))
 (defn- greater? [s] (any? (map #(string/includes? s %) ["A" "M"])))
@@ -63,14 +64,9 @@
         matching-intervals (specs/intervals-by-semitone semitone-distance)]
     (if (= (count matching-intervals) 1)
       (first matching-intervals)
-      (let [p2-accidental (second (name p2))
-            altered-intervals (filter
-                               (fn [interval]
-                                 (altered? (name interval))) matching-intervals)
-            unaltered-intervals (remove
-                                 (fn [interval]
-                                   (altered? (name interval))) matching-intervals)]
-        (if (= "" p2-accidental)
+      (let [{p2-accidental :accidental} (parts p2)
+            [altered-intervals unaltered-intervals] (partition-by #(altered? (name %)) matching-intervals)]
+        (if (nil? p2-accidental)
           (first unaltered-intervals)
           (let [staff-distance (staff-distance p1 p2)]
             (first (filter #(string/includes? % (str staff-distance)) altered-intervals))))))))

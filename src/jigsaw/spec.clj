@@ -75,7 +75,9 @@
    :m7  {::name "Minor 7th" ::semitone 10}
    :A6  {::name "Augmented 6th" ::semitone 10}
    :M7  {::name "Major 7th" ::semitone 11}
+   :A7  {::name "Augmented 7th" ::semitone 12}
    :P8  {::name "Octave" ::semitone 12}
+   :A8  {::name "Augmented 8th" ::semitone 13}
    :m9  {::name "Minor 9th" ::semitone 13}
    :M9  {::name "Major 9th" ::semitone 14}
    :m10 {::name "Minor 10th" ::semitone 15}

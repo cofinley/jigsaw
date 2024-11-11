@@ -57,14 +57,14 @@
         :C# :flat  :Db))
     (testing "with pitches->interval"
       (are+ [p1 p2 want] (= want (algo/pitches->interval p1 p2))
-        :C :C  :P1
-        :D :D  :P1
         :C :C# :m2
         :C :Db :m2
         :C :D  :M2
         :C :D# :A2
         :C :Eb :m3
         :C :E  :M3
+        :C :E# :A3
+        :C :Fb :d4
         :C :F  :P4
         :C :F# :A4
         :C :Gb :d5
@@ -74,7 +74,9 @@
         :C :A  :M6
         :C :A# :A6
         :C :Bb :m7
-        :C :B  :M7))
+        :C :B  :M7
+        :C :B# :A7
+        :C :C  :P8))
     (testing "with note->midi"
       (are+ [note want] (= want (algo/note->midi note))
         :C4  60
