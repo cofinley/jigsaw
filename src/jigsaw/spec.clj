@@ -251,7 +251,6 @@
    chords))
 
 (s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
-(s/def ::interval-mapping (s/map-of interval? pitch-or-note?))
 
 ;; Derived
 ;; Chord: Maj, Maj7, min7, minMaj7
@@ -265,199 +264,110 @@
 ;;   Tonic (1) is the key
 ;;   Chords can be derived from a scale
 
-; (def scales
-;   (let [ionian-sequence     [2 2 1 2 2 2 1]
-;         hex-sequence        [2 2 1 2 2 3]
-;         pentatonic-sequence [3 2 2 3 2]
-;         rotate (fn [scale-sequence offset]
-;                  (take (count scale-sequence)
-;                        (drop offset (cycle scale-sequence))))]
-;     (array-map
-;      :major              {::semitones ionian-sequence}
-;      :dorian             {::semitones (rotate ionian-sequence 1)}
-;      :phrygian           {::semitones (rotate ionian-sequence 2)}
-;      :lydian             {::semitones (rotate ionian-sequence 3)}
-;      :mixolydian         {::semitones (rotate ionian-sequence 4)}
-;      :aeolian            {::semitones (rotate ionian-sequence 5)}
-;      :minor              {::semitones (rotate ionian-sequence 5)}
-;      :locrian            {::semitones (rotate ionian-sequence 6)}
-;      :hex-major6         {::semitones (rotate hex-sequence 0)}
-;      :hex-dorian         {::semitones (rotate hex-sequence 1)}
-;      :hex-phrygian       {::semitones (rotate hex-sequence 2)}
-;      :hex-major7         {::semitones (rotate hex-sequence 3)}
-;      :hex-sus            {::semitones (rotate hex-sequence 4)}
-;      :hex-aeolian        {::semitones (rotate hex-sequence 5)}
-;      :minor-pentatonic   {::semitones (rotate pentatonic-sequence 0)}
-;      :yu                 {::semitones (rotate pentatonic-sequence 0)}
-;      :major-pentatonic   {::semitones (rotate pentatonic-sequence 1)}
-;      :gong               {::semitones (rotate pentatonic-sequence 1)}
-;      :egyptian           {::semitones (rotate pentatonic-sequence 2)}
-;      :shang              {::semitones (rotate pentatonic-sequence 2)}
-;      :jiao               {::semitones (rotate pentatonic-sequence 3)}
-;      :zhi                {::semitones (rotate pentatonic-sequence 4)}
-;      :ritusen            {::semitones (rotate pentatonic-sequence 4)}
-;      :whole-tone         {::semitones [2 2 2 2 2 2]}
-;      :chromatic          {::semitones [1 1 1 1 1 1 1 1 1 1 1 1]}
-;      :harmonic-minor     {::semitones [2 1 2 2 1 3 1]}
-;      :melodic-minor-asc  {::semitones [2 1 2 2 2 2 1]}
-;      :hungarian-minor    {::semitones [2 1 3 1 1 3 1]}
-;      :octatonic          {::semitones [2 1 2 1 2 1 2 1]}
-;      :messiaen1          {::semitones [2 2 2 2 2 2]}
-;      :messiaen2          {::semitones [1 2 1 2 1 2 1 2]}
-;      :messiaen3          {::semitones [2 1 1 2 1 1 2 1 1]}
-;      :messiaen4          {::semitones [1 1 3 1 1 1 3 1]}
-;      :messiaen5          {::semitones [1 4 1 1 4 1]}
-;      :messiaen6          {::semitones [2 2 1 1 2 2 1 1]}
-;      :messiaen7          {::semitones [1 1 1 2 1 1 1 1 2 1]}
-;      :super-locrian      {::semitones [1 2 1 2 2 2 2]}
-;      :hirajoshi          {::semitones [2 1 4 1 4]}
-;      :kumoi              {::semitones [2 1 4 2 3]}
-;      :neapolitan-major   {::semitones [1 2 2 2 2 2 1]}
-;      :bartok             {::semitones [2 2 1 2 1 2 2]}
-;      :bhairav            {::semitones [1 3 1 2 1 3 1]}
-;      :locrian-major      {::semitones [2 2 1 1 2 2 2]}
-;      :ahirbhairav        {::semitones [1 3 1 2 2 1 2]}
-;      :enigmatic          {::semitones [1 3 2 2 2 1 1]}
-;      :neapolitan-minor   {::semitones [1 2 2 2 1 3 1]}
-;      :pelog              {::semitones [1 2 4 1 4]}
-;      :augmented2         {::semitones [1 3 1 3 1 3]}
-;      :scriabin           {::semitones [1 3 3 2 3]}
-;      :harmonic-major     {::semitones [2 2 1 2 1 3 1]}
-;      :melodic-minor-desc {::semitones [2 1 2 2 1 2 2]}
-;      :romanian-minor     {::semitones [2 1 3 1 2 1 2]}
-;      :hindu              {::semitones [2 2 1 2 1 2 2]}
-;      :iwato              {::semitones [1 4 1 4 2]}
-;      :melodic-minor      {::semitones [2 1 2 2 2 2 1]}
-;      :marva              {::semitones [1 3 2 1 2 2 1]}
-;      :melodic-major      {::semitones [2 2 1 2 1 2 2]}
-;      :indian             {::semitones [4 1 2 3 2]}
-;      :spanish            {::semitones [1 3 1 2 1 2 2]}
-;      :prometheus         {::semitones [2 2 2 5 1]}
-;      :diminished         {::semitones [1 2 1 2 1 2 1 2] ::aliases ["half-whole diminished"]}
-;      :diminished2        {::semitones [2 1 2 1 2 1 2 1] ::aliases ["whole-half diminished"]}
-;      :todi               {::semitones [1 2 3 1 1 3 1]}
-;      :leading-whole      {::semitones [2 2 2 2 2 1 1]}
-;      :augmented          {::semitones [3 1 3 1 3 1]}
-;      :purvi              {::semitones [1 3 2 1 1 3 1]}
-;      :chinese            {::semitones [4 2 1 4 1]}
-;      :lydian-minor       {::semitones [2 2 2 1 1 2 2]}
-;      :minor-blues        {::semitones [3 2 1 1 3 2]}
-;      :major-blues        {::semitones [2 1 1 3 2 3]})))
-
-;; From tonal.js scale-type
 (def scales
   (array-map
    ;; Basic
-   :major {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7], ::aliases ["ionian"]}
-   :minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7], ::aliases ["aeolian"]}
-   :major-pentatonic {::intervals [:P1 :M2 :M3 :P5 :M6], ::aliases ["pentatonic"]}
-
+   :major {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7] ::aliases ["ionian"] ::degrees [:1 :2 :3 :4 :5 :6 :7]}
+   :minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7] ::aliases ["aeolian"] ::degrees [:1 :2 :b3 :4 :5 :b6 :b7]}
+   :major-pentatonic {::intervals [:P1 :M2 :M3 :P5 :M6] ::aliases ["pentatonic"] ::degrees [:1 :2 :3 :5 :6]}
    ;; Jazz common
-   :major-blues {::intervals [:P1 :M2 :m3 :M3 :P5 :M6]}
-   :minor-blues {::intervals [:P1 :m3 :P4 :d5 :P5 :m7], ::aliases ["blues"]}
-   :melodic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :M7]}
-   :harmonic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :M7]}
-   :bebop {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :m7 :M7]}
-   :diminished {::intervals [:P1 :M2 :m3 :P4 :d5 :m6 :M6 :M7], ::aliases ["whole-half diminished"]}
-
+   :major-blues {::intervals [:P1 :M2 :m3 :M3 :P5 :M6] ::degrees [:1 :2 :b3 :3 :5 :6]}
+   :minor-blues {::intervals [:P1 :m3 :P4 :d5 :P5 :m7] ::aliases ["blues"] ::degrees [:1 :b3 :4 :b5 :5 :b7]}
+   :melodic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :M7] ::degrees [:1 :2 :b3 :4 :5 :6 :7]}
+   :harmonic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :M7] ::degrees [:1 :2 :b3 :4 :5 :b6 :7]}
+   :bebop {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :m7 :M7] ::degrees [:1 :2 :3 :4 :5 :6 :b7 :7]}
+   :diminished {::intervals [:P1 :M2 :m3 :P4 :d5 :m6 :M6 :M7] ::aliases ["whole-half diminished"] ::degrees [:1 :2 :b3 :4 :b5 :b6 :6 :7]}
    ;; Modes
-   :dorian {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :m7]}
-   :lydian {::intervals [:P1 :M2 :M3 :A4 :P5 :M6 :M7]}
-   :mixolydian {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :m7], ::aliases ["dominant"]}
-   :phrygian {::intervals [:P1 :m2 :m3 :P4 :P5 :m6 :m7]}
-   :locrian {::intervals [:P1 :m2 :m3 :P4 :d5 :m6 :m7]}
-
+   :dorian {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :m7] ::degrees [:1 :2 :b3 :4 :5 :6 :b7]}
+   :lydian {::intervals [:P1 :M2 :M3 :A4 :P5 :M6 :M7] ::degrees [:1 :2 :3 :#4 :5 :6 :7]}
+   :mixolydian {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :m7] ::aliases ["dominant"] ::degrees [:1 :2 :3 :4 :5 :6 :b7]}
+   :phrygian {::intervals [:P1 :m2 :m3 :P4 :P5 :m6 :m7] ::degrees [:1 :b2 :b3 :4 :5 :b6 :b7]}
+   :locrian {::intervals [:P1 :m2 :m3 :P4 :d5 :m6 :m7] ::degrees [:1 :b2 :b3 :4 :b5 :b6 :b7]}
    ;; 5-note
-   :ionian-pentatonic {::intervals [:P1 :M3 :P4 :P5 :M7]}
-   :mixolydian-pentatonic {::intervals [:P1 :M3 :P4 :P5 :m7], ::aliases ["indian"]}
-   :ritusen {::intervals [:P1 :M2 :P4 :P5 :M6]}
-   :egyptian {::intervals [:P1 :M2 :P4 :P5 :m7]}
-   :neopolitan-major-pentatonic {::intervals [:P1 :M3 :P4 :d5 :m7]}
-   :vietnamese-1 {::intervals [:P1 :m3 :P4 :P5 :m6]}
-   :pelog {::intervals [:P1 :m2 :m3 :P5 :m6]}
-   :kumoijoshi {::intervals [:P1 :m2 :P4 :P5 :m6]}
-   :hirajoshi {::intervals [:P1 :M2 :m3 :P5 :m6]}
-   :iwato {::intervals [:P1 :m2 :P4 :d5 :m7]}
-   :in-sen {::intervals [:P1 :m2 :P4 :P5 :m7]}
-   :lydian-pentatonic {::intervals [:P1 :M3 :A4 :P5 :M7], ::aliases ["chinese"]}
-   :malkos-raga {::intervals [:P1 :m3 :P4 :m6 :m7]}
-   :locrian-pentatonic {::intervals [:P1 :m3 :P4 :d5 :m7], ::aliases ["minor seven flat five pentatonic"]}
-   :minor-pentatonic {::intervals [:P1 :m3 :P4 :P5 :m7], ::aliases ["vietnamese 2"]}
-   :minor-six-pentatonic {::intervals [:P1 :m3 :P4 :P5 :M6]}
-   :flat-three-pentatonic {::intervals [:P1 :M2 :m3 :P5 :M6], ::aliases ["kumoi"]}
-   :flat-six-pentatonic {::intervals [:P1 :M2 :M3 :P5 :m6]}
-   :scriabin {::intervals [:P1 :m2 :M3 :P5 :M6]}
-   :whole-tone-pentatonic {::intervals [:P1 :M3 :d5 :m6 :m7]}
-   :lydian-#5P-pentatonic {::intervals [:P1 :M3 :A4 :A5 :M7]}
-   :lydian-dominant-pentatonic {::intervals [:P1 :M3 :A4 :P5 :m7]}
-   :minor-#7M-pentatonic {::intervals [:P1 :m3 :P4 :P5 :M7]}
-   :super-locrian-pentatonic {::intervals [:P1 :m3 :d4 :d5 :m7]}
-
+   :ionian-pentatonic {::intervals [:P1 :M3 :P4 :P5 :M7] ::degrees [:1 :3 :4 :5 :7]}
+   :mixolydian-pentatonic {::intervals [:P1 :M3 :P4 :P5 :m7] ::aliases ["indian"] ::degrees [:1 :3 :4 :5 :b7]}
+   :ritusen {::intervals [:P1 :M2 :P4 :P5 :M6] ::degrees [:1 :2 :4 :5 :6]}
+   :egyptian {::intervals [:P1 :M2 :P4 :P5 :m7] ::degrees [:1 :2 :4 :5 :b7]}
+   :neopolitan-major-pentatonic {::intervals [:P1 :M3 :P4 :d5 :m7] ::degrees [:1 :3 :4 :b5 :b7]}
+   :vietnamese-1 {::intervals [:P1 :m3 :P4 :P5 :m6] ::degrees [:1 :b3 :4 :5 :b6]}
+   :pelog {::intervals [:P1 :m2 :m3 :P5 :m6] ::degrees [:1 :b2 :b3 :5 :b6]}
+   :kumoijoshi {::intervals [:P1 :m2 :P4 :P5 :m6] ::degrees [:1 :b2 :4 :5 :b6]}
+   :hirajoshi {::intervals [:P1 :M2 :m3 :P5 :m6] ::degrees [:1 :2 :b3 :5 :b6]}
+   :iwato {::intervals [:P1 :m2 :P4 :d5 :m7] ::degrees [:1 :b2 :4 :b5 :b7]}
+   :in-sen {::intervals [:P1 :m2 :P4 :P5 :m7] ::degrees [:1 :b2 :4 :5 :b7]}
+   :lydian-pentatonic {::intervals [:P1 :M3 :A4 :P5 :M7] ::aliases ["chinese"] ::degrees [:1 :3 :#4 :5 :7]}
+   :malkos-raga {::intervals [:P1 :m3 :P4 :m6 :m7] ::degrees [:1 :b3 :4 :b6 :b7]}
+   :locrian-pentatonic {::intervals [:P1 :m3 :P4 :d5 :m7] ::aliases ["minor seven flat five pentatonic"] ::degrees [:1 :b3 :4 :b5 :b7]}
+   :minor-pentatonic {::intervals [:P1 :m3 :P4 :P5 :m7] ::aliases ["vietnamese 2"] ::degrees [:1 :b3 :4 :5 :b7]}
+   :minor-six-pentatonic {::intervals [:P1 :m3 :P4 :P5 :M6] ::degrees [:1 :b3 :4 :5 :6]}
+   :flat-three-pentatonic {::intervals [:P1 :M2 :m3 :P5 :M6] ::aliases ["kumoi"] ::degrees [:1 :2 :b3 :5 :6]}
+   :flat-six-pentatonic {::intervals [:P1 :M2 :M3 :P5 :m6] ::degrees [:1 :2 :3 :5 :b6]}
+   :scriabin {::intervals [:P1 :m2 :M3 :P5 :M6] ::degrees [:1 :b2 :3 :5 :6]}
+   :whole-tone-pentatonic {::intervals [:P1 :M3 :d5 :m6 :m7] ::degrees [:1 :3 :b5 :b6 :b7]}
+   :lydian-#5P-pentatonic {::intervals [:P1 :M3 :A4 :A5 :M7] ::degrees [:1 :3 :#4 :#5 :7]}
+   :lydian-dominant-pentatonic {::intervals [:P1 :M3 :A4 :P5 :m7] ::degrees [:1 :3 :#4 :5 :b7]}
+   :minor-#7M-pentatonic {::intervals [:P1 :m3 :P4 :P5 :M7] ::degrees [:1 :b3 :4 :5 :7]}
+   :super-locrian-pentatonic {::intervals [:P1 :m3 :d4 :d5 :m7] ::degrees [:1 :b3 :b4 :b5 :b7]}
    ;; 6-note
-   :minor-hexatonic {::intervals [:P1 :M2 :m3 :P4 :P5 :M7]}
-   :augmented {::intervals [:P1 :A2 :M3 :P5 :A5 :M7]}
-   :piongio {::intervals [:P1 :M2 :P4 :P5 :M6 :m7]}
-   :prometheus-neopolitan {::intervals [:P1 :m2 :M3 :A4 :M6 :m7]}
-   :prometheus {::intervals [:P1 :M2 :M3 :A4 :M6 :m7]}
-   :mystery-#1 {::intervals [:P1 :m2 :M3 :d5 :m6 :m7]}
-   :six-tone-symmetric {::intervals [:P1 :m2 :M3 :P4 :A5 :M6]}
-   :whole-tone {::intervals [:P1 :M2 :M3 :A4 :A5 :A6], ::aliases ["messiaen's mode #1"]}
-   :messiaen's-mode-#5 {::intervals [:P1 :m2 :P4 :A4 :P5 :M7]}
-
+   :minor-hexatonic {::intervals [:P1 :M2 :m3 :P4 :P5 :M7] ::degrees [:1 :2 :b3 :4 :5 :7]}
+   :augmented {::intervals [:P1 :A2 :M3 :P5 :A5 :M7] ::degrees [:1 :#2 :3 :5 :#5 :7]}
+   :piongio {::intervals [:P1 :M2 :P4 :P5 :M6 :m7] ::degrees [:1 :2 :4 :5 :6 :b7]}
+   :prometheus-neopolitan {::intervals [:P1 :m2 :M3 :A4 :M6 :m7] ::degrees [:1 :b2 :3 :#4 :6 :b7]}
+   :prometheus {::intervals [:P1 :M2 :M3 :A4 :M6 :m7] ::degrees [:1 :2 :3 :#4 :6 :b7]}
+   :mystery-#1 {::intervals [:P1 :m2 :M3 :d5 :m6 :m7] ::degrees [:1 :b2 :3 :b5 :b6 :b7]}
+   :six-tone-symmetric {::intervals [:P1 :m2 :M3 :P4 :A5 :M6] ::degrees [:1 :b2 :3 :4 :#5 :6]}
+   :whole-tone {::intervals [:P1 :M2 :M3 :A4 :A5 :A6] ::aliases ["messiaen's mode #1"] ::degrees [:1 :2 :3 :#4 :#5 :#6]}
+   :messiaen's-mode-#5 {::intervals [:P1 :m2 :P4 :A4 :P5 :M7] ::degrees [:1 :b2 :4 :#4 :5 :7]}
    ;; 7-note
-   :locrian-major {::intervals [:P1 :M2 :M3 :P4 :d5 :m6 :m7], ::aliases ["arabian"]}
-   :double-harmonic-lydian {::intervals [:P1 :m2 :M3 :A4 :P5 :m6 :M7]}
-   :altered {::intervals [:P1 :m2 :A2 :M3 :A4 :m6 :m7], ::aliases ["super locrian" "diminished whole tone" "pomeroy"]}
-   :locrian-#2 {::intervals [:P1 :M2 :m3 :P4 :d5 :m6 :m7], ::aliases ["half-diminished" "aeolian b5"]}
-   :mixolydian-b6 {::intervals [:P1 :M2 :M3 :P4 :P5 :m6 :m7], ::aliases ["melodic minor fifth mode" "hindu"]}
-   :lydian-dominant {::intervals [:P1 :M2 :M3 :A4 :P5 :M6 :m7], ::aliases ["lydian b7" "overtone"]}
-   :lydian-augmented {::intervals [:P1 :M2 :M3 :A4 :A5 :M6 :M7]}
-   :dorian-b2 {::intervals [:P1 :m2 :m3 :P4 :P5 :M6 :m7], ::aliases ["phrygian #6" "melodic minor second mode"]}
-   :ultralocrian {::intervals [:P1 :m2 :m3 :d4 :d5 :m6 :d7], ::aliases ["superlocrian bb7" "superlocrian diminished"]}
-   :locrian-6 {::intervals [:P1 :m2 :m3 :P4 :d5 :M6 :m7], ::aliases ["locrian natural 6" "locrian sharp 6"]}
-   :augmented-heptatonic {::intervals [:P1 :A2 :M3 :P4 :P5 :A5 :M7]}
-   :dorian-#4 {::intervals [:P1 :M2 :m3 :A4 :P5 :M6 :m7], ::aliases ["ukrainian dorian" "romanian minor" "altered dorian"]}
-   :lydian-diminished {::intervals [:P1 :M2 :m3 :A4 :P5 :M6 :M7]}
-   :leading-whole-tone {::intervals [:P1 :M2 :M3 :A4 :A5 :m7 :M7]}
-   :lydian-minor {::intervals [:P1 :M2 :M3 :A4 :P5 :m6 :m7]}
-   :phrygian-dominant {::intervals [:P1 :m2 :M3 :P4 :P5 :m6 :m7], ::aliases ["spanish" "phrygian major"]}
-   :balinese {::intervals [:P1 :m2 :m3 :P4 :P5 :m6 :M7]}
-   :neopolitan-major {::intervals [:P1 :m2 :m3 :P4 :P5 :M6 :M7]}
-   :harmonic-major {::intervals [:P1 :M2 :M3 :P4 :P5 :m6 :M7]}
-   :double-harmonic-major {::intervals [:P1 :m2 :M3 :P4 :P5 :m6 :M7], ::aliases ["gypsy"]}
-   :hungarian-minor {::intervals [:P1 :M2 :m3 :A4 :P5 :m6 :M7]}
-   :hungarian-major {::intervals [:P1 :A2 :M3 :A4 :P5 :M6 :m7]}
-   :oriental {::intervals [:P1 :m2 :M3 :P4 :d5 :M6 :m7]}
-   :flamenco {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :m7]}
-   :todi-raga {::intervals [:P1 :m2 :m3 :A4 :P5 :m6 :M7]}
-   :persian {::intervals [:P1 :m2 :M3 :P4 :d5 :m6 :M7]}
-   :enigmatic {::intervals [:P1 :m2 :M3 :d5 :m6 :m7 :M7]}
-   :major-augmented {::intervals [:P1 :M2 :M3 :P4 :A5 :M6 :M7], ::aliases ["major #5" "ionian augmented" "ionian #5"]}
-   :lydian-#9 {::intervals [:P1 :A2 :M3 :A4 :P5 :M6 :M7]}
-
+   :locrian-major {::intervals [:P1 :M2 :M3 :P4 :d5 :m6 :m7] ::aliases ["arabian"] ::degrees [:1 :2 :3 :4 :b5 :b6 :b7]}
+   :double-harmonic-lydian {::intervals [:P1 :m2 :M3 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :3 :#4 :5 :b6 :7]}
+   :altered {::intervals [:P1 :m2 :A2 :M3 :A4 :m6 :m7] ::aliases ["super locrian" "diminished whole tone" "pomeroy"] ::degrees [:1 :b2 :#2 :3 :#4 :b6 :b7]}
+   :locrian-#2 {::intervals [:P1 :M2 :m3 :P4 :d5 :m6 :m7] ::aliases ["half-diminished" "aeolian b5"] ::degrees [:1 :2 :b3 :4 :b5 :b6 :b7]}
+   :mixolydian-b6 {::intervals [:P1 :M2 :M3 :P4 :P5 :m6 :m7] ::aliases ["melodic minor fifth mode" "hindu"] ::degrees [:1 :2 :3 :4 :5 :b6 :b7]}
+   :lydian-dominant {::intervals [:P1 :M2 :M3 :A4 :P5 :M6 :m7] ::aliases ["lydian b7" "overtone"] ::degrees [:1 :2 :3 :#4 :5 :6 :b7]}
+   :lydian-augmented {::intervals [:P1 :M2 :M3 :A4 :A5 :M6 :M7] ::degrees [:1 :2 :3 :#4 :#5 :6 :7]}
+   :dorian-b2 {::intervals [:P1 :m2 :m3 :P4 :P5 :M6 :m7] ::aliases ["phrygian #6" "melodic minor second mode"] ::degrees [:1 :b2 :b3 :4 :5 :6 :b7]}
+   :ultralocrian {::intervals [:P1 :m2 :m3 :d4 :d5 :m6 :d7] ::aliases ["superlocrian bb7" "superlocrian diminished"] ::degrees [:1 :b2 :b3 :b4 :b5 :b6 :b7]}
+   :locrian-6 {::intervals [:P1 :m2 :m3 :P4 :d5 :M6 :m7] ::aliases ["locrian natural 6" "locrian sharp 6"] ::degrees [:1 :b2 :b3 :4 :b5 :6 :b7]}
+   :augmented-heptatonic {::intervals [:P1 :A2 :M3 :P4 :P5 :A5 :M7] ::degrees [:1 :#2 :3 :4 :5 :#5 :7]}
+   :dorian-#4 {::intervals [:P1 :M2 :m3 :A4 :P5 :M6 :m7] ::aliases ["ukrainian dorian" "romanian minor" "altered dorian"] ::degrees [:1 :2 :b3 :#4 :5 :6 :b7]}
+   :lydian-diminished {::intervals [:P1 :M2 :m3 :A4 :P5 :M6 :M7] ::degrees [:1 :2 :b3 :#4 :5 :6 :7]}
+   :leading-whole-tone {::intervals [:P1 :M2 :M3 :A4 :A5 :m7 :M7] ::degrees [:1 :2 :3 :#4 :#5 :b7 :7]}
+   :lydian-minor {::intervals [:P1 :M2 :M3 :A4 :P5 :m6 :m7] ::degrees [:1 :2 :3 :#4 :5 :b6 :b7]}
+   :phrygian-dominant {::intervals [:P1 :m2 :M3 :P4 :P5 :m6 :m7] ::aliases ["spanish" "phrygian major"] ::degrees [:1 :b2 :3 :4 :5 :b6 :b7]}
+   :balinese {::intervals [:P1 :m2 :m3 :P4 :P5 :m6 :M7] ::degrees [:1 :b2 :b3 :4 :5 :b6 :7]}
+   :neopolitan-major {::intervals [:P1 :m2 :m3 :P4 :P5 :M6 :M7] ::degrees [:1 :b2 :b3 :4 :5 :6 :7]}
+   :harmonic-major {::intervals [:P1 :M2 :M3 :P4 :P5 :m6 :M7] ::degrees [:1 :2 :3 :4 :5 :b6 :7]}
+   :double-harmonic-major {::intervals [:P1 :m2 :M3 :P4 :P5 :m6 :M7] ::aliases ["gypsy"] ::degrees [:1 :b2 :3 :4 :5 :b6 :7]}
+   :hungarian-minor {::intervals [:P1 :M2 :m3 :A4 :P5 :m6 :M7] ::degrees [:1 :2 :b3 :#4 :5 :b6 :7]}
+   :hungarian-major {::intervals [:P1 :A2 :M3 :A4 :P5 :M6 :m7] ::degrees [:1 :#2 :3 :#4 :5 :6 :b7]}
+   :oriental {::intervals [:P1 :m2 :M3 :P4 :d5 :M6 :m7] ::degrees [:1 :b2 :3 :4 :b5 :6 :b7]}
+   :flamenco {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :m7] ::degrees [:1 :b2 :b3 :3 :#4 :5 :b7]}
+   :todi-raga {::intervals [:P1 :m2 :m3 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :b3 :#4 :5 :b6 :7]}
+   :persian {::intervals [:P1 :m2 :M3 :P4 :d5 :m6 :M7] ::degrees [:1 :b2 :3 :4 :b5 :b6 :7]}
+   :enigmatic {::intervals [:P1 :m2 :M3 :d5 :m6 :m7 :M7] ::degrees [:1 :b2 :3 :b5 :b6 :b7 :7]}
+   :major-augmented {::intervals [:P1 :M2 :M3 :P4 :A5 :M6 :M7] ::aliases ["major #5" "ionian augmented" "ionian #5"] ::degrees [:1 :2 :3 :4 :#5 :6 :7]}
+   :lydian-#9 {::intervals [:P1 :A2 :M3 :A4 :P5 :M6 :M7] ::degrees [:1 :#2 :3 :#4 :5 :6 :7]}
    ;; 8-note
-   :messiaen's-mode-#4 {::intervals [:P1 :m2 :M2 :P4 :A4 :P5 :m6 :M7]}
-   :purvi-raga {::intervals [:P1 :m2 :M3 :P4 :A4 :P5 :m6 :M7]}
-   :spanish-heptatonic {::intervals [:P1 :m2 :m3 :M3 :P4 :P5 :m6 :m7]}
-   :bebop-minor {::intervals [:P1 :M2 :m3 :M3 :P4 :P5 :M6 :m7]}
-   :bebop-major {::intervals [:P1 :M2 :M3 :P4 :P5 :A5 :M6 :M7]}
-   :bebop-locrian {::intervals [:P1 :m2 :m3 :P4 :d5 :P5 :m6 :m7]}
-   :bebop-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7 :M7]}
-   :ichikosucho {::intervals [:P1 :M2 :M3 :P4 :d5 :P5 :M6 :M7]}
-   :minor-six-diminished {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :M6 :M7]}
-   :half-whole-diminished {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :M6 :m7], ::aliases ["dominant diminished" "messiaen's mode #2"]}
-   :kafi-raga {::intervals [:P1 :m3 :M3 :P4 :P5 :M6 :m7 :M7]}
-   :messiaen's-mode-#6 {::intervals [:P1 :M2 :M3 :P4 :A4 :A5 :A6 :M7]}
-
+   :messiaen's-mode-#4 {::intervals [:P1 :m2 :M2 :P4 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :2 :4 :#4 :5 :b6 :7]}
+   :purvi-raga {::intervals [:P1 :m2 :M3 :P4 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :3 :4 :#4 :5 :b6 :7]}
+   :spanish-heptatonic {::intervals [:P1 :m2 :m3 :M3 :P4 :P5 :m6 :m7] ::degrees [:1 :b2 :b3 :3 :4 :5 :b6 :b7]}
+   :bebop-minor {::intervals [:P1 :M2 :m3 :M3 :P4 :P5 :M6 :m7] ::degrees [:1 :2 :b3 :3 :4 :5 :6 :b7]}
+   :bebop-major {::intervals [:P1 :M2 :M3 :P4 :P5 :A5 :M6 :M7] ::degrees [:1 :2 :3 :4 :5 :#5 :6 :7]}
+   :bebop-locrian {::intervals [:P1 :m2 :m3 :P4 :d5 :P5 :m6 :m7] ::degrees [:1 :b2 :b3 :4 :b5 :5 :b6 :b7]}
+   :bebop-harmonic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7 :M7] ::degrees [:1 :2 :b3 :4 :5 :b6 :b7 :7]}
+   :ichikosucho {::intervals [:P1 :M2 :M3 :P4 :d5 :P5 :M6 :M7] ::degrees [:1 :2 :3 :4 :b5 :5 :6 :7]}
+   :minor-six-diminished {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :M6 :M7] ::degrees [:1 :2 :b3 :4 :5 :b6 :6 :7]}
+   :half-whole-diminished {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :M6 :m7] ::aliases ["dominant diminished" "messiaen's mode #2"] ::degrees [:1 :b2 :b3 :3 :#4 :5 :6 :b7]}
+   :kafi-raga {::intervals [:P1 :m3 :M3 :P4 :P5 :M6 :m7 :M7] ::degrees [:1 :b3 :3 :4 :5 :6 :b7 :7]}
+   :messiaen's-mode-#6 {::intervals [:P1 :M2 :M3 :P4 :A4 :A5 :A6 :M7] ::degrees [:1 :2 :3 :4 :#4 :#5 :#6 :7]}
    ;; 9-note
-   :composite-blues {::intervals [:P1 :M2 :m3 :M3 :P4 :d5 :P5 :M6 :m7]}
-   :messiaen's-mode-#3 {::intervals [:P1 :M2 :m3 :M3 :A4 :P5 :m6 :m7 :M7]}
-
+   :composite-blues {::intervals [:P1 :M2 :m3 :M3 :P4 :d5 :P5 :M6 :m7] ::degrees [:1 :2 :b3 :3 :4 :b5 :5 :6 :b7]}
+   :messiaen's-mode-#3 {::intervals [:P1 :M2 :m3 :M3 :A4 :P5 :m6 :m7 :M7] ::degrees [:1 :2 :b3 :3 :#4 :5 :b6 :b7 :7]}
    ;; 10-note
-   :messiaen's-mode-#7 {::intervals [:P1 :m2 :M2 :m3 :P4 :A4 :P5 :m6 :M6 :M7]}
-
+   :messiaen's-mode-#7 {::intervals [:P1 :m2 :M2 :m3 :P4 :A4 :P5 :m6 :M6 :M7] ::degrees [:1 :b2 :2 :b3 :4 :#4 :5 :b6 :6 :7]}
    ;; 12-note
-   :chromatic {::intervals [:P1 :m2 :M2 :m3 :M3 :P4 :d5 :P5 :m6 :M6 :m7 :M7]}))
+   :chromatic {::intervals [:P1 :m2 :M2 :m3 :M3 :P4 :d5 :P5 :m6 :M6 :m7 :M7] ::degrees [:1 :b2 :2 :b3 :3 :4 :b5 :5 :b6 :6 :b7 :7]}))
 
 ;; Derived: (scale) degree(s), inversions (based on notes and chord intervals)
 ;; Degree: I, II, III,, bIII, V, #V, VII, etc.

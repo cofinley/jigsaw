@@ -13,8 +13,8 @@
 (defn- pitch-parts
   [p]
   {:pre [(specs/pitch? p)]}
-  (let [[_ pitch-str letter accidental] (re-find specs/pitch-pattern (name p))]
-    {:pitch (keyword pitch-str)
+  (let [[_ _ letter accidental] (re-find specs/pitch-pattern (name p))]
+    {:pitch p
      :letter (first letter)
      :accidental accidental}))
 
@@ -24,7 +24,9 @@
   (let [note-str (name n)
         pitch (keyword (subs note-str 0 (dec (count note-str))))
         octave (Integer/parseInt (str (last note-str)))]
-    (assoc (pitch-parts pitch) :octave octave)))
+    (assoc (pitch-parts pitch)
+           :note n
+           :octave octave)))
 
 (defn parts
   [x]
@@ -53,8 +55,9 @@
   {:pre [(specs/pitch? p1) (specs/pitch? p2)]}
   (inc (mod (dec (- (specs/pitches p2) (specs/pitches p1))) 12)))
 
+;; TODO: any? -> (some? (some ...))
 (defn- lesser? [s] (any? (map #(string/includes? s %) ["d" "m"])))
-(defn- greater? [s] (any? (map #(string/includes? s %) ["A" "M"])))
+(defn- greater? [s] (any? (map #(string/includes? s %) ["A"])))
 (defn- altered? [s] (or (lesser? s) (greater? s)))
 
 (defn pitches->interval
@@ -211,26 +214,28 @@
 (defn resolve-chord
   [x chord-name]
   {:pre [(specs/pitch-or-note? x)]}
-  (let [{:keys [pitch]} (parts x)
+  (let [{:keys [pitch note]} (parts x)
         chord (specs/chords chord-name)
-        interval-mapping (reduce (fn [m interval]
-                                   (assoc m interval (+interval x interval)))
-                                 {} (::specs/intervals chord))]
-    #::specs{:pitch pitch
-             :name chord-name
-             :interval-mapping interval-mapping}))
+        pitches (mapv (partial +interval pitch) (::specs/intervals chord))]
+    (cond-> chord
+      true (merge #::specs{:pitch pitch
+                           :name chord-name
+                           :pitches pitches})
+      (specs/note? x) (assoc ::specs/notes (mapv (partial +interval note) (::specs/intervals chord))))))
 
 (defn resolve-scale
   [x scale-name]
   {:pre [(specs/pitch-or-note? x)]}
-  (let [{:keys [pitch]} (parts x)
+  (let [{:keys [pitch note]} (parts x)
         scale (specs/scales scale-name)
-        interval-mapping (reduce (fn [m interval]
-                                   (assoc m interval (+interval x interval)))
-                                 {} (::specs/intervals scale))]
-    #::specs{:pitch pitch
-             :name scale-name
-             :interval-mapping interval-mapping}))
+        pitches (mapv (partial +interval pitch) (::specs/intervals scale))]
+    (cond-> scale
+      true (merge #::specs{:pitch pitch
+                           :name scale-name
+                           :pitches pitches})
+      (specs/note? x) (assoc ::specs/notes (mapv (partial +interval note) (::specs/intervals scale))))))
+
+;; TODO: add generic resolve-shape for chords + scales
 
 (defn intervals->chord [intervals]
   (when (seq intervals)
@@ -251,8 +256,30 @@
      (fn [m interval]
        (let [pitch (+interval pitch interval)]
          (assoc m interval (mapv first (filter
-                                        (fn [[k {chord-intervals ::specs/intervals}]]
+                                        (fn [[_ {chord-intervals ::specs/intervals}]]
                                           (let [chord-pitches (set (+intervals pitch chord-intervals))]
                                             (clojure.set/subset? chord-pitches scale-pitches)))
                                         specs/chords)))))
      {} scale-intervals)))
+
+(defn interval->degree [interval]
+  {:pre [(specs/interval? interval)]}
+  (let [major-intervals (get-in specs/scales [:major ::specs/intervals])
+        matching-idx (.indexOf major-intervals interval)]
+    (if (= -1 matching-idx)
+      (keyword (str (cond
+                      (re-find #"[dm]" (name interval)) "b"
+                      (re-find #"[A]" (name interval)) "#")
+                    (last (name interval))))
+      (keyword (str (inc matching-idx))))))
+
+(defn- scales-with-degrees []
+  (let [major-intervals (get-in specs/scales [:major ::specs/intervals])]
+    (map (fn [[scale-name details]]
+           (let [{intervals ::specs/intervals} details
+                 degrees (mapv interval->degree intervals)]
+             {scale-name (assoc details :degrees degrees)})) specs/scales)))
+
+;; TODO move to search.clj
+(defn find-chord [xs])
+(defn find-scale [xs])

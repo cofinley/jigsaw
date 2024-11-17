@@ -174,3 +174,8 @@ test-ci: deps  ## Test runner for integration tests
 .DELETE_ON_ERROR:
 all: test-ci dist clean  ## Call test-ci dist and clean targets, used for CI
 # ------------------------------------ #
+
+# --------------- Flowstorm ------------------- #
+flowstorm:
+	$(info --------- Run Flowstorm ---------)
+	clojure -A:flowstorm -M:test/env:repl/basic

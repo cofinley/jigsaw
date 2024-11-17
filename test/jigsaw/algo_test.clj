@@ -27,10 +27,10 @@
           :Dbb {:pitch :Dbb :letter \D :accidental "bb"}))
       (testing "starting from a note"
         (are+ [n m] (= m (algo/parts n))
-          :C4   {:pitch :C   :letter \C :accidental ""   :octave 4}
-          :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4}
-          :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4}
-          :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4})))
+          :C4   {:pitch :C   :letter \C :accidental ""   :octave 4 :note :C4}
+          :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4 :note :C#4}
+          :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4 :note :C##4}
+          :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4 :note :Dbb4})))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
         :C  false
@@ -238,91 +238,71 @@
     (testing "with resolve-chord"
       (testing "starting from a pitch"
         (are+ [pitch chord-name want] (= want (algo/resolve-chord pitch chord-name))
-          :C  :maj #::specs{:name :maj :pitch :C  :interval-mapping {:P1 :C,  :M3 :E   :P5 :G}}
-          :C# :m   #::specs{:name :m   :pitch :C# :interval-mapping {:P1 :C#, :m3 :E,  :P5 :G#}}
-          :F# :aug #::specs{:name :aug :pitch :F# :interval-mapping {:P1 :F#, :M3 :A#, :A5 :C##}}))
+          :C  :maj #::specs{:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :aliases ["M" "major"]}
+          :C# :m   #::specs{:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#] :aliases ["min" "-" "minor"]}
+          :F# :aug #::specs{:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##] :aliases ["+" "+5" "^#5" "augmented"]}))
       (testing "starting from a note"
         (are+ [note chord-name want] (= want (algo/resolve-chord note chord-name))
-          :C3  :maj #::specs{:name :maj :pitch :C  :interval-mapping {:P1 :C3,  :M3 :E3,  :P5 :G3}}
-          :C#4 :m   #::specs{:name :m   :pitch :C# :interval-mapping {:P1 :C#4, :m3 :E4,  :P5 :G#4}}
-          :F#5 :aug #::specs{:name :aug :pitch :F# :interval-mapping {:P1 :F#5, :M3 :A#5, :A5 :C##6}})))
+          :C3  :maj #::specs{:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3] :aliases ["M" "major"]}
+          :C#4 :m   #::specs{:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4] :aliases ["min" "-" "minor"]}
+          :F#5 :aug #::specs{:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6] :aliases ["+" "+5" "^#5" "augmented"]})))
     (testing "with resolve-scale"
       (testing "starting from a pitch"
         (are+ [pitch scale-name want] (= want (algo/resolve-scale pitch scale-name))
           :C :major #::specs{:name :major
                              :pitch :C
-                             :interval-mapping {:P1 :C
-                                                :M2 :D
-                                                :M3 :E
-                                                :P4 :F
-                                                :P5 :G
-                                                :M6 :A
-                                                :M7 :B}}
+                             :aliases ["ionian"]
+                             :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                             :degrees [:1 :2 :3 :4 :5 :6 :7]
+                             :pitches [:C :D :E :F :G :A :B]}
           :C :minor #::specs{:name :minor
                              :pitch :C
-                             :interval-mapping {:P1 :C
-                                                :M2 :D
-                                                :m3 :Eb
-                                                :P4 :F
-                                                :P5 :G
-                                                :m6 :Ab
-                                                :m7 :Bb}}
+                             :aliases ["aeolian"]
+                             :intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7]
+                             :degrees [:1 :2 :b3 :4 :5 :b6 :b7]
+                             :pitches [:C :D :Eb :F :G :Ab :Bb]}
           :C# :major #::specs{:name :major
                               :pitch :C#
-                              :interval-mapping {:P1 :C#
-                                                 :M2 :D#
-                                                 :M3 :E#
-                                                 :P4 :F#
-                                                 :P5 :G#
-                                                 :M6 :A#
-                                                 :M7 :B#}}
+                              :aliases ["ionian"]
+                              :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                              :degrees [:1 :2 :3 :4 :5 :6 :7]
+                              :pitches [:C# :D# :E# :F# :G# :A# :B#]}
           :F# :major #::specs{:name :major
                               :pitch :F#
-                              :interval-mapping {:P1 :F#
-                                                 :M2 :G#
-                                                 :M3 :A#
-                                                 :P4 :B
-                                                 :P5 :C#
-                                                 :M6 :D#
-                                                 :M7 :E#}}))
+                              :aliases ["ionian"]
+                              :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                              :degrees [:1 :2 :3 :4 :5 :6 :7]
+                              :pitches [:F# :G# :A# :B :C# :D# :E#]}))
       (testing "starting from a note"
         (are+ [note scale-name want] (= want (algo/resolve-scale note scale-name))
           :C4 :major #::specs{:name :major
                               :pitch :C
-                              :interval-mapping {:P1 :C4
-                                                 :M2 :D4
-                                                 :M3 :E4
-                                                 :P4 :F4
-                                                 :P5 :G4
-                                                 :M6 :A4
-                                                 :M7 :B4}}
+                              :aliases ["ionian"]
+                              :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                              :degrees [:1 :2 :3 :4 :5 :6 :7]
+                              :pitches [:C :D :E :F :G :A :B]
+                              :notes [:C4 :D4 :E4 :F4 :G4 :A4 :B4]}
           :C4 :minor #::specs{:name :minor
                               :pitch :C
-                              :interval-mapping {:P1 :C4
-                                                 :M2 :D4
-                                                 :m3 :Eb4
-                                                 :P4 :F4
-                                                 :P5 :G4
-                                                 :m6 :Ab4
-                                                 :m7 :Bb4}}
+                              :aliases ["aeolian"]
+                              :intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7]
+                              :degrees [:1 :2 :b3 :4 :5 :b6 :b7]
+                              :pitches [:C :D :Eb :F :G :Ab :Bb]
+                              :notes [:C4 :D4 :Eb4 :F4 :G4 :Ab4 :Bb4]}
           :C#4 :major #::specs{:name :major
                                :pitch :C#
-                               :interval-mapping {:P1 :C#4
-                                                  :M2 :D#4
-                                                  :M3 :E#4
-                                                  :P4 :F#4
-                                                  :P5 :G#4
-                                                  :M6 :A#4
-                                                  :M7 :B#5}}  ;; C5 but should it be B#4?
+                               :aliases ["ionian"]
+                               :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                               :degrees [:1 :2 :3 :4 :5 :6 :7]
+                               :pitches [:C# :D# :E# :F# :G# :A# :B#]
+                               :notes [:C#4 :D#4 :E#4 :F#4 :G#4 :A#4 :B#5]}  ; B#5 but should be 4
           :F#4 :major #::specs{:name :major
                                :pitch :F#
-                               :interval-mapping {:P1 :F#4
-                                                  :M2 :G#4
-                                                  :M3 :A#4
-                                                  :P4 :B4
-                                                  :P5 :C#5
-                                                  :M6 :D#5
-                                                  :M7 :E#5}})))
+                               :aliases ["ionian"]
+                               :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                               :degrees [:1 :2 :3 :4 :5 :6 :7]
+                               :pitches [:F# :G# :A# :B :C# :D# :E#]
+                               :notes [:F#4 :G#4 :A#4 :B4 :C#5 :D#5 :E#5]})))
     (testing "with intervals->chord"
       (are+ [intervals want] (= want (algo/intervals->chord intervals))
         [] nil
@@ -332,4 +312,28 @@
     (testing "with intervals->chords"
       (are+ [intervals want] (= want (algo/intervals->chords intervals))
         [] []
-        [:P1 :m3 :P5 :m7 :P11] #{:m11 :m7add11}))))
+        [:P1 :m3 :P5 :m7 :P11] #{:m11 :m7add11}))
+    (testing "with interval->degree"
+      (are+ [interval want] (= want (algo/interval->degree interval))
+        :P1 :1
+        :d2 :b2
+        :m2 :b2
+        :M2 :2
+        :d3 :b3
+        :m3 :b3
+        :A2 :#2
+        :M3 :3
+        :d4 :b4
+        :P4 :4
+        :A3 :#3
+        :d5 :b5
+        :A4 :#4
+        :P5 :5
+        :d6 :b6
+        :m6 :b6
+        :A5 :#5
+        :M6 :6
+        :d7 :b7
+        :m7 :b7
+        :A6 :#6
+        :M7 :7))))
