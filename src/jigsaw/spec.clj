@@ -127,7 +127,7 @@
 
 (def chords
   (array-map
-    ;; Major
+   ;; Major
    :maj        {::intervals [:P1 :M3 :P5]                    ::aliases ["M", "major"]}
    :maj7       {::intervals [:P1 :M3 :P5 :M7]                ::aliases ["Δ","ma7","M7","Maj7","^7", "major seventh"]}
    :maj9       {::intervals [:P1 :M3 :P5 :M7 :M9]            ::aliases ["Δ9","^9", "major ninth"]}

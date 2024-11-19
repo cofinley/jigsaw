@@ -49,15 +49,15 @@
         reverse-distance (mod (- a b) len)]
     (min distance reverse-distance)))
 
+;; TODO; handle distance beyond octave (only available for notes)
 (defn- semitone-distance
   "Semitone distance, preserving 12, but modulo 12 otherwise"
   [p1 p2]
   {:pre [(specs/pitch? p1) (specs/pitch? p2)]}
   (inc (mod (dec (- (specs/pitches p2) (specs/pitches p1))) 12)))
 
-;; TODO: any? -> (some? (some ...))
-(defn- lesser? [s] (any? (map #(string/includes? s %) ["d" "m"])))
-(defn- greater? [s] (any? (map #(string/includes? s %) ["A"])))
+(defn- lesser? [s] (some (partial string/includes? s) ["d" "m"]))
+(defn- greater? [s] (some (partial string/includes? s) ["A"]))
 (defn- altered? [s] (or (lesser? s) (greater? s)))
 
 (defn pitches->interval
@@ -69,8 +69,8 @@
     (if (= (count matching-intervals) 1)
       (first matching-intervals)
       (let [{p2-accidental :accidental} (parts p2)
-            [altered-intervals unaltered-intervals] (partition-by #(altered? (name %)) matching-intervals)]
-        (if (nil? p2-accidental)
+            {altered-intervals true unaltered-intervals nil} (group-by #(altered? (name %)) matching-intervals)]
+        (if (= "" p2-accidental)
           (first unaltered-intervals)
           (let [staff-distance (staff-distance p1 p2)]
             (first (filter #(string/includes? % (str staff-distance)) altered-intervals))))))))
@@ -268,8 +268,8 @@
         matching-idx (.indexOf major-intervals interval)]
     (if (= -1 matching-idx)
       (keyword (str (cond
-                      (re-find #"[dm]" (name interval)) "b"
-                      (re-find #"[A]" (name interval)) "#")
+                      (lesser? (name interval)) "b"
+                      (greater? (name interval)) "#")
                     (last (name interval))))
       (keyword (str (inc matching-idx))))))
 

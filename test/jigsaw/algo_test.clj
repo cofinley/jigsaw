@@ -255,6 +255,11 @@
                              :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                              :degrees [:1 :2 :3 :4 :5 :6 :7]
                              :pitches [:C :D :E :F :G :A :B]}
+          :D :dorian #::specs{:name :dorian
+                              :pitch :D
+                              :intervals [:P1 :M2 :m3 :P4 :P5 :M6 :m7]
+                              :degrees [:1 :2 :b3 :4 :5 :6 :b7]
+                              :pitches [:D :E :F :G :A :B :C]}
           :C :minor #::specs{:name :minor
                              :pitch :C
                              :aliases ["aeolian"]
