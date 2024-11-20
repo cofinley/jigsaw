@@ -31,6 +31,24 @@
           :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4 :note :C#4}
           :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4 :note :C##4}
           :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4 :note :Dbb4})))
+    (testing "with fold-notes"
+      (are+ [notes want] (= want (algo/fold-notes notes))
+        [:C4] [:C4]
+        [:C4 :C5] [:C4 :C5]
+        [:C4 :C5 :C6] [:C4 :C5]
+        [:C4 :C5 :C6 :C7] [:C4 :C5]
+        ; 21 semitones, don't fold
+        [:C4 :A5] [:C4 :A5]
+        ; 22, fold back into last octave
+        [:C4 :Bb5] [:C4 :Bb4]))
+    (testing "with pitch-semitone-distance"
+      (are+ [p1 p2 want] (= want (algo/pitch-semitone-distance p1 p2))
+        :C :C 12
+        :C :Db 1
+        :C :C# 1
+        :C :D 2
+        :C :B 11
+        :C :B# 12))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
         :C  false

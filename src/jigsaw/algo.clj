@@ -50,7 +50,7 @@
     (min distance reverse-distance)))
 
 ;; TODO; handle distance beyond octave (only available for notes)
-(defn- semitone-distance
+(defn pitch-semitone-distance
   "Semitone distance, preserving 12, but modulo 12 otherwise"
   [p1 p2]
   {:pre [(specs/pitch? p1) (specs/pitch? p2)]}
@@ -64,7 +64,7 @@
   [p1 p2]
   {:pre [(specs/pitch? p1) (specs/pitch? p2)]
    :post [(specs/interval? %)]}
-  (let [semitone-distance (semitone-distance p1 p2)
+  (let [semitone-distance (pitch-semitone-distance p1 p2)
         matching-intervals (specs/intervals-by-semitone semitone-distance)]
     (if (= (count matching-intervals) 1)
       (first matching-intervals)
@@ -105,11 +105,10 @@
 
 ;; TODO: multi-method
 (defn note->midi [note]
-  {:pre [(s/valid? ::specs/note note)]
+  {:pre [(specs/note? note)]
    :post [(s/valid? ::specs/midi %)]}
-  (let [octave (parse-int (last (name note)))
-        p (keyword (string/join "" (butlast (name note))))
-        index (get specs/pitches p)]
+  (let [{:keys [pitch octave]} (parts note)
+        index (get specs/pitches pitch)]
     (+ index (* 12 (inc octave)))))
 
 ;; TODO: multi-method
@@ -120,6 +119,19 @@
         index (mod midi 12)
         p (get specs/default-pitch-by-index index)]
     (keyword (str (name p) octave))))
+
+(defn fold-notes
+  "Fold notes into a 21 semitone range so the highest interval is a 13th"
+  [notes]
+  {:pre [(every? specs/note? notes)]}
+  (let [notes->midis (zipmap notes (map note->midi notes))
+        [_ low-midi] (apply min-key val notes->midis)
+        [high-note high-midi] (apply max-key val notes->midis)]
+    (if (<= (- high-midi low-midi) 21)
+      notes
+      (let [{:keys [pitch octave]} (parts high-note)
+            new-note (keyword (str (name pitch) (dec octave)))]
+        (fold-notes (vec (sort-by note->midi (set (replace {high-note new-note} notes)))))))))
 
 (defn- letter+
   "Given a letter (as a capital character, like \\A) and an interval to move
