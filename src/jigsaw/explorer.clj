@@ -4,6 +4,21 @@
    [jigsaw.spec :as specs]
    [jigsaw.algo :as algo]))
 
+"
+Use cases
+
+- Given some shapes, find adjacent shapes
+  - Can select one or more shapes as input
+- Reference for chord/scale/transposing lookups
+- Visualize shape(s) multiple ways
+  - Piano roll
+  - Circle of fifths
+  - Grand staff
+
+- Select one -> transformations available
+- Select many -> search available
+"
+
 (declare nav-home)
 (declare nav-pitch)
 (declare nav-interval)
@@ -49,12 +64,12 @@
                  :portal.viewer/default :portal.viewer/table})
    :chords (with-meta
              (reduce (fn [m chord-name]
-                       (assoc m chord-name (algo/resolve-chord p chord-name)))
+                       (assoc m chord-name (algo/resolve-shape p :chord chord-name)))
                      {} (get-chords p))
              {:portal.viewer/default :portal.viewer/table})
    :scales (with-meta
              (reduce (fn [m scale-name]
-                       (assoc m scale-name (algo/resolve-scale p scale-name)))
+                       (assoc m scale-name (algo/resolve-shape p :scale scale-name)))
                      {} (get-scales p))
              {:portal.viewer/default :portal.viewer/table})})
 

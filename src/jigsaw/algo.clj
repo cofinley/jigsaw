@@ -225,31 +225,18 @@
     (pitch+interval x interval multiplier)
     (note+interval x interval multiplier)))
 
-(defn resolve-chord
-  [x chord-name]
+(defn resolve-shape
+  [x shape-type shape-name]
   {:pre [(specs/pitch-or-note? x)]}
   (let [{:keys [pitch note]} (parts x)
-        chord (specs/chords chord-name)
-        pitches (mapv (partial +interval pitch) (::specs/intervals chord))]
-    (cond-> chord
+        shape (get (if (= shape-type :chord) specs/chords specs/scales) shape-name)
+        intervals (::specs/intervals shape)
+        pitches (mapv (partial +interval pitch) intervals)]
+    (cond-> shape
       true (merge #::specs{:pitch pitch
-                           :name chord-name
+                           :name shape-name
                            :pitches pitches})
-      (specs/note? x) (assoc ::specs/notes (mapv (partial +interval note) (::specs/intervals chord))))))
-
-(defn resolve-scale
-  [x scale-name]
-  {:pre [(specs/pitch-or-note? x)]}
-  (let [{:keys [pitch note]} (parts x)
-        scale (specs/scales scale-name)
-        pitches (mapv (partial +interval pitch) (::specs/intervals scale))]
-    (cond-> scale
-      true (merge #::specs{:pitch pitch
-                           :name scale-name
-                           :pitches pitches})
-      (specs/note? x) (assoc ::specs/notes (mapv (partial +interval note) (::specs/intervals scale))))))
-
-;; TODO: add generic resolve-shape for chords + scales
+      (specs/note? x) (assoc ::specs/notes (mapv (partial +interval note) intervals)))))
 
 (defn intervals->chord [intervals]
   (when (seq intervals)
@@ -330,7 +317,7 @@
                              specs/chords))))
             scale-intervals))))
 
-(let [scale (resolve-scale :C :major)]
+(let [scale (resolve-shape :C :scale :major)]
   (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4)))
 
 (defn interval->degree [interval]
