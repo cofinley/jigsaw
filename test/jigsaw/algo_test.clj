@@ -49,6 +49,21 @@
         :C :D 2
         :C :B 11
         :C :B# 12))
+    (testing "with note-semitone-distance"
+      (are+ [n1 n2 want] (= want (algo/note-semitone-distance n1 n2))
+        :C4 :C4 0
+        :C4 :Db4 1
+        :C4 :C#4 1
+        :C4 :D4 2
+        :C4 :B4 11
+        :C4 :B#4 12
+        :C4 :C5 12
+        :C4 :E5 16
+        :C4 :E6 16
+        ; 21 ceiling reached (13th)
+        :C4 :A5 21
+        ; 22 folded down octave/12 semitones
+        :C4 :A#5 10))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
         :C  false
@@ -73,28 +88,58 @@
         :C :sharp  :B#
         :C# :sharp :C#
         :C# :flat  :Db))
-    (testing "with pitches->interval"
-      (are+ [p1 p2 want] (= want (algo/pitches->interval p1 p2))
-        :C :C# :m2
-        :C :Db :m2
-        :C :D  :M2
-        :C :D# :A2
-        :C :Eb :m3
-        :C :E  :M3
-        :C :E# :A3
-        :C :Fb :d4
-        :C :F  :P4
-        :C :F# :A4
-        :C :Gb :d5
-        :C :G  :P5
-        :C :G# :A5
-        :C :Ab :m6
-        :C :A  :M6
-        :C :A# :A6
-        :C :Bb :m7
-        :C :B  :M7
-        :C :B# :A7
-        :C :C  :P8))
+    (testing "with ->interval"
+      (testing "starting with a pitch"
+        (are+ [p1 p2 want] (= want (algo/->interval p1 p2))
+          :C :C# :m2
+          :C :Db :m2
+          :C :D  :M2
+          :C :D# :A2
+          :C :Eb :m3
+          :C :E  :M3
+          :C :E# :A3
+          :C :Fb :d4
+          :C :F  :P4
+          :C :F# :A4
+          :C :Gb :d5
+          :C :G  :P5
+          :C :G# :A5
+          :C :Ab :m6
+          :C :A  :M6
+          :C :A# :A6
+          :C :Bb :m7
+          :C :B  :M7
+          :C :B# :A7
+          :C :C  :P8
+          :B :C :m2
+          :B :E :P4
+          :B :F :d5))
+      (testing "starting from a note"
+        (are+ [n1 n2 want] (= want (algo/->interval n1 n2))
+          :C4 :C#4 :m2
+          :C4 :Db4 :m2
+          :C4 :D4 :M2
+          :C4 :D#4 :A2
+          :C4 :Eb4 :m3
+          :C4 :E4 :M3
+          :C4 :E#4 :A3
+          :C4 :Fb4 :d4
+          :C4 :F4 :P4
+          :C4 :F#4 :A4
+          :C4 :Gb4 :d5
+          :C4 :G4 :P5
+          :C4 :G#4 :A5
+          :C4 :Ab4 :m6
+          :C4 :A4 :M6
+          :C4 :A#4 :A6
+          :C4 :Bb4 :m7
+          :C4 :B4 :M7
+          :C4 :B#4 :A7
+          :C4 :E5 :M10
+          ; 21 semitone ceiling reached
+          :C4 :A5 :M13
+          ; 22 semitones, fold down octave
+          :C4 :A#5 :A6)))
     (testing "with note->midi"
       (are+ [note want] (= want (algo/note->midi note))
         :C4  60
@@ -223,23 +268,6 @@
             :C4 :P1  :C4
             :C4 :P8  :C3
             :C4 :P11 :G3))))
-    (testing "with +intervals"
-      (testing "from pitch"
-        (are+ [p intervals want] (= want (algo/+intervals p intervals))
-          :C  [:P1]         [:C]
-          :C  [:P1 :M3 :P5] [:C :E :G]
-          :C  [:P1 :m3 :P5] [:C :Eb :G]
-          :C# [:P1 :m3 :P5] [:C# :E :G#]
-          :C# [:A3 :d5]     [:E## :G]))
-      (testing "from note"
-        (are+ [n intervals want] (= want (algo/+intervals n intervals))
-          :C4  [:P1]                        [:C4]
-          :C4  [:P8]                        [:C5]
-          :C4  [:P1 :M3 :P5]                [:C4 :E4 :G4]
-          :C4  [:P1 :m3 :P5]                [:C4 :Eb4 :G4]
-          :C4  [:P1 :M3 :P5 :M7 :P11 :M13]  [:C4 :E4 :G4 :B4 :F5 :A5]
-          :C#4 [:P1 :m3 :P5]                [:C#4 :E4 :G#4]
-          :C#4 [:A3 :d5]                    [:E##4 :G4])))
     (testing "with clamp-pitch"
       (are+ [p want] (= want (algo/clamp-pitch p))
         :C      :C

@@ -36,13 +36,13 @@
     (note-parts x)))
 
 (defn- staff-distance
-  [p1 p2]
-  {:pre [(specs/pitch? p1) (specs/pitch? p2)]}
-  (let [{letter1 :letter} (parts p1)
-        {letter2 :letter} (parts p2)
+  [x1 x2]
+  {:pre [(every? specs/pitch-or-note? [x1 x2])]}
+  (let [{letter1 :letter} (parts x1)
+        {letter2 :letter} (parts x2)
         i1 (int letter1)
         i2 (int letter2)]
-    (+ 2 (mod (dec (- i2 i1)) 7))))
+    (inc (mod (- i2 i1) 7))))
 
 (defn- get-cyclic-distance [a b len]
   (let [distance (mod (- b a) len)
@@ -60,21 +60,6 @@
 (defn- greater? [s] (some (partial string/includes? s) ["A"]))
 (defn- altered? [s] (or (lesser? s) (greater? s)))
 
-(defn pitches->interval
-  [p1 p2]
-  {:pre [(specs/pitch? p1) (specs/pitch? p2)]
-   :post [(specs/interval? %)]}
-  (let [semitone-distance (pitch-semitone-distance p1 p2)
-        matching-intervals (specs/intervals-by-semitone semitone-distance)]
-    (if (= (count matching-intervals) 1)
-      (first matching-intervals)
-      (let [{p2-accidental :accidental} (parts p2)
-            {altered-intervals true unaltered-intervals nil} (group-by #(altered? (name %)) matching-intervals)]
-        (if (= "" p2-accidental)
-          (first unaltered-intervals)
-          (let [staff-distance (staff-distance p1 p2)]
-            (first (filter #(string/includes? % (str staff-distance)) altered-intervals))))))))
-
 (defn- accidental-match? [accidental-string]
   (fn [p]
     (let [{:keys [accidental]} (parts p)]
@@ -86,7 +71,7 @@
 (defn enharmonic
   [p notation]
   {:post [(specs/pitch? %)]}
-  (let [index (specs/pitches p)
+  (let [index (mod (specs/pitches p) 12)
         equivalent-pitches (specs/pitches-by-index index)]
     (when (pos? (count equivalent-pitches))
       (if (= 1 (count equivalent-pitches))
@@ -103,7 +88,6 @@
   (when-some [int-str (re-find #"\d+" (str x))]
     (Integer/parseInt int-str)))
 
-;; TODO: multi-method
 (defn note->midi [note]
   {:pre [(specs/note? note)]
    :post [(s/valid? ::specs/midi %)]}
@@ -111,7 +95,6 @@
         index (get specs/pitches pitch)]
     (+ index (* 12 (inc octave)))))
 
-;; TODO: multi-method
 (defn midi->note [midi]
   {:pre [(s/valid? ::specs/midi midi)]
    :post [(s/valid? ::specs/note %)]}
@@ -132,6 +115,31 @@
       (let [{:keys [pitch octave]} (parts high-note)
             new-note (keyword (str (name pitch) (dec octave)))]
         (fold-notes (vec (sort-by note->midi (set (replace {high-note new-note} notes)))))))))
+
+(defn note-semitone-distance
+  "Semitone distance, preserving 12, but modulo 12 otherwise"
+  [n1 n2]
+  {:pre [(specs/note? n1) (specs/note? n2)]}
+  (abs (apply - (map note->midi (fold-notes [n1 n2])))))
+
+(defn semitone-distance
+  [x1 x2]
+  (if (specs/pitch? x1)
+    (pitch-semitone-distance x1 x2)
+    (note-semitone-distance x1 x2)))
+
+(defn ->interval
+  [x1 x2]
+  {:pre [(every? specs/pitch-or-note? [x1 x2])]
+   :post [(specs/interval? %)]}
+  (let [semitone-distance (semitone-distance x1 x2)
+        matching-intervals (specs/intervals-by-semitone semitone-distance)]
+    (if (= (count matching-intervals) 1)
+      (first matching-intervals)
+      (let [staff-distance (staff-distance x1 x2)]
+        (first (filter #(or (string/includes? % (str staff-distance))
+                            (string/includes? % (str (+ 7 staff-distance))))
+                       matching-intervals))))))
 
 (defn- letter+
   "Given a letter (as a capital character, like \\A) and an interval to move
@@ -219,10 +227,6 @@
     (pitch+interval x interval multiplier)
     (note+interval x interval multiplier)))
 
-(defn +intervals
-  [x intervals & [multiplier]]
-  (map #(+interval x % multiplier) intervals))
-
 (defn resolve-chord
   [x chord-name]
   {:pre [(specs/pitch-or-note? x)]}
@@ -260,19 +264,71 @@
       (set (map last (filter (fn [[k _]] (clojure.set/subset? interval-set k)) specs/chords-by-intervals))))
     []))
 
-(defn scale-chords [{:keys [::specs/pitch ::specs/name]}]
+(defn perfect-set?
+  [set1 set2]
+  (and
+   (empty? (clojure.set/difference set1 set2))
+   (empty? (clojure.set/difference set2 set1))))
+
+(defn scale-chords [{:keys [::specs/pitch ::specs/name]} & {:keys [exact?] :or {exact? false}}]
   (let [scale (specs/scales name)
         scale-intervals (::specs/intervals scale)
         scale-pitches (set (map (partial +interval pitch) scale-intervals))]
-    (reduce
-     (fn [m interval]
-       (let [pitch (+interval pitch interval)]
-         (assoc m interval (mapv first (filter
-                                        (fn [[_ {chord-intervals ::specs/intervals}]]
-                                          (let [chord-pitches (set (+intervals pitch chord-intervals))]
-                                            (clojure.set/subset? chord-pitches scale-pitches)))
-                                        specs/chords)))))
-     {} scale-intervals)))
+    (map (fn [interval]
+           (let [pitch (+interval pitch interval)]
+             (map first (filter
+                         (fn [[_ {chord-intervals ::specs/intervals}]]
+                           (let [chord-pitches (set (map (partial +interval pitch) chord-intervals))]
+                               ;; TODO: exact? -> build off of every other scale degree
+                             ((if exact? perfect-set? clojure.set/subset?) chord-pitches scale-pitches)))
+                         specs/chords))))
+         scale-intervals)))
+
+(defn rotate [scale-sequence]
+  (take (count scale-sequence)
+        (drop 1 (cycle scale-sequence))))
+
+(defn pitch->note
+  [p & [octave]]
+  (keyword (str (name p) (or octave 4))))
+
+(defn pitches->notes
+  [pitches]
+  (loop [pitches pitches
+         notes []
+         octave 4]
+    (if (seq pitches)
+      (let [note (pitch->note (first pitches) octave)]
+        (if (seq notes)
+          (let [midi (note->midi note)
+                last-note (last notes)
+                last-midi (note->midi last-note)
+                {:keys [pitch octave]} (parts note)]
+            (cond
+              (< midi last-midi) (recur (rest pitches)
+                                        (conj notes (keyword (str (name pitch) (inc octave))))
+                                        (inc octave))
+              :else (recur (rest pitches) (conj notes note) octave)))
+          (recur (rest pitches) (conj notes note) octave)))
+      notes)))
+
+; (defn scale-chords [{start-pitch ::specs/pitch scale-name ::specs/name} & {:keys [exact?] :or {exact? true}}]
+;   (let [scale (specs/scales scale-name)
+;         scale-intervals (::specs/intervals scale)
+;         scale-pitches (map (partial +interval start-pitch) scale-intervals)]
+;     (loop [scale-pitches scale-pitches
+;            num (count scale-pitches)
+;            chords []]
+;       (if (zero? num)
+;         chords
+;         (let [pitches (take 5 (take-nth 2 (cycle scale-pitches)))
+;               notes (pitches->notes pitches)
+;               intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)
+;               chord (specs/chords-by-intervals (set intervals))]
+;           (println pitches intervals)
+;           (recur (rotate scale-pitches) (dec num) (conj chords chord)))))))
+
+; (scale-chords #::specs{:pitch :C :name :major})
 
 (defn interval->degree [interval]
   {:pre [(specs/interval? interval)]}

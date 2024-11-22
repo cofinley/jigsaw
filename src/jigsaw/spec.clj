@@ -12,13 +12,13 @@
   (let [letters->semitones {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}]
     (reduce
      (fn [m [letter semitone]]
-       (-> m
-           (assoc (keyword (str letter "bb")) (mod (- semitone 2) 12)) ; Double-flat
-           (assoc (keyword (str letter "b")) (mod (- semitone 1) 12))  ; Flat
-           (assoc (keyword (str letter)) semitone)                     ; Natural
-           (assoc (keyword (str letter "#")) (mod (+ semitone 1) 12))  ; Sharp
-           (assoc (keyword (str letter "##")) (mod (+ semitone 2) 12)) ; Double-sharp
-           ))
+       (assoc
+        m
+        (keyword (str letter "bb")) (- semitone 2)   ; Double-flat
+        (keyword (str letter "b")) (- semitone 1)    ; Flat
+        (keyword (str letter)) semitone                       ; Natural
+        (keyword (str letter "#")) (+ semitone 1)    ; Sharp
+        (keyword (str letter "##")) (+ semitone 2))) ; Double-sharp
      {}
      letters->semitones)))
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
@@ -28,7 +28,7 @@
 (def pitches-by-index
   (reduce
    (fn [acc [pitch index]]
-     (update acc index conj pitch))
+     (update acc (mod index 12) conj pitch))
    {}
    pitches))
 
