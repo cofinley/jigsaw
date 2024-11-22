@@ -49,7 +49,6 @@
         reverse-distance (mod (- a b) len)]
     (min distance reverse-distance)))
 
-;; TODO; handle distance beyond octave (only available for notes)
 (defn pitch-semitone-distance
   "Semitone distance, preserving 12, but modulo 12 otherwise"
   [p1 p2]
@@ -58,7 +57,6 @@
 
 (defn- lesser? [s] (some (partial string/includes? s) ["d" "m"]))
 (defn- greater? [s] (some (partial string/includes? s) ["A"]))
-(defn- altered? [s] (or (lesser? s) (greater? s)))
 
 (defn- accidental-match? [accidental-string]
   (fn [p]
@@ -270,20 +268,6 @@
    (empty? (clojure.set/difference set1 set2))
    (empty? (clojure.set/difference set2 set1))))
 
-(defn scale-chords [{:keys [::specs/pitch ::specs/name]} & {:keys [exact?] :or {exact? false}}]
-  (let [scale (specs/scales name)
-        scale-intervals (::specs/intervals scale)
-        scale-pitches (set (map (partial +interval pitch) scale-intervals))]
-    (map (fn [interval]
-           (let [pitch (+interval pitch interval)]
-             (map first (filter
-                         (fn [[_ {chord-intervals ::specs/intervals}]]
-                           (let [chord-pitches (set (map (partial +interval pitch) chord-intervals))]
-                               ;; TODO: exact? -> build off of every other scale degree
-                             ((if exact? perfect-set? clojure.set/subset?) chord-pitches scale-pitches)))
-                         specs/chords))))
-         scale-intervals)))
-
 (defn rotate [scale-sequence]
   (take (count scale-sequence)
         (drop 1 (cycle scale-sequence))))
@@ -312,23 +296,42 @@
           (recur (rest pitches) (conj notes note) octave)))
       notes)))
 
-; (defn scale-chords [{start-pitch ::specs/pitch scale-name ::specs/name} & {:keys [exact?] :or {exact? true}}]
-;   (let [scale (specs/scales scale-name)
-;         scale-intervals (::specs/intervals scale)
-;         scale-pitches (map (partial +interval start-pitch) scale-intervals)]
-;     (loop [scale-pitches scale-pitches
-;            num (count scale-pitches)
-;            chords []]
-;       (if (zero? num)
-;         chords
-;         (let [pitches (take 5 (take-nth 2 (cycle scale-pitches)))
-;               notes (pitches->notes pitches)
-;               intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)
-;               chord (specs/chords-by-intervals (set intervals))]
-;           (println pitches intervals)
-;           (recur (rotate scale-pitches) (dec num) (conj chords chord)))))))
+(defn scale-chords-exact
+  [scale & {:keys [num-thirds]}]
+  (let [{start-pitch ::specs/pitch scale-name ::specs/name} scale
+        scale (specs/scales scale-name)
+        scale-intervals (::specs/intervals scale)
+        scale-pitches (map (partial +interval start-pitch) scale-intervals)]
+    (loop [scale-pitches scale-pitches
+           num (count scale-pitches)
+           chords []]
+      (if (zero? num)
+        chords
+        (let [pitches (take num-thirds (take-nth 2 (cycle scale-pitches)))
+              notes (pitches->notes pitches)
+              intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)
+              chord (specs/chords-by-intervals (set intervals))]
+          (recur (rotate scale-pitches) (dec num) (conj chords [chord])))))))
 
-; (scale-chords #::specs{:pitch :C :name :major})
+(defn scale-chords
+  [scale & {:keys [exact? num-thirds] :or {exact? false num-thirds 4}}]
+  (if exact?
+    (scale-chords-exact scale :num-thirds num-thirds)
+    (let [{:keys [::specs/pitch ::specs/name]} scale
+          scale (specs/scales name)
+          scale-intervals (::specs/intervals scale)
+          scale-pitches (set (map (partial +interval pitch) scale-intervals))]
+      (mapv (fn [interval]
+              (let [pitch (+interval pitch interval)]
+                (mapv first (filter
+                             (fn [[_ {chord-intervals ::specs/intervals}]]
+                               (let [chord-pitches (set (map (partial +interval pitch) chord-intervals))]
+                                 ((if exact? perfect-set? clojure.set/subset?) chord-pitches scale-pitches)))
+                             specs/chords))))
+            scale-intervals))))
+
+(let [scale (resolve-scale :C :major)]
+  (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4)))
 
 (defn interval->degree [interval]
   {:pre [(specs/interval? interval)]}
@@ -341,12 +344,13 @@
                     (last (name interval))))
       (keyword (str (inc matching-idx))))))
 
-(defn- scales-with-degrees []
-  (let [major-intervals (get-in specs/scales [:major ::specs/intervals])]
-    (map (fn [[scale-name details]]
-           (let [{intervals ::specs/intervals} details
-                 degrees (mapv interval->degree intervals)]
-             {scale-name (assoc details :degrees degrees)})) specs/scales)))
+;; Used for generating initial scale degrees
+; (defn- scales-with-degrees []
+;   (let [major-intervals (get-in specs/scales [:major ::specs/intervals])]
+;     (map (fn [[scale-name details]]
+;            (let [{intervals ::specs/intervals} details
+;                  degrees (mapv interval->degree intervals)]
+;              {scale-name (assoc details :degrees degrees)})) specs/scales)))
 
 ;; TODO move to search.clj
 (defn find-chord [xs])
