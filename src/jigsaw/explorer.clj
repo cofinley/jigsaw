@@ -2,7 +2,8 @@
   (:require
    [clojure.core.protocols :refer [nav]]
    [jigsaw.spec :as specs]
-   [jigsaw.algo :as algo]))
+   [jigsaw.algo :as algo]
+   [jigsaw.utils :as utils]))
 
 "
 Use cases
@@ -28,7 +29,7 @@ Use cases
   (with-meta
     (keys (sort-by val (remove (fn [[k _]]
                                  (let [{:keys [accidental]} (algo/parts k)]
-                                   (algo/in? ["bb" "##"] accidental)))
+                                   (utils/in? ["bb" "##"] accidental)))
                                specs/pitches)))
     {`nav #'nav-pitch
      :portal.viewer/default :portal.viewer/inspector}))

@@ -50,7 +50,11 @@ help:  ## Describe available tasks in Makefile
 # ------- Clojure Development -------- #
 repl:  ## Run Clojure REPL with rich terminal UI (Rebel Readline)
 	$(info --------- Run Rebel REPL ---------)
-	clojure -M:test/env:repl/reloaded
+	rlwrap clojure -M:test/env:repl/reloaded
+
+repl-basic:  ## Run basic Clojure REPL
+	$(info --------- Run Basic REPL ---------)
+	rlwrap clojure -M:test/env:repl/basic
 
 deps: deps.edn  ## Prepare dependencies for test and dist targets
 	$(info --------- Download test and service libraries ---------)

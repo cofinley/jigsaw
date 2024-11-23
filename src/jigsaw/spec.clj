@@ -1,6 +1,7 @@
 (ns jigsaw.spec
   (:gen-class)
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as gen]))
 
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
 (s/def ::semitone (s/and int? #(<= 0 % 21)))
@@ -52,6 +53,8 @@
 ;;      Must know the start and end pitches/staff positions
 ;;        e.g. C->F# is an augmented 4th (C->F + 1), and C->Gb is diminished (C->G - 1)
 ;;   Can be arabic (m3), roman (iii) numerals
+;;   4th usually on major and sus chords, 11th on dominant and minor chords
+;;   6th usually on major and minor chords, 13th usually on dominant chords
 (def intervals
   {:P1  {::name "Root" ::semitone 0}
    :d2  {::name "Diminished 2nd" ::semitone 0}
@@ -89,7 +92,7 @@
    :P12 {::name "Perfect 12th" ::semitone 19}
    :m13 {::name "Minor 13th" ::semitone 20}
    :M13 {::name "Major 13th" ::semitone 21}})
-(s/def ::interval (s/and keyword? #(contains? intervals %)))
+(s/def ::interval (set (keys intervals)))
 (defn interval? [interval] (s/valid? ::interval interval))
 (s/def ::intervals (s/coll-of ::intervals))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
@@ -112,13 +115,11 @@
 ;; Note: pitch+octave
 (def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
+(def pitch-or-note-pattern (re-pattern (str "^" (str note-pattern-str "?") "$")))
 (s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
 (defn note? [n] (s/valid? ::note n))
 (s/def ::pitch-or-note (s/or :pitch pitch? :note note?))
 (defn pitch-or-note? [x] (s/valid? ::pitch-or-note x))
-
-(let [{pitch :pitch} (s/conform ::pitch-or-note :C)]
-  pitch)
 
 ;; Midi: position of a note on the keyboard
 ;;   Represented as an integer
@@ -165,7 +166,7 @@
    :sus2       {::intervals [:P1 :M2 :P5]                    ::aliases ["suspended second"]}
    :7sus4      {::intervals [:P1 :P4 :P5 :m7]                ::aliases ["7sus", "suspended fourth seventh"]}
    :11         {::intervals [:P1 :P5 :m7 :M9 :P11]           ::aliases ["eleventh"]}
-   :b9sus      {::intervals [:P1 :P4 :P5 :m7 :m9]            ::aliases ["phryg","7b9sus","7b9sus4", "suspended fourth flat ninth"]}
+   :b9sus      {::intervals [:P1 :P4 :P5 :m7 :m9]            ::aliases ["phrygian", "phryg","7b9sus","7b9sus4", "suspended fourth flat ninth"]}
    ;; Other
    :P5         {::intervals [:P1 :P5]                        ::aliases ["fifth"]}
    :aug        {::intervals [:P1 :M3 :A5]                    ::aliases ["+","+5","^#5", "augmented"]}
@@ -388,7 +389,7 @@
     :b10 :10 :#10
     :b11 :11 :#11
     :b12 :12 :#12})
-(s/def ::degree (s/and keyword? #(contains? degrees %)))
+(s/def ::degree degrees)
 (s/def ::degree-base-scale (s/and keyword? #(contains? scales %)))
 
 ;; Key (signature)

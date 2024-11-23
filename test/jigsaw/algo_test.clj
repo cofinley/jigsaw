@@ -41,29 +41,30 @@
         [:C4 :A5] [:C4 :A5]
         ; 22, fold back into last octave
         [:C4 :Bb5] [:C4 :Bb4]))
-    (testing "with pitch-semitone-distance"
-      (are+ [p1 p2 want] (= want (algo/pitch-semitone-distance p1 p2))
-        :C :C 12
-        :C :Db 1
-        :C :C# 1
-        :C :D 2
-        :C :B 11
-        :C :B# 12))
-    (testing "with note-semitone-distance"
-      (are+ [n1 n2 want] (= want (algo/note-semitone-distance n1 n2))
-        :C4 :C4 0
-        :C4 :Db4 1
-        :C4 :C#4 1
-        :C4 :D4 2
-        :C4 :B4 11
-        :C4 :B#4 12
-        :C4 :C5 12
-        :C4 :E5 16
-        :C4 :E6 16
-        ; 21 ceiling reached (13th)
-        :C4 :A5 21
-        ; 22 folded down octave/12 semitones
-        :C4 :A#5 10))
+    (testing "with semitone-distance"
+      (testing "with pitches"
+        (are+ [p1 p2 want] (= want (algo/semitone-distance p1 p2))
+          :C :C 12
+          :C :Db 1
+          :C :C# 1
+          :C :D 2
+          :C :B 11
+          :C :B# 12))
+      (testing "with notes"
+        (are+ [n1 n2 want] (= want (algo/semitone-distance n1 n2))
+          :C4 :C4 0
+          :C4 :Db4 1
+          :C4 :C#4 1
+          :C4 :D4 2
+          :C4 :B4 11
+          :C4 :B#4 12
+          :C4 :C5 12
+          :C4 :E5 16
+          :C4 :E6 16
+          ; 21 ceiling reached (13th)
+          :C4 :A5 21
+          ; 22 folded down octave/12 semitones
+          :C4 :A#5 10)))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
         :C  false
@@ -86,6 +87,7 @@
       (are+ [p notation want] (= want (algo/enharmonic p notation))
         :C :flat   :C
         :C :sharp  :B#
+        :Dbb :natural :C
         :C# :sharp :C#
         :C# :flat  :Db))
     (testing "with ->interval"
@@ -157,6 +159,7 @@
       (testing "starting from a pitch"
         (testing "adding"
           (are+ [p interval want] (= want (algo/+interval p interval))
+            :C :P1  :C
             :C :d2  :Dbb
             :C :m2  :Db
             :C :M2  :D
