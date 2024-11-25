@@ -391,4 +391,20 @@
         :d7 :b7
         :m7 :b7
         :A6 :#6
-        :M7 :7))))
+        :M7 :7))
+    (testing "with scale->mode"
+      (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (::specs/name (algo/scale->mode (algo/resolve-shape :C :scale base-scale-name) mode-num)))
+        :major 1 :major
+        :major 2 :dorian
+        :major 3 :phrygian
+        :major 4 :lydian
+        :major 5 :mixolydian
+        :major 6 :minor
+        :major 7 :locrian
+        :major 8 :major
+        :melodic-minor 2 :dorian-b2
+        :melodic-minor 3 :lydian-augmented
+        :melodic-minor 4 :lydian-dominant
+        :melodic-minor 5 :mixolydian-b6
+        :melodic-minor 6 :locrian-#2
+        :melodic-minor 7 :altered))))

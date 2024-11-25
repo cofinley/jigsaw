@@ -11,8 +11,8 @@
 ;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
 (def pitches
   (let [letters->semitones {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}]
-    (reduce
-     (fn [m [letter semitone]]
+    (reduce-kv
+     (fn [m letter semitone]
        (assoc
         m
         (keyword (str letter "bb")) (- semitone 2)   ; Double-flat
@@ -26,12 +26,9 @@
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
 (defn pitch? [p] (s/valid? ::pitch p))
+
 (def pitches-by-index
-  (reduce
-   (fn [acc [pitch index]]
-     (update acc (mod index 12) conj pitch))
-   {}
-   pitches))
+  (reduce-kv (fn [m p i] (update m (mod i 12) conj p)) {} pitches))
 
 (def default-pitch-by-index
   {0 :C
@@ -97,11 +94,7 @@
 (s/def ::intervals (s/coll-of ::intervals))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
 (def intervals-by-semitone
-  (reduce
-   (fn [acc [interval details]]
-     (update acc (::semitone details) conj interval))
-   {}
-   intervals))
+  (reduce-kv (fn [m interval {:keys [::semitone]}] (update m semitone conj interval)) {} intervals))
 
 (s/def ::name string?)
 (s/def ::aliases (s/coll-of string?))
@@ -245,11 +238,7 @@
    :11b9       {::intervals [:P1 :P5 :m7 :m9 :P11]}))
 
 (def chords-by-intervals
-  (reduce
-   (fn [acc [chord details]]
-     (assoc acc (set (::intervals details)) chord))
-   {}
-   chords))
+  (reduce-kv (fn [m chord {:keys [::intervals]}] (assoc m (set intervals) chord)) {} chords))
 
 (s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
 
@@ -322,7 +311,8 @@
    ;; 7-note
    :locrian-major {::intervals [:P1 :M2 :M3 :P4 :d5 :m6 :m7] ::aliases ["arabian"] ::degrees [:1 :2 :3 :4 :b5 :b6 :b7]}
    :double-harmonic-lydian {::intervals [:P1 :m2 :M3 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :3 :#4 :5 :b6 :7]}
-   :altered {::intervals [:P1 :m2 :A2 :M3 :A4 :m6 :m7] ::aliases ["super locrian" "diminished whole tone" "pomeroy"] ::degrees [:1 :b2 :#2 :3 :#4 :b6 :b7]}
+   ; :altered {::intervals [:P1 :m2 :A2 :M3 :A4 :m6 :m7] ::aliases ["super locrian" "diminished whole tone" "pomeroy"] ::degrees [:1 :b2 :#2 :3 :#4 :b6 :b7]}
+   :altered {::intervals [:P1 :m2 :m3 :d4 :d5 :m6 :m7] ::aliases ["super locrian" "diminished whole tone" "pomeroy"] ::degrees [:1 :b2 :#2 :3 :#4 :b6 :b7]}
    :locrian-#2 {::intervals [:P1 :M2 :m3 :P4 :d5 :m6 :m7] ::aliases ["half-diminished" "aeolian b5"] ::degrees [:1 :2 :b3 :4 :b5 :b6 :b7]}
    :mixolydian-b6 {::intervals [:P1 :M2 :M3 :P4 :P5 :m6 :m7] ::aliases ["melodic minor fifth mode" "hindu"] ::degrees [:1 :2 :3 :4 :5 :b6 :b7]}
    :lydian-dominant {::intervals [:P1 :M2 :M3 :A4 :P5 :M6 :m7] ::aliases ["lydian b7" "overtone"] ::degrees [:1 :2 :3 :#4 :5 :6 :b7]}
@@ -369,6 +359,9 @@
    :messiaen's-mode-#7 {::intervals [:P1 :m2 :M2 :m3 :P4 :A4 :P5 :m6 :M6 :M7] ::degrees [:1 :b2 :2 :b3 :4 :#4 :5 :b6 :6 :7]}
    ;; 12-note
    :chromatic {::intervals [:P1 :m2 :M2 :m3 :M3 :P4 :d5 :P5 :m6 :M6 :m7 :M7] ::degrees [:1 :b2 :2 :b3 :3 :4 :b5 :5 :b6 :6 :b7 :7]}))
+
+(def scales-by-intervals
+  (reduce-kv (fn [m scale {:keys [::intervals]}] (assoc m intervals scale)) {} scales))
 
 ;; Derived: (scale) degree(s), inversions (based on notes and chord intervals)
 ;; Degree: I, II, III,, bIII, V, #V, VII, etc.

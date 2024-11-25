@@ -21,7 +21,8 @@
    (empty? (clojure.set/difference set1 set2))
    (empty? (clojure.set/difference set2 set1))))
 
-(defn rotate [scale-sequence]
-  (take (count scale-sequence)
-        (drop 1 (cycle scale-sequence))))
+(defn rotate [coll & [n]]
+  (take (count coll)
+        (drop (or n 1) (cycle coll))))
 
+(defn pairs [coll] (partition 2 1 coll))

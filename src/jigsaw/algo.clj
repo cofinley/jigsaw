@@ -219,7 +219,9 @@
 (defn intervals->chords [intervals]
   (if (seq intervals)
     (let [interval-set (set intervals)]
-      (set (map last (filter (fn [[k _]] (clojure.set/subset? interval-set k)) specs/chords-by-intervals))))
+      (into #{} (comp (filter (fn [[chord-interval-set _]] (clojure.set/subset? interval-set chord-interval-set)))
+                      (map val))
+            specs/chords-by-intervals))
     []))
 
 (defn pitch->note
@@ -238,11 +240,11 @@
                 last-note (last notes)
                 last-midi (note->midi last-note)
                 {:keys [pitch octave]} (parts note)]
-            (cond
-              (< midi last-midi) (recur (rest pitches)
-                                        (conj notes (keyword (str (name pitch) (inc octave))))
-                                        (inc octave))
-              :else (recur (rest pitches) (conj notes note) octave)))
+            (if (< midi last-midi)
+              (recur (rest pitches)
+                     (conj notes (keyword (str (name pitch) (inc octave))))
+                     (inc octave))
+              (recur (rest pitches) (conj notes note) octave)))
           (recur (rest pitches) (conj notes note) octave)))
       notes)))
 
@@ -280,19 +282,25 @@
                              specs/chords))))
             scale-intervals))))
 
-(let [scale (resolve-shape :C :scale :major)]
-  (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4)))
+(comment
+  (let [scale (resolve-shape :C :scale :major)]
+    (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))))
+
+(defn scale->mode
+  [scale n]
+  (let [pitches (utils/rotate (::specs/pitches scale) (dec n))
+        intervals (into [:P1] (map #(->interval (first pitches) %)) (rest pitches))]
+    (when-let [new-scale-name (get specs/scales-by-intervals intervals)]
+      (resolve-shape (first pitches) :scale new-scale-name))))
 
 (defn interval->degree [interval]
   {:pre [(specs/interval? interval)]}
   (let [major-intervals (get-in specs/scales [:major ::specs/intervals])
         matching-idx (.indexOf major-intervals interval)]
-    (if (= -1 matching-idx)
-      (keyword (str (cond
-                      (lesser? (name interval)) "b"
-                      (greater? (name interval)) "#")
-                    (last (name interval))))
-      (keyword (str (inc matching-idx))))))
+    (keyword
+     (if (neg? matching-idx)
+       (str (if (lesser? (name interval)) "b" "#") (last (name interval)))
+       (str (inc matching-idx))))))
 
 ;; Used for generating initial scale degrees
 ; (defn- scales-with-degrees []
