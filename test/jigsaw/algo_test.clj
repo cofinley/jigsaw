@@ -407,4 +407,16 @@
         :melodic-minor 4 :lydian-dominant
         :melodic-minor 5 :mixolydian-b6
         :melodic-minor 6 :locrian-#2
-        :melodic-minor 7 :altered))))
+        :melodic-minor 7 :altered))
+    (testing "with degree-chord->roman-numeral"
+      (are+ [degree chord-name want] (= want (algo/degree-chord->roman-numeral degree chord-name))
+        :1 :maj :I
+        :1 :maj7 :I
+        :2 :min :ii
+        :2 :min7 :ii
+        :b2 :min :bii
+        :#2 :min :#ii
+        :3 :min :iii
+        :7 :dim :vii°
+        :2 :dim :ii°
+        :b3 :aug :bIII+))))

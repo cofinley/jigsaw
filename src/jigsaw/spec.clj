@@ -1,11 +1,9 @@
 (ns jigsaw.spec
   (:gen-class)
-  (:require [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]))
+  (:require [clojure.spec.alpha :as s]))
 
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
 (s/def ::semitone (s/and int? #(<= 0 % 21)))
-(s/def ::semitones (s/coll-of ::semitone :distinct true))  ; when used for a chord
 
 ;; Pitch (class): C, C#, Db, etc.
 ;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
@@ -84,7 +82,7 @@
    :A9  {::name "Augmented 9th" ::semitone 15}
    :M10 {::name "Major 10th" ::semitone 16}
    :d11 {::name "Diminished 11th" ::semitone 16}
-   :P11  {::name "Perfect 11th" ::semitone 17}
+   :P11 {::name "Perfect 11th" ::semitone 17}
    :A11 {::name "Augmented 11th" ::semitone 18}
    :P12 {::name "Perfect 12th" ::semitone 19}
    :m13 {::name "Minor 13th" ::semitone 20}
@@ -263,7 +261,7 @@
    ;; Jazz common
    :major-blues {::intervals [:P1 :M2 :m3 :M3 :P5 :M6] ::degrees [:1 :2 :b3 :3 :5 :6]}
    :minor-blues {::intervals [:P1 :m3 :P4 :d5 :P5 :m7] ::aliases ["blues"] ::degrees [:1 :b3 :4 :b5 :5 :b7]}
-   :melodic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :M7] ::degrees [:1 :2 :b3 :4 :5 :6 :7]}
+   :melodic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :M6 :M7] ::aliases ["jazz minor" "minor-major"] ::degrees [:1 :2 :b3 :4 :5 :6 :7]}
    :harmonic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :M7] ::degrees [:1 :2 :b3 :4 :5 :b6 :7]}
    :bebop {::intervals [:P1 :M2 :M3 :P4 :P5 :M6 :m7 :M7] ::degrees [:1 :2 :3 :4 :5 :6 :b7 :7]}
    :diminished {::intervals [:P1 :M2 :m3 :P4 :d5 :m6 :M6 :M7] ::aliases ["whole-half diminished"] ::degrees [:1 :2 :b3 :4 :b5 :b6 :6 :7]}

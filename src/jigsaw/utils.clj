@@ -4,7 +4,7 @@
 (defn in?
   "Returns true if v in coll, else false."
   [coll v]
-  (some? (some #(= v %) coll)))
+  (some? (some #{v} coll)))
 
 (defn get-cyclic-distance [a b len]
   (let [distance (mod (- b a) len)

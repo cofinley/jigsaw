@@ -310,6 +310,31 @@
 ;                  degrees (mapv interval->degree intervals)]
 ;              {scale-name (assoc details :degrees degrees)})) specs/scales)))
 
+(defn roman-numeral
+  [n]
+  (nth ["I" "II" "III" "IV" "V" "VI" "VII"] (dec n)))
+
+(defn degree-chord->roman-numeral
+  [degree chord-name]
+  (let [intervals (::specs/intervals (specs/chords chord-name))
+        major? (utils/in? intervals :M3)
+        degree-str (name degree)
+        accidental (if (< 1 (count degree-str)) (first degree-str) "")
+        degree-num (utils/parse-int degree-str)
+        roman-num (roman-numeral degree-num)]
+    (keyword
+     (str
+      accidental
+      ((if major? string/upper-case string/lower-case) roman-num)
+      (cond
+        (utils/in? intervals :A5) "+"
+        (utils/in? intervals :d5) "°"
+        :else "")))))
+
+;; TODO
+;;  - Chord progressions
+;;  - Find scale+degree+roman numeral from just the chord
+
 ;; TODO move to search.clj
 (defn find-chord [xs])
 (defn find-scale [xs])
