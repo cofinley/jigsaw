@@ -283,8 +283,9 @@
             scale-intervals))))
 
 (comment
-  (let [scale (resolve-shape :C :scale :major)]
-    (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))))
+  (let [scale (resolve-shape :E :scale :harmonic-minor)
+        {pitches ::specs/pitches chord-lists :chords} (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))
+        chords (map first chord-lists)]))
 
 (defn scale->mode
   [scale n]

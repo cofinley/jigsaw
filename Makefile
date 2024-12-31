@@ -46,6 +46,10 @@ help:  ## Describe available tasks in Makefile
 	sort | \
 	awk -F ':.*?## ' 'NF==2 {printf "\033[36m  %-$(HELP-DESCRIPTION-SPACING)s\033[0m %s\n", $$1, $$2}'
 # ------------------------------------ #
+# ------- Clojure Development -------- #
+app:
+	npm run watch
+# ------------------------------------ #
 
 # ------- Clojure Development -------- #
 repl:  ## Run Clojure REPL with rich terminal UI (Rebel Readline)

@@ -382,5 +382,3 @@
     :b12 :12 :#12})
 (s/def ::degree degrees)
 (s/def ::degree-base-scale (s/and keyword? #(contains? scales %)))
-
-;; Key (signature)

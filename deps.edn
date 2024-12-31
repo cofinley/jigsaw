@@ -17,12 +17,6 @@
   :run/app
   {:main-opts ["-m" "jigsaw.jigsaw"]}
 
-  ;; Clojure.exec execution of specified function
-  :run/greet
-  {:exec-fn jigsaw.jigsaw/greet
-   :exec-args {:name "Clojure"}}
-  ;; ------------
-
   ;; ------------
   ;; Add libraries and paths to support additional test tools
   :test/env
