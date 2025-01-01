@@ -9,6 +9,11 @@
    (or (vec (vals (:nodes db))) [])))
 
 (re-frame/reg-sub
+ ::node
+ (fn [db [_ id]]
+   (get-in db [:nodes id])))
+
+(re-frame/reg-sub
  ::edges
  (fn [db]
    (or (vec (vals (:edges db))) [])))
@@ -37,3 +42,13 @@
  ::active-midis
  (fn [db [_ id]]
    (or (get-in db [:nodes id :data :midis]) #{})))
+
+(re-frame/reg-sub
+ ::pitch
+ (fn [db [_ id]]
+   (get-in db [:nodes id :data :pitch])))
+
+(re-frame/reg-sub
+ ::name
+ (fn [db [_ id]]
+   (get-in db [:nodes id :data :name])))

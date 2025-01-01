@@ -1,7 +1,9 @@
 (ns jigsaw.events
   (:require
    [re-frame.core :as re-frame]
-   [jigsaw.db :as db]))
+   [jigsaw.db :as db]
+   [jigsaw.algo :as algo]
+   [jigsaw.spec :as specs]))
 
 (re-frame/reg-event-db
  ::initialize-db
@@ -31,7 +33,10 @@
  (fn [db [_ node-type]]
    (let [node (case node-type
                 "input-piano" (db/->input-piano-node)
-                "output-piano" (db/->output-piano-node))
+                "input-chord" (db/->input-chord-node)
+                "input-scale" (db/->input-scale-node)
+                "output-piano" (db/->output-piano-node)
+                "output-debug" (db/->output-debug-node))
          id (:id node)]
      (assoc-in db [:nodes id] node))))
 
@@ -47,3 +52,32 @@
          midis (set (or (get-in db path) []))]
      (assoc-in db path
                ((if (some? (some #{midi} midis)) disj conj) midis midi)))))  ;; Reinforcing set in case of conversion to vector
+
+;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
+(defn calculate-shape-notes [node]
+  (let [shape-type (if (= :input-chord (keyword (:type node))) :chord :scale)
+        {:keys [pitch name]} (:data node)]
+    (when (and (some? pitch) (some? name))
+      (::specs/notes (algo/resolve-shape (algo/pitch->note pitch) shape-type (keyword name))))))
+
+(re-frame/reg-event-db
+ ::set-pitch
+ (fn [db [_ id pitch]]
+   (let [node (get-in db [:nodes id])
+         new-node (assoc-in node [:data :pitch] pitch)
+         notes (calculate-shape-notes new-node)]
+     (cond-> db
+       true (assoc-in [:nodes id] new-node)
+       (some? notes) (assoc-in [:nodes id :data :notes] notes)
+       (some? notes) (assoc-in [:nodes id :data :midis] (map algo/note->midi notes))))))
+
+(re-frame/reg-event-db
+ ::set-name
+ (fn [db [_ id name]]
+   (let [node (get-in db [:nodes id])
+         new-node (assoc-in node [:data :name] name)
+         notes (calculate-shape-notes new-node)]
+     (cond-> db
+       true (assoc-in [:nodes id] new-node)
+       (some? notes) (assoc-in [:nodes id :data :notes] notes)
+       (some? notes) (assoc-in [:nodes id :data :midis] (map algo/note->midi notes))))))

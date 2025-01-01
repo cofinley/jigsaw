@@ -13,7 +13,7 @@
 
 (defn parse-int [x]
   (when-some [int-str (re-find #"\d+" (str x))]
-    (Integer/parseInt int-str)))
+    (#?(:clj Integer/parseInt :cljs js/parseInt) int-str)))
 
 (defn perfect-set?
   [set1 set2]

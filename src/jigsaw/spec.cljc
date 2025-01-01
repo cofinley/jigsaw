@@ -1,5 +1,4 @@
 (ns jigsaw.spec
-  (:gen-class)
   (:require [clojure.spec.alpha :as s]))
 
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
@@ -15,7 +14,7 @@
         m
         (keyword (str letter "bb")) (- semitone 2)   ; Double-flat
         (keyword (str letter "b")) (- semitone 1)    ; Flat
-        (keyword (str letter)) semitone                       ; Natural
+        (keyword (str letter)) semitone              ; Natural
         (keyword (str letter "#")) (+ semitone 1)    ; Sharp
         (keyword (str letter "##")) (+ semitone 2))) ; Double-sharp
      {}

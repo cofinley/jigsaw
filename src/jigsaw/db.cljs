@@ -7,7 +7,7 @@
                 :data {:notes #{:C4 :E4 :G4}
                        :midis #{60 64 67}}}
            "2" {:id "2"
-                :position {:x 400 :y 0}
+                :position {:x 800 :y 0}
                 :type :output-piano
                 :data {}}}
    :edges {"1->2" {:id "1->2"
@@ -27,6 +27,23 @@
            :data {:notes #{}
                   :midis #{}}}))
 
+(defn ->input-chord-node []
+  (->node {:type :input-chord
+           :data {:pitch nil
+                  :name nil
+                  :notes #{}
+                  :midis #{}}}))
+
+(defn ->input-scale-node []
+  (->node {:type :input-scale
+           :data {:pitch nil
+                  :name nil
+                  :notes #{}
+                  :midis #{}}}))
+
 (defn ->output-piano-node []
   (->node {:type :output-piano}))
+
+(defn ->output-debug-node []
+  (->node {:type :output-debug}))
 
