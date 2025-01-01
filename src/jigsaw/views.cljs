@@ -121,7 +121,9 @@
                  :renderNoteLabel (fn [_data]
                                     (let [{midi :midiNumber active? :isActive} (js->clj _data :keywordize-keys true)]
                                       (when active?
-                                        (r/as-element [:span {:style {:font-size "1rem"}} (algo/midi->note midi nil)]))))
+                                        (r/as-element
+                                         [:span {:style {:font-size "1rem"}}
+                                          (:pitch (algo/parts (algo/midi->note midi nil)))]))))
                  :activeNotes midis
                  :width width}])
              [:p "No input"]))
