@@ -185,7 +185,12 @@
         interval-semitone (get-in specs/intervals [interval ::specs/semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
-        new-octave (+ octave (* (or multiplier 1) (math/floor-div (+ semitone interval-semitone) 12)))]
+        crossing-octaves? (utils/in? [:Cb :B#] new-pitch) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
+        octave-offset (* (or multiplier 1)
+                         (if crossing-octaves? 1
+                             (math/floor-div (+ semitone interval-semitone) 12)))
+        new-octave (+ octave octave-offset)]
+    (prn n semitone interval interval-semitone new-pitch new-octave)
     (keyword (str new-pitch-str new-octave))))
 
 (defn +interval

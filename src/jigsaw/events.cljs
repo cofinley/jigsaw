@@ -14,12 +14,16 @@
   "Converts js node to clj (keywords, sets)"
   [node]
   (let [data (get-in node [:data])
-        notes (:notes data)]
+        notes (:notes data)
+        name (:name data)
+        pitch (:pitch data)
+        type (:type node)]
     (cond-> node
       (some? notes) (assoc-in [:data :notes]
-                              (->> notes
-                                   (map keyword)
-                                   set)))))
+                              (->> notes (map keyword) set))
+      (some? name) (assoc-in [:data :name] (keyword name))
+      (some? pitch) (assoc-in [:data :pitch] (keyword pitch))
+      (some? type) (assoc :type (keyword type)))))
 
 (re-frame/reg-event-db
  ::set-nodes
@@ -80,8 +84,7 @@
          notes (calculate-shape-notes new-node)]
      (cond-> db
        true (assoc-in [:nodes id] new-node)
-       (some? notes) (assoc-in [:nodes id :data :notes] notes)
-       (some? notes) (assoc-in [:nodes id :data :midis] (map algo/note->midi notes))))))
+       (some? notes) (assoc-in [:nodes id :data :notes] notes)))))
 
 (re-frame/reg-event-db
  ::set-name
@@ -91,5 +94,4 @@
          notes (calculate-shape-notes new-node)]
      (cond-> db
        true (assoc-in [:nodes id] new-node)
-       (some? notes) (assoc-in [:nodes id :data :notes] notes)
-       (some? notes) (assoc-in [:nodes id :data :midis] (map algo/note->midi notes))))))
+       (some? notes) (assoc-in [:nodes id :data :notes] notes)))))

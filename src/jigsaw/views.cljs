@@ -9,6 +9,7 @@
    [jigsaw.spec :as specs]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
+   ["react" :refer [useMemo StrictMode]]
    ["react-piano" :refer [Piano ControlledPiano]]
    ["@xyflow/react" :refer [ReactFlow
                             Background
@@ -18,9 +19,9 @@
                             addEdge
                             Handle
                             Panel]]
-   ["vexflow" :refer [Factory]]))
+   ["abcjs" :as abcjs]))
 
-(def key-width 20)
+(def key-width 30)
 
 (defn select [props & body]
   [:select (r/merge-props {:class "p-1 rounded-md border border-gray-400"} props)
@@ -105,6 +106,7 @@
        (if-let [incoming-node (first @incoming-nodes)]
          (let [notes (get-in incoming-node [:data :notes])
                midis (map algo/note->midi notes)
+               midi->pitch (zipmap midis (map #(:pitch (algo/parts %)) notes))
                sorted-midis (sort midis)]
            (if (seq sorted-midis)
              (let [first-midi (first sorted-midis)
@@ -121,30 +123,33 @@
                                       (when active?
                                         (r/as-element
                                          [:span {:style {:font-size "1rem"}}
-                                          (:pitch (algo/parts (algo/midi->note midi nil)))]))))
+                                          (midi->pitch midi)]))))
                  :activeNotes midis
                  :width width}])
              [:p "No input"]))
          [:p "No input"])]])))
 
-(defn vexflow-score [incoming-node]
+(defn score [incoming-node]
   (let [dom-id (str (random-uuid))
         notes (set (get-in incoming-node [:data :notes]))]
     (r/create-class
      {:display-name "vexflow-score"
       :component-did-mount
       (fn [_]
-        (let [vf (Factory. (clj->js {:renderer {:elementId dom-id}
-                                     :width 500
-                                     :height 200}))
-              score (.EasyScore vf)
-              system (.System vf)
-              stave {:voices [(.voice score (.notes score (str "(" (s/join " " (map name notes)) ")/w") {:stem "up"}))]}]
-          (-> system
-              (.addStave (clj->js stave))
-              (.addClef "treble"))
-          (.draw vf)))
-
+        (let [chord? (= :input-chord (:type incoming-node))
+              sorted-notes (sort-by algo/note->midi notes)
+              pitches-str (s/join " " (map (comp name :pitch algo/parts) sorted-notes))
+              syntax (s/join "\n"
+                             ["X:1"
+                              "K:C"
+                              "L:1/4"
+                              (s/join " "
+                                      [(when chord?
+                                         (str "\"" (str (name (get-in incoming-node [:data :pitch])) (name (get-in incoming-node [:data :name]))) "\""))
+                                       (if chord?
+                                         (str "[" pitches-str "]")
+                                         pitches-str)])])]
+          (.renderAbc abcjs dom-id syntax)))
       :reagent-render
       (fn []
         [:div {:id dom-id}])})))
@@ -157,7 +162,7 @@
       (if-let [incoming-node (first @incoming-nodes)]
         (let [notes (get-in incoming-node [:data :notes])]
           (if (seq notes)
-            [vexflow-score incoming-node]
+            [score incoming-node]
             [:p "No input"]))
         [:p "No input"])])))
 
@@ -209,16 +214,17 @@
         on-edges-change (fn [changes]
                           (re-frame/dispatch [::events/set-edges (js->clj (applyEdgeChanges changes (clj->js @nodes)) :keywordize-keys true)]))
         on-connect (fn [params]
-                     (re-frame/dispatch [::events/set-edges (js->clj (addEdge params (clj->js @edges)) :keywordize-keys true)]))]
+                     (re-frame/dispatch [::events/set-edges (js->clj (addEdge params (clj->js @edges)) :keywordize-keys true)]))
+        flow-node-types (useMemo #(clj->js (reduce (fn [m node-type]
+                                                     (assoc m (:type node-type) (r/reactify-component (:component node-type))))
+                                                   {} node-types)) #js [])]
     [:div {:style {:height "100%"}}
      [:> ReactFlow {:nodes (clj->js @nodes)
                     :edges (clj->js @edges)
                     :onNodesChange on-nodes-change
                     :onEdgesChange on-edges-change
                     :onConnect on-connect
-                    :nodeTypes (clj->js (reduce (fn [m node-type]
-                                                  (assoc m (:type node-type) (r/reactify-component (:component node-type))))
-                                                {} node-types))
+                    :nodeTypes flow-node-types
                     :fitView true
                     :colorMode "dark"}
       [:> Panel {:position "top-right"}
@@ -234,4 +240,5 @@
       [:> Controls]]]))
 
 (defn main-panel []
-  [:f> flow])
+  [:> StrictMode
+   [:f> flow]])
