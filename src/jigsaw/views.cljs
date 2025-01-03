@@ -17,9 +17,10 @@
                             applyEdgeChanges
                             addEdge
                             Handle
-                            Panel]]))
+                            Panel]]
+   ["vexflow" :refer [Factory]]))
 
-(def key-width 30)
+(def key-width 20)
 
 (defn select [props & body]
   [:select (r/merge-props {:class "p-1 rounded-md border border-gray-400"} props)
@@ -35,7 +36,7 @@
 
 (defn input-piano-node [props _]
   (let [id (:id props)
-        active-midis (re-frame/subscribe [::subs/active-midis id])]
+        active-notes (re-frame/subscribe [::subs/active-notes id])]
     (r/as-element
      [node {:title "Piano"}
       [:div {:class "nodrag"}
@@ -48,8 +49,8 @@
            :noteRange {:first first-midi :last last-midi}
            :playNote (fn [midi] midi)
            :stopNote #()
-           :activeNotes @active-midis
-           :onPlayNoteInput (fn [midi _] (re-frame/dispatch [::events/toggle-midi id midi]))
+           :activeNotes (map (comp algo/note->midi keyword) @active-notes)
+           :onPlayNoteInput (fn [midi _] (re-frame/dispatch [::events/toggle-note id midi]))
            :onStopNoteInput #()
            :width width}])]
       [:> Handle {:type "source" :position "right"}]])))
@@ -96,17 +97,14 @@
   (input-shape-node {:props props}))
 
 (defn output-piano-node [props _]
-  (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])
-        incoming-node (first @incoming-nodes)]
+  (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
     (r/as-element
      [node {:title "Piano"}
       [:> Handle {:type "target" :position "left"}]
       [:div {:style {:pointerEvents "none"}}
-       (if incoming-node
-         (let [; notes (get-in incoming-node [:data :notes])
-               ; midis (map #(.fromNote MidiNumbers %) notes)
-               midis (get-in incoming-node [:data :midis])
-               ; midi->note (zipmap midis notes)
+       (if-let [incoming-node (first @incoming-nodes)]
+         (let [notes (get-in incoming-node [:data :notes])
+               midis (map algo/note->midi notes)
                sorted-midis (sort midis)]
            (if (seq sorted-midis)
              (let [first-midi (first sorted-midis)
@@ -129,13 +127,48 @@
              [:p "No input"]))
          [:p "No input"])]])))
 
+(defn vexflow-score [incoming-node]
+  (let [dom-id (str (random-uuid))
+        notes (set (get-in incoming-node [:data :notes]))]
+    (r/create-class
+     {:display-name "vexflow-score"
+      :component-did-mount
+      (fn [_]
+        (let [vf (Factory. (clj->js {:renderer {:elementId dom-id}
+                                     :width 500
+                                     :height 200}))
+              score (.EasyScore vf)
+              system (.System vf)
+              stave {:voices [(.voice score (.notes score (str "(" (s/join " " (map name notes)) ")/w") {:stem "up"}))]}]
+          (-> system
+              (.addStave (clj->js stave))
+              (.addClef "treble"))
+          (.draw vf)))
+
+      :reagent-render
+      (fn []
+        [:div {:id dom-id}])})))
+
+(defn output-music-staff-node [props _]
+  (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
+    (r/as-element
+     [node {:title "Staff"}
+      [:> Handle {:type "target" :position "left"}]
+      (if-let [incoming-node (first @incoming-nodes)]
+        (let [notes (get-in incoming-node [:data :notes])]
+          (if (seq notes)
+            [vexflow-score incoming-node]
+            [:p "No input"]))
+        [:p "No input"])])))
+
 (defn output-debug-node [props _]
-  (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])
-        incoming-node (first @incoming-nodes)]
+  (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
     (r/as-element
      [node {:props props :title "Debug"}
       [:> Handle {:type "target" :position "left"}]
-      [:pre {:class "text-left"} (with-out-str (pprint/pprint incoming-node))]])))
+      (if-let [incoming-node (first @incoming-nodes)]
+        [:pre {:class "text-left"} (with-out-str (pprint/pprint incoming-node))]
+        [:p "No input"])])))
 
 (def node-categories
   {:input "Input"
@@ -159,6 +192,10 @@
     :category :output
     :label "Piano"
     :component output-piano-node}
+   {:type :output-music-staff
+    :category :output
+    :label "Music Staff"
+    :component output-music-staff-node}
    {:type :output-debug
     :category :output
     :label "Debug"

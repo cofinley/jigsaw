@@ -10,12 +10,23 @@
  (fn [_ _]
    db/default-db))
 
+(defn js-node->clj-node
+  "Converts js node to clj (keywords, sets)"
+  [node]
+  (let [data (get-in node [:data])
+        notes (:notes data)]
+    (cond-> node
+      (some? notes) (assoc-in [:data :notes]
+                              (->> notes
+                                   (map keyword)
+                                   set)))))
+
 (re-frame/reg-event-db
  ::set-nodes
  (fn [db [_ nodes]]
    (assoc db :nodes
           (reduce (fn [m node]
-                    (assoc m (:id node) node))
+                    (assoc m (:id node) (js-node->clj-node node)))
                   {}
                   nodes))))
 
@@ -36,6 +47,7 @@
                 "input-chord" (db/->input-chord-node)
                 "input-scale" (db/->input-scale-node)
                 "output-piano" (db/->output-piano-node)
+                "output-music-staff" (db/->output-music-staff-node)
                 "output-debug" (db/->output-debug-node))
          id (:id node)]
      (assoc-in db [:nodes id] node))))
@@ -46,12 +58,12 @@
    (assoc-in db [:edges (str (:source edge) "->" (:target edge))] edge)))
 
 (re-frame/reg-event-db
- ::toggle-midi
+ ::toggle-note
  (fn [db [_ id midi]]
-   (let [path [:nodes id :data :midis]
-         midis (set (or (get-in db path) []))]
-     (assoc-in db path
-               ((if (some? (some #{midi} midis)) disj conj) midis midi)))))  ;; Reinforcing set in case of conversion to vector
+   (let [notes-path [:nodes id :data :notes]
+         notes (set (or (get-in db notes-path) #{}))
+         note (algo/midi->note midi nil)]
+     (assoc-in db notes-path ((if (some? (some #{note} notes)) disj conj) notes note)))))
 
 ;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
 (defn calculate-shape-notes [node]

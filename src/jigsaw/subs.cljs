@@ -18,25 +18,35 @@
  (fn [db]
    (or (vec (vals (:edges db))) [])))
 
+(defn find-db-node [clj-nodes js-node]
+  (first (filter (fn [clj-node] (= (:id js-node) (:id clj-node))) clj-nodes)))
+
 (re-frame/reg-sub
  ::incoming
  :<- [::nodes]
  :<- [::edges]
  (fn [[nodes edges] [_ node]]
-   (js->clj (getIncomers (clj->js node)
-                         (clj->js nodes)
-                         (clj->js edges))
-            :keywordize-keys true)))
+   (let [js-nodes (js->clj (getIncomers (clj->js node)
+                                        (clj->js nodes)
+                                        (clj->js edges))
+                           :keywordize-keys true)]
+     (map (partial find-db-node nodes) js-nodes))))
 
 (re-frame/reg-sub
  ::outgoing
  :<- [::nodes]
  :<- [::edges]
  (fn [[nodes edges] [_ node]]
-   (js->clj (getOutgoers (clj->js node)
-                         (clj->js nodes)
-                         (clj->js edges))
-            :keywordize-keys true)))
+   (let [js-nodes (js->clj (getOutgoers (clj->js node)
+                                        (clj->js nodes)
+                                        (clj->js edges))
+                           :keywordize-keys true)]
+     (map (partial find-db-node nodes) js-nodes))))
+
+(re-frame/reg-sub
+ ::active-notes
+ (fn [db [_ id]]
+   (or (get-in db [:nodes id :data :notes]) #{})))
 
 (re-frame/reg-sub
  ::active-midis

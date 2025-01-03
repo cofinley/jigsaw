@@ -4,8 +4,7 @@
   {:nodes {"1" {:id "1"
                 :position {:x 0 :y 0}
                 :type :input-piano
-                :data {:notes #{:C4 :E4 :G4}
-                       :midis #{60 64 67}}}
+                :data {:notes #{:C4 :E4 :G4}}}
            "2" {:id "2"
                 :position {:x 800 :y 0}
                 :type :output-piano
@@ -24,25 +23,25 @@
 
 (defn ->input-piano-node []
   (->node {:type :input-piano
-           :data {:notes #{}
-                  :midis #{}}}))
+           :data {:notes #{}}}))
 
 (defn ->input-chord-node []
   (->node {:type :input-chord
            :data {:pitch nil
                   :name nil
-                  :notes #{}
-                  :midis #{}}}))
+                  :notes #{}}}))
 
 (defn ->input-scale-node []
   (->node {:type :input-scale
            :data {:pitch nil
                   :name nil
-                  :notes #{}
-                  :midis #{}}}))
+                  :notes #{}}}))
 
 (defn ->output-piano-node []
   (->node {:type :output-piano}))
+
+(defn ->output-music-staff-node []
+  (->node {:type :output-music-staff}))
 
 (defn ->output-debug-node []
   (->node {:type :output-debug}))
