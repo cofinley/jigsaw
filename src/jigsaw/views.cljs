@@ -30,7 +30,7 @@
 
 (defn node [m & body]
   [:div (r/merge-props {:class "react-flow__node-default w-full flex flex-col pb-4"} (:props m))
-   [:div {:class "border-b border-gray-400 mb-5"}
+   [:div {:class "border-b border-gray-400 mb-4"}
     [:h4 {:class "w-max text-2xl"} (:title m)]]
    (for [child body]
      (with-meta child {:key (str (random-uuid))}))])
@@ -129,6 +129,23 @@
              [:p "No input"]))
          [:p "No input"])]])))
 
+(defn note->abc [n]
+  (let [{:keys [letter octave accidental]} (algo/parts n)
+        abc-accidental (case accidental
+                         "bb" "__"
+                         "b" "_"
+                         "#" "^"
+                         "##" "^^"
+                         "")
+        lowercase? (< 4 octave)
+        commas (if lowercase? 0 (- 4 octave))
+        apostrophes (if lowercase? (- octave 5) 0)]
+    (str
+     abc-accidental
+     ((if lowercase? s/lower-case str) letter)
+     (s/join (take commas (repeat ",")))
+     (s/join (take apostrophes (repeat "'"))))))
+
 (defn score [incoming-node]
   (let [dom-id (str (random-uuid))
         notes (set (get-in incoming-node [:data :notes]))]
@@ -138,7 +155,7 @@
       (fn [_]
         (let [chord? (= :input-chord (:type incoming-node))
               sorted-notes (sort-by algo/note->midi notes)
-              pitches-str (s/join " " (map (comp name :pitch algo/parts) sorted-notes))
+              pitches-str (s/join " " (map note->abc sorted-notes))
               syntax (s/join "\n"
                              ["X:1"
                               "K:C"
@@ -149,7 +166,7 @@
                                        (if chord?
                                          (str "[" pitches-str "]")
                                          pitches-str)])])]
-          (.renderAbc abcjs dom-id syntax)))
+          (.renderAbc abcjs dom-id syntax #js {:jazzchords true :lineThickness 0.1 :staffwidth (if chord? 100 (* 50 (count notes)))})))
       :reagent-render
       (fn []
         [:div {:id dom-id}])})))

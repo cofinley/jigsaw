@@ -1,8 +1,0 @@
-.vf-stave,
-.vf-stavebarline,
-.vf-clef,
-.vf-stavenote,
-.vf-stavenote > * {
-  fill: white !important;
-  stroke: white !important;
-}
