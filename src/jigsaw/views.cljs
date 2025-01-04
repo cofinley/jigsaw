@@ -147,22 +147,26 @@
      (s/join (take apostrophes (repeat "'"))))))
 
 (defn score [incoming-node]
-  (let [dom-id (str (random-uuid))
-        notes (set (get-in incoming-node [:data :notes]))]
+  (let [dom-id (str (random-uuid))]
     (r/create-class
-     {:display-name "vexflow-score"
+     {:display-name "score"
       :component-did-mount
       (fn [_]
-        (let [chord? (= :input-chord (:type incoming-node))
+        (let [notes (set (get-in incoming-node [:data :notes]))
+              chord? (= :input-chord (:type incoming-node))
+              scale? (= :input-scale (:type incoming-node))
+              pitch (get-in incoming-node [:data :pitch])
+              shape-name (get-in incoming-node [:data :name])
+              key (if scale? (str (name pitch) (name shape-name)) "C")
               sorted-notes (sort-by algo/note->midi notes)
               pitches-str (s/join " " (map note->abc sorted-notes))
               syntax (s/join "\n"
                              ["X:1"
-                              "K:C"
+                              (str "K:" key)
                               "L:1/4"
                               (s/join " "
                                       [(when chord?
-                                         (str "\"" (str (name (get-in incoming-node [:data :pitch])) (name (get-in incoming-node [:data :name]))) "\""))
+                                         (str "\"" (str (name pitch) (name shape-name)) "\""))
                                        (if chord?
                                          (str "[" pitches-str "]")
                                          pitches-str)])])]
