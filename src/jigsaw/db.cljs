@@ -1,13 +1,26 @@
 (ns jigsaw.db)
 
+; (def default-db
+;   {:nodes {"1" {:id "1"
+;                 :position {:x 0 :y 0}
+;                 :type :input-piano
+;                 :data {:notes #{:C4 :E4 :G4}}}
+;            "2" {:id "2"
+;                 :position {:x 800 :y 0}
+;                 :type :output-piano
+;                 :data {}}}
+;    :edges {"1->2" {:id "1->2"
+;                    :source "1"
+;                    :target "2"}}})
+
 (def default-db
   {:nodes {"1" {:id "1"
                 :position {:x 0 :y 0}
-                :type :input-piano
-                :data {:notes #{:C4 :E4 :G4}}}
+                :type :input-chord
+                :data {:pitch :Eb :name :m}}
            "2" {:id "2"
-                :position {:x 800 :y 0}
-                :type :output-piano
+                :position {:x 400 :y 0}
+                :type :output-debug
                 :data {}}}
    :edges {"1->2" {:id "1->2"
                    :source "1"

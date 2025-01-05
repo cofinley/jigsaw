@@ -24,14 +24,19 @@
 (def key-width 30)
 
 (defn select [props & body]
-  [:select (r/merge-props {:class "p-1 rounded-md border border-gray-400"} props)
+  [:select (r/merge-props {:class "p-1 rounded-md border border-gray-400 nodrag"} props)
    (for [child body]
      (with-meta child {:key (str (random-uuid))}))])
 
 (defn node [m & body]
-  [:div (r/merge-props {:class "react-flow__node-default w-full flex flex-col pb-4"} (:props m))
+  [:div (r/merge-props {:class "react-flow__node-default w-full flex flex-col pb-4"} (:class (:props m)))
    [:div {:class "border-b border-gray-400 mb-4"}
     [:h4 {:class "w-max text-2xl"} (:title m)]]
+   (for [child body]
+     (with-meta child {:key (str (random-uuid))}))])
+
+(defn handle [props & body]
+  [:> Handle (r/merge-props {:class "h-3 w-3"} props)
    (for [child body]
      (with-meta child {:key (str (random-uuid))}))])
 
@@ -39,7 +44,7 @@
   (let [id (:id props)
         active-notes (re-frame/subscribe [::subs/active-notes id])]
     (r/as-element
-     [node {:title "Piano"}
+     [node {:props props :title "Piano"}
       [:div {:class "nodrag"}
        (let [first-midi 60
              octaves 2
@@ -54,25 +59,26 @@
            :onPlayNoteInput (fn [midi _] (re-frame/dispatch [::events/toggle-note id midi]))
            :onStopNoteInput #()
            :width width}])]
-      [:> Handle {:type "source" :position "right"}]])))
+      [handle {:type "source" :position "right"}]])))
 
-(defn input-shape-node [m]
-  (let [id (get-in m [:props :id])
-        shape-type (if (= :input-chord (keyword (get-in m [:props :type]))) :chord :scale)
+(defn input-shape-node [props _]
+  (let [id (:id props)
+        shape-type (if (= :input-chord (keyword (:type props))) :chord :scale)
         title (if (= shape-type :chord) "Chord" "Scale")
         data (if (= shape-type :chord) specs/chords specs/scales)
         selected-pitch (re-frame/subscribe [::subs/pitch id])
         selected-name (re-frame/subscribe [::subs/name id])]
     (r/as-element
-     [node {:title title
+     [node {:props props
+            :title title
             :class "text-black"}
        ;; Pitches
       [:div {:class "flex space-x-2 items-center"}
        [:label "Pitch"]
-       [select {:value (or @selected-pitch "")
+       [select {:value @selected-pitch
                 :class "text-black"
-                :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])}
-        ^{:key ""} [:option {:value "" :disabled true} "Pitch"]
+                :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])
+                :placeholder "Pitch"}
         (for [pitch (keys (sort-by val < specs/pitches))
               :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
           ^{:key pitch}
@@ -81,27 +87,21 @@
        [:label title]
        [select {:value (or @selected-name "")
                 :class "text-black"
-                :on-change #(re-frame/dispatch [::events/set-name id (keyword (-> % .-target .-value))])}
-        ^{:key ""} [:option {:value "" :disabled true} title]
+                :on-change #(re-frame/dispatch [::events/set-name id (keyword (-> % .-target .-value))])
+                :placeholder (str title "Name")}
         (for [[shape-name details] data
               :let [aliases (::specs/aliases details)]]
           ^{:key shape-name}
           [:option {:value shape-name
                     :title (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))}
            (name shape-name)])]]
-      [:> Handle {:type "source" :position "right"}]])))
-
-(defn input-chord-node [props _]
-  (input-shape-node {:props props}))
-
-(defn input-scale-node [props _]
-  (input-shape-node {:props props}))
+      [handle {:type "source" :position "right"}]])))
 
 (defn output-piano-node [props _]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
     (r/as-element
-     [node {:title "Piano"}
-      [:> Handle {:type "target" :position "left"}]
+     [node {:props props :title "Piano"}
+      [handle {:type "target" :position "left"}]
       [:div {:style {:pointerEvents "none"}}
        (if-let [incoming-node (first @incoming-nodes)]
          (let [notes (get-in incoming-node [:data :notes])
@@ -178,8 +178,8 @@
 (defn output-music-staff-node [props _]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
     (r/as-element
-     [node {:title "Staff"}
-      [:> Handle {:type "target" :position "left"}]
+     [node {:props props :title "Staff"}
+      [handle {:type "target" :position "left"}]
       (if-let [incoming-node (first @incoming-nodes)]
         (let [notes (get-in incoming-node [:data :notes])]
           (if (seq notes)
@@ -191,7 +191,7 @@
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
     (r/as-element
      [node {:props props :title "Debug"}
-      [:> Handle {:type "target" :position "left"}]
+      [handle {:type "target" :position "left"}]
       (if-let [incoming-node (first @incoming-nodes)]
         [:pre {:class "text-left"} (with-out-str (pprint/pprint incoming-node))]
         [:p "No input"])])))
@@ -209,11 +209,11 @@
    {:type :input-chord
     :category :input
     :label "Chord"
-    :component input-chord-node}
+    :component input-shape-node}
    {:type :input-scale
     :category :input
     :label "Scale"
-    :component input-scale-node}
+    :component input-shape-node}
    {:type :output-piano
     :category :output
     :label "Piano"
@@ -233,7 +233,7 @@
         on-nodes-change (fn [changes]
                           (re-frame/dispatch [::events/set-nodes (js->clj (applyNodeChanges changes (clj->js @nodes)) :keywordize-keys true)]))
         on-edges-change (fn [changes]
-                          (re-frame/dispatch [::events/set-edges (js->clj (applyEdgeChanges changes (clj->js @nodes)) :keywordize-keys true)]))
+                          (re-frame/dispatch [::events/set-edges (js->clj (applyEdgeChanges changes (clj->js @edges)) :keywordize-keys true)]))
         on-connect (fn [params]
                      (re-frame/dispatch [::events/set-edges (js->clj (addEdge params (clj->js @edges)) :keywordize-keys true)]))
         flow-node-types (useMemo #(clj->js (reduce (fn [m node-type]

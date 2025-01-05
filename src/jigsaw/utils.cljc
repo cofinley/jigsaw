@@ -1,5 +1,6 @@
 (ns jigsaw.utils
-  (:require [clojure.set :as set]))
+  (:require [clojure.set :as set]
+            [clojure.walk :as walk]))
 
 (defn in?
   "Returns true if v in coll, else false."
@@ -26,3 +27,14 @@
         (drop (or n 1) (cycle coll))))
 
 (defn pairs [coll] (partition 2 1 coll))
+
+(defn strip-ns [m]
+  (let [strip-ns-key (fn [k]
+                       (if (keyword? k)
+                         (keyword (name k))
+                         k))]
+    (walk/postwalk (fn [x]
+                     (if (map? x)
+                       (into {} (map (fn [[k v]] [(strip-ns-key k) v]) x))
+                       x))
+                   m)))

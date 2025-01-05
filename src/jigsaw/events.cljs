@@ -3,12 +3,14 @@
    [re-frame.core :as re-frame]
    [jigsaw.db :as db]
    [jigsaw.algo :as algo]
-   [jigsaw.spec :as specs]))
+   [jigsaw.spec :as specs]
+   [jigsaw.utils :as utils]))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::initialize-db
  (fn [_ _]
-   db/default-db))
+   {:db db/default-db
+    :fx [[:dispatch [::calculate-shape "1"]]]}))
 
 (defn js-node->clj-node
   "Converts js node to clj (keywords, sets)"
@@ -17,12 +19,15 @@
         notes (:notes data)
         name (:name data)
         pitch (:pitch data)
+        pitches (:pitches data)
+        intervals (:intervals data)
         type (:type node)]
     (cond-> node
-      (some? notes) (assoc-in [:data :notes]
-                              (->> notes (map keyword) set))
+      (some? notes) (assoc-in [:data :notes] (map keyword notes))
       (some? name) (assoc-in [:data :name] (keyword name))
       (some? pitch) (assoc-in [:data :pitch] (keyword pitch))
+      (some? pitches) (assoc-in [:data :pitches] (map keyword pitches))
+      (some? intervals) (assoc-in [:data :intervals] (map keyword intervals))
       (some? type) (assoc :type (keyword type)))))
 
 (re-frame/reg-event-db
@@ -39,7 +44,7 @@
  (fn [db [_ edges]]
    (assoc db :edges
           (reduce (fn [m edge]
-                    (assoc m (str (:source edge) "->" (:target edge)) edge))
+                    (assoc m (:id edge) edge))
                   {}
                   edges))))
 
@@ -70,28 +75,34 @@
      (assoc-in db notes-path ((if (some? (some #{note} notes)) disj conj) notes note)))))
 
 ;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
-(defn calculate-shape-notes [node]
+(defn calculate-shape [node]
   (let [shape-type (if (= :input-chord (keyword (:type node))) :chord :scale)
         {:keys [pitch name]} (:data node)]
     (when (and (some? pitch) (some? name))
-      (::specs/notes (algo/resolve-shape (algo/pitch->note pitch) shape-type (keyword name))))))
+      (algo/resolve-shape (algo/pitch->note pitch) shape-type (keyword name)))))
 
 (re-frame/reg-event-db
+ ::calculate-shape
+ (fn [db [_ id]]
+   (let [node (get-in db [:nodes id])
+         shape (calculate-shape node)]
+     (cond-> db
+       (some? shape) (update-in [:nodes id :data] merge (utils/strip-ns shape))))))
+
+(re-frame/reg-event-fx
  ::set-pitch
- (fn [db [_ id pitch]]
-   (let [node (get-in db [:nodes id])
-         new-node (assoc-in node [:data :pitch] pitch)
-         notes (calculate-shape-notes new-node)]
-     (cond-> db
-       true (assoc-in [:nodes id] new-node)
-       (some? notes) (assoc-in [:nodes id :data :notes] notes)))))
+ (fn [cofx [_ id pitch]]
+   (let [db (:db cofx)
+         node (get-in db [:nodes id])
+         new-node (assoc-in node [:data :pitch] pitch)]
+     {:db (assoc-in db [:nodes id] new-node)
+      :fx [[:dispatch [::calculate-shape id]]]})))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::set-name
- (fn [db [_ id name]]
-   (let [node (get-in db [:nodes id])
-         new-node (assoc-in node [:data :name] name)
-         notes (calculate-shape-notes new-node)]
-     (cond-> db
-       true (assoc-in [:nodes id] new-node)
-       (some? notes) (assoc-in [:nodes id :data :notes] notes)))))
+ (fn [cofx [_ id name]]
+   (let [db (:db cofx)
+         node (get-in db [:nodes id])
+         new-node (assoc-in node [:data :name] name)]
+     {:db (assoc-in db [:nodes id] new-node)
+      :fx [[:dispatch [::calculate-shape id]]]})))
