@@ -8,9 +8,8 @@
 
 (defn output-debug-node [props _]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
-    (r/as-element
-     [node {:props props :title "Debug"}
-      [handle {:type "target" :position "left"}]
-      (if-let [incoming-node (first @incoming-nodes)]
-        [:pre {:class "text-left"} (with-out-str (pprint/pprint incoming-node))]
-        [:p "No input"])])))
+    [node {:title "Debug"}
+     [handle {:type "target" :position "left"}]
+     (if-let [incoming-node (first @incoming-nodes)]
+       [:pre {:class "text-left"} (with-out-str (pprint/pprint incoming-node))]
+       [:p "No input"])]))

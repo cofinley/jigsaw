@@ -56,13 +56,12 @@
 
 (defn output-music-staff-node [props _]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
-    (r/as-element
-     [node {:props props :title "Staff"}
-      [handle {:type "target" :position "left"}]
-      (if-let [incoming-node (first @incoming-nodes)]
-        (let [notes (get-in incoming-node [:data :notes])]
-          (if (seq notes)
-            [score incoming-node]
-            [:p "No input"]))
-        [:p "No input"])])))
+    [node {:title "Staff"}
+     [handle {:type "target" :position "left"}]
+     (if-let [incoming-node (first @incoming-nodes)]
+       (let [notes (get-in incoming-node [:data :notes])]
+         (if (seq notes)
+           [score incoming-node]
+           [:p "No input"]))
+       [:p "No input"])]))
 
