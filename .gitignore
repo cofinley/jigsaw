@@ -51,3 +51,10 @@
 # Include ClojureScript Figwheel
 !figwheel-main.edn
 !*.cljs.edn
+
+# ------------------------
+# JS
+!package*.json
+!shadow-cljs.edn
+!karma.conf.js
+resources/public/js/compiled/

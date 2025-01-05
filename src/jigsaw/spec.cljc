@@ -1,5 +1,4 @@
 (ns jigsaw.spec
-  (:gen-class)
   (:require [clojure.spec.alpha :as s]))
 
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
@@ -15,7 +14,7 @@
         m
         (keyword (str letter "bb")) (- semitone 2)   ; Double-flat
         (keyword (str letter "b")) (- semitone 1)    ; Flat
-        (keyword (str letter)) semitone                       ; Natural
+        (keyword (str letter)) semitone              ; Natural
         (keyword (str letter "#")) (+ semitone 1)    ; Sharp
         (keyword (str letter "##")) (+ semitone 2))) ; Double-sharp
      {}
@@ -108,6 +107,7 @@
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
 (def pitch-or-note-pattern (re-pattern (str "^" (str note-pattern-str "?") "$")))
 (s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
+(s/def ::notes (s/coll-of ::note))
 (defn note? [n] (s/valid? ::note n))
 (s/def ::pitch-or-note (s/or :pitch pitch? :note note?))
 (defn pitch-or-note? [x] (s/valid? ::pitch-or-note x))
@@ -382,5 +382,3 @@
     :b12 :12 :#12})
 (s/def ::degree degrees)
 (s/def ::degree-base-scale (s/and keyword? #(contains? scales %)))
-
-;; Key (signature)

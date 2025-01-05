@@ -60,7 +60,7 @@
         index (get specs/pitches pitch)]
     (+ index (* 12 (inc octave)))))
 
-(defn midi->note [midi]
+(defn midi->note [midi _key]
   {:pre [(s/valid? ::specs/midi midi)]
    :post [(s/valid? ::specs/note %)]}
   (let [octave (dec (int (/ midi 12)))
@@ -185,8 +185,12 @@
         interval-semitone (get-in specs/intervals [interval ::specs/semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
-        ;; TODO: don't change octave if letter on octave boundary (B# going up, Cb going down)
-        new-octave (+ octave (* (or multiplier 1) (math/floor-div (+ semitone interval-semitone) 12)))]
+        crossing-octaves? (utils/in? [:Cb :B#] new-pitch) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
+        octave-offset (* (or multiplier 1)
+                         (if crossing-octaves? 1
+                             (math/floor-div (+ semitone interval-semitone) 12)))
+        new-octave (+ octave octave-offset)]
+    (prn n semitone interval interval-semitone new-pitch new-octave)
     (keyword (str new-pitch-str new-octave))))
 
 (defn +interval
@@ -194,9 +198,11 @@
   {:pre [(specs/pitch-or-note? x)
          (specs/interval? interval)]
    :post [(specs/pitch-or-note? %)]}
-  (if (specs/pitch? x)
-    (pitch+interval x interval multiplier)
-    (note+interval x interval multiplier)))
+  (if (= :P1 interval)
+    x
+    (if (specs/pitch? x)
+      (pitch+interval x interval multiplier)
+      (note+interval x interval multiplier))))
 
 (defn resolve-shape
   [x shape-type shape-name]
@@ -283,8 +289,9 @@
             scale-intervals))))
 
 (comment
-  (let [scale (resolve-shape :C :scale :major)]
-    (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))))
+  (let [scale (resolve-shape :E :scale :harmonic-minor)
+        {pitches ::specs/pitches chord-lists :chords} (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))
+        chords (map first chord-lists)]))
 
 (defn scale->mode
   [scale n]

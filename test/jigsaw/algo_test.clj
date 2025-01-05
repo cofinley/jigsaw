@@ -57,7 +57,7 @@
           :C4 :C#4 1
           :C4 :D4 2
           :C4 :B4 11
-          :C4 :B#4 12
+          :C4 :B#4 12 ; B#4 is enharmonically equivalent to C5
           :C4 :C5 12
           :C4 :E5 16
           :C4 :E6 16
@@ -147,9 +147,10 @@
         :C4  60
         :C#4 61
         :Db4 61
+        :Cb4 59 ; In octave 4, but Cb4 is enharmonically equivalent to B3
         :C0  12))
     (testing "with midi->note"
-      (are+ [midi want] (= want (algo/midi->note midi))
+      (are+ [midi want] (= want (algo/midi->note midi nil))
         60 :C4
         61 :C#4
         62 :D4
@@ -265,6 +266,7 @@
             :C4 :P1  :C4
             :C4 :P8  :C5
             :C4 :P11 :F5
+            :Db4 :m7 :Cb5  ; If going up to boundary pitch, increment octave
             :F#4 :A5 :C##5))
         (testing "subtracting"
           (are+ [n interval want] (= want (algo/+interval n interval -1))
