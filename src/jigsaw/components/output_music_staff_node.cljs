@@ -5,7 +5,7 @@
    [re-frame.core :as re-frame]
    [jigsaw.algo :as algo]
    [jigsaw.subs :as subs]
-   [jigsaw.components.node :refer [node handle]]
+   [jigsaw.components.node :refer [node]]
    ["abcjs" :as abcjs]))
 
 (defn note->abc [n]
@@ -56,8 +56,7 @@
 
 (defn output-music-staff-node [props _]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
-    [node {:title "Staff"}
-     [handle {:type "target" :position "left"}]
+    [node {:title "Staff" :handle {:type "target" :position "left"}}
      (if-let [incoming-node (first @incoming-nodes)]
        (let [notes (get-in incoming-node [:data :notes])]
          (if (seq notes)

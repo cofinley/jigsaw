@@ -3,6 +3,8 @@
   position: relative;
   /* Used to lay out .ReactPiano__Key--natural elements */
   display: flex;
+
+  --piano-key-active-bg-color: rgb(99, 102, 241)
 }
 
 .ReactPiano__Key {
@@ -53,18 +55,18 @@
  * Styles of "active" or pressed-down keys
  */
 .ReactPiano__Key--active {
-  background: #3ac8da;
+  background: var(--piano-key-active-bg-color);
 }
 
 .ReactPiano__Key--active.ReactPiano__Key--accidental {
   border: 1px solid #fff;
-  border-top: 1px solid #3ac8da;
+  border-top: 1px solid var(--piano-key-active-bg-color);
   /* Slight height reduction for "pushed-down" effect */
   height: 65%;
 }
 
 .ReactPiano__Key--active.ReactPiano__Key--natural {
-  border: 1px solid #3ac8da;
+  border: 1px solid var(--piano-key-active-bg-color);
   /* Slight height reduction for "pushed-down" effect */
   height: 98%;
 }

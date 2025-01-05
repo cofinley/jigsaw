@@ -1,7 +1,6 @@
 (ns jigsaw.components.flow
   (:require
    [reagent.core :as r]
-   [reagent.debug :refer [prn]]
    [re-frame.core :as re-frame]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]

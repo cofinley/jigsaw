@@ -5,7 +5,7 @@
    [jigsaw.algo :as algo]
    [jigsaw.subs :as subs]
    [jigsaw.components.select :refer [select]]
-   [jigsaw.components.node :refer [node handle]]
+   [jigsaw.components.node :refer [node]]
    ["react-piano" :refer [Piano]]))
 
 (def key-width 30)
@@ -15,8 +15,7 @@
         selected-label (r/atom :pitches)
         label-types [:pitches :intervals :degrees]]
     (fn [props _]
-      [node {:title "Piano"}
-       [handle {:type "target" :position "left"}]
+      [node {:title "Piano" :handle {:type "target" :position "left"}}
        (if-let [incoming-node (first @incoming-nodes)]
          (let [data (:data incoming-node)
                notes (:notes data)]
@@ -48,7 +47,7 @@
                                       (let [{midi :midiNumber active? :isActive} (js->clj _data :keywordize-keys true)]
                                         (when active?
                                           (r/as-element
-                                           [:span {:style {:font-size "1rem"}}
+                                           [:b {:style {:font-size "1rem"}}
                                             (midi->label midi)]))))
                    :activeNotes midis
                    :width width}]]])

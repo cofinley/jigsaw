@@ -1,13 +1,12 @@
 (ns jigsaw.components.input-shape-node
   (:require
    [clojure.string :as s]
-   [reagent.core :as r]
    [re-frame.core :as re-frame]
    [jigsaw.spec :as specs]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
    [jigsaw.components.select :refer [select]]
-   [jigsaw.components.node :refer [node handle]]))
+   [jigsaw.components.node :refer [node]]))
 
 (defn input-shape-node [props _]
   (let [id (:id props)
@@ -16,7 +15,7 @@
         data (if (= shape-type :chord) specs/chords specs/scales)
         selected-pitch (re-frame/subscribe [::subs/pitch id])
         selected-name (re-frame/subscribe [::subs/name id])]
-    [node {:title title}
+    [node {:title title :handle {:type "source" :position "right"}}
        ;; Pitches
      [:div {:class "flex space-x-2 items-center"}
       [:label "Pitch"]
@@ -40,5 +39,4 @@
                    :let [aliases (::specs/aliases details)]]
                [:option {:value shape-name
                          :title (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))}
-                (name shape-name)]))]]
-     [handle {:type "source" :position "right"}]]))
+                (name shape-name)]))]]]))
