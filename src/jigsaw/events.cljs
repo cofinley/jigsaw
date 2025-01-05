@@ -3,7 +3,6 @@
    [re-frame.core :as re-frame]
    [jigsaw.db :as db]
    [jigsaw.algo :as algo]
-   [jigsaw.spec :as specs]
    [jigsaw.utils :as utils]))
 
 (re-frame/reg-event-fx

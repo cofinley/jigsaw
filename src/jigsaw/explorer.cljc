@@ -4,8 +4,7 @@
    [clojure.datafy :as d]
    ; [portal.api :as portal]
    [jigsaw.spec :as specs]
-   [jigsaw.algo :as algo]
-   [jigsaw.utils :as utils]))
+   [jigsaw.algo :as algo]))
 
 "
 Use cases
