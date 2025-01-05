@@ -10,7 +10,8 @@
  ::initialize-db
  (fn [_ _]
    {:db db/default-db
-    :fx [[:dispatch [::calculate-shape "1"]]]}))
+    :fx [[:dispatch [::calculate-shape "1"]]
+         [:dispatch [::calculate-shape "3"]]]}))
 
 (defn js-node->clj-node
   "Converts js node to clj (keywords, sets)"
