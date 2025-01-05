@@ -3,7 +3,7 @@
    [clojure.string :as s]
    [cljs.pprint :as pprint]
    [reagent.core :as r]
-   [reagent.debug :refer [log prn]]
+   [reagent.debug :refer [prn]]
    [re-frame.core :as re-frame]
    [jigsaw.algo :as algo]
    [jigsaw.spec :as specs]
@@ -23,10 +23,9 @@
 
 (def key-width 30)
 
-(defn select [props & body]
+(defn select [props options]
   [:select (r/merge-props {:class "p-1 rounded-md border border-gray-400 nodrag"} props)
-   (for [child body]
-     (with-meta child {:key (str (random-uuid))}))])
+   (map #(with-meta % {:key (str (random-uuid))}) options)])
 
 (defn node [m & body]
   [:div (r/merge-props {:class "react-flow__node-default w-full flex flex-col pb-4"} (:class (:props m)))
@@ -79,24 +78,23 @@
                 :class "text-black"
                 :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])
                 :placeholder "Pitch"}
-        ^{:key ""} [:option {:disabled true :value ""} "Pitch"]
-        (for [pitch (keys (sort-by val < specs/pitches))
-              :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
-          ^{:key pitch}
-          [:option {:value pitch} (name pitch)])]
+        (cons
+         [:option {:disabled true :value ""} "Pitch"]
+         (for [pitch (keys (sort-by val < specs/pitches))
+               :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
+           [:option {:value pitch} (name pitch)]))]
        ;; Shape names
        [:label title]
        [select {:value (or @selected-name "")
                 :class "text-black"
                 :on-change #(re-frame/dispatch [::events/set-name id (keyword (-> % .-target .-value))])
                 :placeholder (str title "Name")}
-        ^{:key ""} [:option {:disabled true :value ""} title]
-        (for [[shape-name details] data
-              :let [aliases (::specs/aliases details)]]
-          ^{:key shape-name}
-          [:option {:value shape-name
-                    :title (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))}
-           (name shape-name)])]]
+        (cons [:option {:disabled true :value ""} title]
+              (for [[shape-name details] data
+                    :let [aliases (::specs/aliases details)]]
+                [:option {:value shape-name
+                          :title (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))}
+                 (name shape-name)]))]]
       [handle {:type "source" :position "right"}]])))
 
 (defn output-piano-node [props _]
@@ -128,7 +126,7 @@
                              :placeholder "Key Labels"}
                      (for [label-type label-types
                            :when (contains? (:data incoming-node) label-type)]
-                       ^{:key label-type} [:option (name label-type)])]])
+                       [:option (name label-type)])]])
                  [:div {:style {:pointerEvents "none"}}
                   [:> Piano
                    {:noteRange {:first midi-range-start :last midi-range-end}
@@ -267,12 +265,13 @@
       [:> Panel {:position "top-right"}
        [select {:on-change #(re-frame/dispatch [::events/add-node (-> % .-target .-value)])
                 :default-value ""}
-        ^{:key "-1"} [:option {:disabled true :value ""} "(Add Node)"]
-        (for [[cat-k cat-label] node-categories]
-          ^{:key cat-label} [:optgroup {:label cat-label}
-                             (for [node-type node-types
-                                   :when (= cat-k (:category node-type))]
-                               ^{:key node-type} [:option {:value (:type node-type)} (:label node-type)])])]]
+        (cons
+         [:option {:disabled true :value ""} "(Add Node)"]
+         (for [[cat-k cat-label] node-categories]
+           [:optgroup {:label cat-label}
+            (for [node-type node-types
+                  :when (= cat-k (:category node-type))]
+              ^{:key node-type} [:option {:value (:type node-type)} (:label node-type)])]))]]
       [:> Background]
       [:> Controls]]]))
 
