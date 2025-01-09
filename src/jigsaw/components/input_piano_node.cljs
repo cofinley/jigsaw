@@ -9,7 +9,7 @@
 
 (def key-width 30)
 
-(defn input-piano-node [props _]
+(defn input-piano-node [props]
   (let [id (:id props)
         active-notes (re-frame/subscribe [::subs/active-notes id])]
     [node {:title "Piano" :handle {:type "source" :position "right"}}

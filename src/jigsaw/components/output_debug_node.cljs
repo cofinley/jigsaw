@@ -5,7 +5,7 @@
    [jigsaw.subs :as subs]
    [jigsaw.components.node :refer [node]]))
 
-(defn output-debug-node [props _]
+(defn output-debug-node [props]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
     [node {:title "Debug" :handle {:type "target" :position "left"}}
      (if-let [incoming-node (first @incoming-nodes)]

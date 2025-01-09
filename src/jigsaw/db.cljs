@@ -2,19 +2,19 @@
 
 (def default-db
   {:nodes {"1" {:id "1"
-                :position {:x 0 :y 0}
+                :position {:x 0 :y 50}
                 :type :input-chord
                 :data {:pitch :Eb :name :m}}
            "2" {:id "2"
-                :position {:x 400 :y 0}
+                :position {:x 450 :y 0}
                 :type :output-piano
                 :data {}}
            "3" {:id "3"
-                :position {:x 0 :y 300}
+                :position {:x 0 :y 350}
                 :type :input-scale
                 :data {:pitch :Eb :name :mixolydian}}
            "4" {:id "4"
-                :position {:x 400 :y 300}
+                :position {:x 450 :y 300}
                 :type :output-piano
                 :data {}}}
    :edges {"1->2" {:id "1->2"

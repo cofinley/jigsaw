@@ -10,11 +10,11 @@
 
 (def key-width 30)
 
-(defn output-piano-node [props _]
+(defn output-piano-node [props]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])
         selected-label (r/atom :pitches)
         label-types [:pitches :intervals :degrees]]
-    (fn [props _]
+    (fn [props]
       [node {:title "Piano" :handle {:type "target" :position "left"}}
        (if-let [incoming-node (first @incoming-nodes)]
          (let [data (:data incoming-node)
