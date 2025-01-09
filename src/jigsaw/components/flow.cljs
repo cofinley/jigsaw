@@ -50,6 +50,17 @@
     :label "Debug"
     :component output-debug-node}])
 
+(defn memoized-node
+  "Memoize node so it only re-renders if data changes"
+  [props]
+  (let [{:keys [id type data]} (js->clj props :keywordize-keys true)]
+    (useMemo
+     (fn []
+       (r/as-element
+        [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
+         {:id id :type type :data data}]))
+     #js [data])))
+
 (defn flow []
   (let [nodes (re-frame/subscribe [::subs/nodes])
         edges (re-frame/subscribe [::subs/edges])
@@ -60,7 +71,7 @@
         on-connect (fn [params]
                      (re-frame/dispatch [::events/set-edges (js->clj (addEdge params (clj->js @edges)) :keywordize-keys true)]))
         flow-node-types (useMemo #(clj->js (reduce (fn [m node-type]
-                                                     (assoc m (:type node-type) (r/reactify-component (:component node-type))))
+                                                     (assoc m (:type node-type) memoized-node))
                                                    {} node-types)) #js [])]
     [:div {:style {:height "100%"}}
      [:> ReactFlow {:nodes (clj->js @nodes)

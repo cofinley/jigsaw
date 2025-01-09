@@ -9,9 +9,8 @@
 
 (def key-width 30)
 
-(defn input-piano-node [props]
-  (let [id (:id props)
-        active-notes (re-frame/subscribe [::subs/active-notes id])]
+(defn input-piano-node [{:keys [id]}]
+  (let [active-notes (re-frame/subscribe [::subs/active-notes id])]
     [node {:title "Piano" :handle {:type "source" :position "right"}}
      [:div {:class "nodrag"}
       (let [first-midi 60
