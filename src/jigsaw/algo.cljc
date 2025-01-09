@@ -185,13 +185,19 @@
         interval-semitone (get-in specs/intervals [interval ::specs/semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
-        crossing-octaves? (utils/in? [:Cb :B#] new-pitch) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
+        crossing-octaves? (if (= 1 (or multiplier 1))
+                            (= :Cb new-pitch)
+                            (= :B# new-pitch)) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
+        keep-octave? (if (= 1 (or multiplier 1))
+                       (= :B# new-pitch)
+                       (= :Cb new-pitch)) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
         octave-offset (* (or multiplier 1)
                          (if crossing-octaves? 1
                              (math/floor-div (+ semitone interval-semitone) 12)))
-        new-octave (+ octave octave-offset)]
-    (prn n semitone interval interval-semitone new-pitch new-octave)
+        new-octave (if keep-octave? octave (+ octave octave-offset))]
     (keyword (str new-pitch-str new-octave))))
+
+(comment (str \C))
 
 (defn +interval
   [x interval & [multiplier]]
@@ -345,3 +351,17 @@
 ;; TODO move to search.clj
 (defn find-chord [xs])
 (defn find-scale [xs])
+
+(defn- circle-of-fifths [major-or-minor]
+  (zipmap (case major-or-minor
+            :major [:Cb :Gb :Db :Ab :Eb :Bb :F
+                    :C :G :D :A :E :B :F# :C#]
+            :minor [:Ab :Eb :Bb :F :C :G :D
+                    :A :E :B :F# :C# :G# :D# :A#])
+          (range -7 8)))
+
+(defn key-signature [pitch major-or-minor]
+  (let [n ((circle-of-fifths major-or-minor) pitch)]
+    (if (pos? n)
+      (map (comp keyword #(str % "#")) (set (take n "FCGDAEB")))
+      (map (comp keyword #(str % "b")) (set (take (Math/abs n) "BEADGCF"))))))

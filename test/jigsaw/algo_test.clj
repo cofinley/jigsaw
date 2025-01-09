@@ -266,6 +266,7 @@
             :C4 :P1  :C4
             :C4 :P8  :C5
             :C4 :P11 :F5
+            :D#4 :M6 :B#4
             :Db4 :m7 :Cb5  ; If going up to boundary pitch, increment octave
             :F#4 :A5 :C##5))
         (testing "subtracting"
@@ -352,7 +353,7 @@
                                  :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                                  :degrees [:1 :2 :3 :4 :5 :6 :7]
                                  :pitches [:C# :D# :E# :F# :G# :A# :B#]
-                                 :notes [:C#4 :D#4 :E#4 :F#4 :G#4 :A#4 :B#5]}  ; B#5 but should be 4
+                                 :notes [:C#4 :D#4 :E#4 :F#4 :G#4 :A#4 :B#4]}
             :F#4 :major #::specs{:name :major
                                  :pitch :F#
                                  :aliases ["ionian"]
