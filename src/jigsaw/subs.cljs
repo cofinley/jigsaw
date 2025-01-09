@@ -1,7 +1,6 @@
 (ns jigsaw.subs
   (:require
-   [re-frame.core :as re-frame]
-   ["@xyflow/react" :refer [getIncomers getOutgoers]]))
+   [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
  ::nodes
@@ -20,25 +19,17 @@
 
 (re-frame/reg-sub
  ::incoming
- (fn [db [_ node]]
-   (let [nodes (vals (:nodes db))
-         edges (vals (:edges db))
-         js-nodes (js->clj (getIncomers (clj->js node)
-                                        (clj->js nodes)
-                                        (clj->js edges))
-                           :keywordize-keys true)]
-     (map #(get-in db [:nodes (:id %)]) js-nodes))))
+ (fn [db [_ id]]
+   (let [edges (vals (:edges db))]
+     (map #(get-in db [:nodes (:source %)])
+          (filter #(= (:target %) id) edges)))))
 
 (re-frame/reg-sub
  ::outgoing
- (fn [db [_ node]]
-   (let [nodes (vals (:nodes db))
-         edges (vals (:edges db))
-         js-nodes (js->clj (getOutgoers (clj->js node)
-                                        (clj->js nodes)
-                                        (clj->js edges))
-                           :keywordize-keys true)]
-     (map #(get-in db [:nodes (:id %)]) js-nodes))))
+ (fn [db [_ id]]
+   (let [edges (vals (:edges db))]
+     (map #(get-in db [:nodes (:source %)])
+          (filter #(= (:source %) id) edges)))))
 
 (re-frame/reg-sub
  ::active-notes
@@ -49,6 +40,11 @@
  ::active-midis
  (fn [db [_ id]]
    (or (get-in db [:nodes id :data :midis]) #{})))
+
+(re-frame/reg-sub
+ ::data
+ (fn [db [_ id]]
+   (get-in db [:nodes id :data])))
 
 (re-frame/reg-sub
  ::pitch

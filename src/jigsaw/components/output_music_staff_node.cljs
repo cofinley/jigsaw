@@ -54,8 +54,8 @@
       (fn []
         [:div {:id dom-id}])})))
 
-(defn output-music-staff-node [props]
-  (let [incoming-nodes (re-frame/subscribe [::subs/incoming props])]
+(defn output-music-staff-node [{:keys [id]}]
+  (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])]
     [node {:title "Staff" :handle {:type "target" :position "left"}}
      (if-let [incoming-node (first @incoming-nodes)]
        (let [notes (get-in incoming-node [:data :notes])]

@@ -9,17 +9,16 @@
    [jigsaw.components.node :refer [node]]))
 
 (defn input-shape-node [{:keys [id type]}]
-  (let [shape-type (if (= :input-chord (keyword type)) :chord :scale)
+  (let [data (re-frame/subscribe [::subs/data id])
+        shape-type (if (= :input-chord (keyword type)) :chord :scale)
         title (if (= shape-type :chord) "Chord" "Scale")
-        shapes (if (= shape-type :chord) specs/chords specs/scales)
-        selected-pitch (re-frame/subscribe [::subs/pitch id])
-        selected-name (re-frame/subscribe [::subs/name id])]
+        shapes (if (= shape-type :chord) specs/chords specs/scales)]
     [node {:title title :handle {:type "source" :position "right"}}
      ;; Pitches
      [:div {:class "flex flex-col text-xl items-start space-y-4"}
       [:label {:class "space-x-4"}
        [:span "Pitch"]
-       [select {:value (or @selected-pitch "")
+       [select {:value (or (:pitch @data) "")
                 :class "text-black"
                 :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])
                 :placeholder "Pitch"}
@@ -31,7 +30,7 @@
        ;; Shape names
       [:label {:class "space-x-2"}
        [:span title]
-       [select {:value (or @selected-name "")
+       [select {:value (or (:name @data) "")
                 :class "text-black"
                 :on-change #(re-frame/dispatch [::events/set-name id (keyword (-> % .-target .-value))])
                 :placeholder (str title "Name")}
