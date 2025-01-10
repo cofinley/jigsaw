@@ -56,7 +56,7 @@
 
 (defn output-music-staff-node [{:keys [id]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])]
-    [node {:title "Staff" :handle {:type "target" :position "left"}}
+    [node {:title "Staff" :handles [{:type "target" :position "left"}]}
      (if-let [incoming-node (first @incoming-nodes)]
        (let [notes (get-in incoming-node [:data :notes])]
          (if (seq notes)

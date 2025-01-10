@@ -11,7 +11,7 @@
 
 (defn input-piano-node [{:keys [id]}]
   (let [active-notes (re-frame/subscribe [::subs/active-notes id])]
-    [node {:title "Piano" :handle {:type "source" :position "right"}}
+    [node {:title "Piano" :handles [{:type "source" :position "right"}]}
      [:div {:class "nodrag"}
       (let [first-midi 60
             octaves 2

@@ -48,6 +48,10 @@
                   :name nil
                   :notes #{}}}))
 
+(defn ->function-scale-chords-node []
+  (->node {:type :function-scale-chords
+           :data {:selected-chord nil}}))
+
 (defn ->output-piano-node []
   (->node {:type :output-piano}))
 

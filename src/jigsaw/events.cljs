@@ -55,6 +55,7 @@
                 "input-piano" (db/->input-piano-node)
                 "input-chord" (db/->input-chord-node)
                 "input-scale" (db/->input-scale-node)
+                "function-scale-chords" (db/->function-scale-chords-node)
                 "output-piano" (db/->output-piano-node)
                 "output-music-staff" (db/->output-music-staff-node)
                 "output-debug" (db/->output-debug-node))
@@ -76,7 +77,7 @@
 
 ;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
 (defn calculate-shape [node]
-  (let [shape-type (if (= :input-chord (keyword (:type node))) :chord :scale)
+  (let [shape-type (if (utils/in? [:input-chord :function-scale-chords] (keyword (:type node))) :chord :scale)
         {:keys [pitch name]} (:data node)]
     (when (and (some? pitch) (some? name))
       (algo/resolve-shape (algo/pitch->note pitch) shape-type (keyword name)))))
@@ -88,6 +89,11 @@
          shape (calculate-shape node)]
      (cond-> db
        (some? shape) (update-in [:nodes id :data] merge (utils/strip-ns shape))))))
+
+(re-frame/reg-event-db
+ ::update-node-data
+ (fn [db [_ id data]]
+   (update-in db [:nodes id :data] merge data)))
 
 (re-frame/reg-event-fx
  ::set-pitch
@@ -104,5 +110,14 @@
    (let [db (:db cofx)
          node (get-in db [:nodes id])
          new-node (assoc-in node [:data :name] name)]
+     {:db (assoc-in db [:nodes id] new-node)
+      :fx [[:dispatch [::calculate-shape id]]]})))
+
+(re-frame/reg-event-fx
+ ::set-selected-chord
+ (fn [cofx [_ id selected-chord]]
+   (let [db (:db cofx)
+         node (get-in db [:nodes id])
+         new-node (assoc-in node [:data :selected-chord] selected-chord)]
      {:db (assoc-in db [:nodes id] new-node)
       :fx [[:dispatch [::calculate-shape id]]]})))

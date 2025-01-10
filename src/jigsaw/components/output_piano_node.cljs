@@ -15,7 +15,7 @@
         selected-label (r/atom :pitches)
         label-types [:pitches :intervals :degrees]]
     (fn [{:keys [id]}]
-      [node {:title "Piano" :handle {:type "target" :position "left"}}
+      [node {:title "Piano" :handles [{:type "target" :position "left"}]}
        (if-let [incoming-node (first @incoming-nodes)]
          (let [data (:data incoming-node)
                notes (:notes data)]

@@ -45,13 +45,3 @@
  ::data
  (fn [db [_ id]]
    (get-in db [:nodes id :data])))
-
-(re-frame/reg-sub
- ::pitch
- (fn [db [_ id]]
-   (get-in db [:nodes id :data :pitch])))
-
-(re-frame/reg-sub
- ::name
- (fn [db [_ id]]
-   (get-in db [:nodes id :data :name])))

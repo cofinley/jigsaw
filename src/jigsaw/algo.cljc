@@ -22,8 +22,8 @@
   {:pre [(every? specs/pitch-or-note? [x1 x2])]}
   (let [{letter1 :letter} (parts x1)
         {letter2 :letter} (parts x2)
-        i1 (int letter1)
-        i2 (int letter2)]
+        i1 (#?(:clj int :cljs .charCodeAt) letter1)
+        i2 (#?(:clj int :cljs .charCodeAt) letter2)]
     (inc (mod (- i2 i1) 7))))
 
 (defn- lesser? [s] (some (partial string/includes? s) ["d" "m"]))
@@ -107,9 +107,9 @@
         matching-intervals (specs/intervals-by-semitone semitone-distance)]
     (if (= (count matching-intervals) 1)
       (first matching-intervals)
-      (let [staff-distance (staff-distance x1 x2)]
-        (first (filter #(or (string/includes? % (str staff-distance))
-                            (string/includes? % (str (+ 7 staff-distance))))
+      (let [distance (staff-distance x1 x2)]
+        (first (filter #(or (string/includes? (name %) (str distance))
+                            (string/includes? (name %) (str (+ 7 distance))))
                        matching-intervals))))))
 
 (defn- letter+
@@ -262,7 +262,7 @@
 
 (defn scale-chords-exact
   [scale & {:keys [num-thirds]}]
-  (let [{start-pitch ::specs/pitch scale-name ::specs/name} scale
+  (let [{start-pitch :pitch scale-name :name} scale
         scale (specs/scales scale-name)
         scale-intervals (::specs/intervals scale)
         scale-pitches (map (partial +interval start-pitch) scale-intervals)]
@@ -281,7 +281,7 @@
   [scale & {:keys [exact? num-thirds] :or {exact? false num-thirds 4}}]
   (if exact?
     (scale-chords-exact scale :num-thirds num-thirds)
-    (let [{:keys [::specs/pitch ::specs/name]} scale
+    (let [{:keys [pitch name]} scale
           scale (specs/scales name)
           scale-intervals (::specs/intervals scale)
           scale-pitches (set (map (partial +interval pitch) scale-intervals))]

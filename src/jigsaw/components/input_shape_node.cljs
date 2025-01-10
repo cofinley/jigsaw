@@ -13,13 +13,12 @@
         shape-type (if (= :input-chord (keyword type)) :chord :scale)
         title (if (= shape-type :chord) "Chord" "Scale")
         shapes (if (= shape-type :chord) specs/chords specs/scales)]
-    [node {:title title :handle {:type "source" :position "right"}}
+    [node {:title title :handles [{:type "source" :position "right"}]}
      ;; Pitches
      [:div {:class "flex flex-col text-xl items-start space-y-4"}
       [:label {:class "space-x-4"}
        [:span "Pitch"]
        [select {:value (or (:pitch @data) "")
-                :class "text-black"
                 :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])
                 :placeholder "Pitch"}
         (cons

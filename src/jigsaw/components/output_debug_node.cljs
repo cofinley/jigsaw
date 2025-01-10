@@ -7,7 +7,7 @@
 
 (defn output-debug-node [{:keys [id]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])]
-    [node {:title "Debug" :handle {:type "target" :position "left"}}
+    [node {:title "Debug" :handles [{:type "target" :position "left"}]}
      (if-let [incoming-node (first @incoming-nodes)]
        [:pre {:class "text-left"} (with-out-str (pprint/pprint incoming-node))]
        [:p "No input"])]))
