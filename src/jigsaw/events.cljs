@@ -48,24 +48,33 @@
                   {}
                   edges))))
 
-(re-frame/reg-event-db
- ::add-node
- (fn [db [_ node-type]]
-   (let [node (case node-type
-                "input-piano" (db/->input-piano-node)
-                "input-chord" (db/->input-chord-node)
-                "input-scale" (db/->input-scale-node)
-                "function-scale-chords" (db/->function-scale-chords-node)
-                "output-piano" (db/->output-piano-node)
-                "output-music-staff" (db/->output-music-staff-node)
-                "output-debug" (db/->output-debug-node))
-         id (:id node)]
-     (assoc-in db [:nodes id] node))))
+(defn add-edge [db edge]
+  (let [id (str (:source edge) "->" (:target edge))]
+    (assoc-in db [:edges id] (merge {:id id} edge))))
 
 (re-frame/reg-event-db
  ::add-edge
  (fn [db [_ edge]]
-   (assoc-in db [:edges (str (:source edge) "->" (:target edge))] edge)))
+   (add-edge db edge)))
+
+(defn create-node [db node-type & [parent-id]]
+  (let [node (case (keyword node-type)
+               :input-piano (db/->input-piano-node)
+               :input-chord (db/->input-chord-node)
+               :input-scale (db/->input-scale-node)
+               :function-scale-chords (db/->function-scale-chords-node)
+               :output-piano (db/->output-piano-node)
+               :output-music-staff (db/->output-music-staff-node)
+               :output-debug (db/->output-debug-node))
+        id (:id node)]
+    (cond-> db
+      true (assoc-in [:nodes id] node)
+      (some? parent-id) (add-edge {:source parent-id :target id}))))
+
+(re-frame/reg-event-db
+ ::add-node
+ (fn [db [_ node-type & [parent-id]]]
+   (create-node db node-type parent-id)))
 
 (re-frame/reg-event-db
  ::toggle-note
