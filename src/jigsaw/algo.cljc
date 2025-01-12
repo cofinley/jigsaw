@@ -187,10 +187,10 @@
         new-pitch-str (name new-pitch)
         crossing-octaves? (if (= 1 (or multiplier 1))
                             (= :Cb new-pitch)
-                            (= :B# new-pitch)) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
+                            (= :B# new-pitch)) ; If crossing octaves, force octave change
         keep-octave? (if (= 1 (or multiplier 1))
                        (= :B# new-pitch)
-                       (= :Cb new-pitch)) ; If going up an interval to boundary pitch, increment octave (e.g. if in octave 4, Cb should go to octave 5)
+                       (= :Cb new-pitch)) ; If going up an interval to boundary pitch but not crossing boundary, keep octave
         octave-offset (* (or multiplier 1)
                          (if crossing-octaves? 1
                              (math/floor-div (+ semitone interval-semitone) 12)))

@@ -27,7 +27,7 @@
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
-    (let [shape (utils/strip-ns (algo/resolve-shape pitch shape-type shape-name))]
+    (let [shape (utils/strip-ns (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name))]
       (assoc shape :semitones (map #(get specs/pitches %) (:pitches shape))))))
 
 (def all-chords (resolve-all-shapes :chord))
@@ -54,11 +54,11 @@
     (->> shapes
          (filter #(= (:similarity %) max-similarity))
          ; (map #(assoc % :lowest-pitch-root? (if (= lowest-pitch (:pitch %)) 1 0)
-         (map #(assoc % :lowest-pitch-root? (if (= lowest-semitone (get specs/pitches (:pitch %))) 1 0)
-                      :notes (map algo/pitch->note (:pitches %))))
+         (map #(assoc % :lowest-pitch-root? (if (= lowest-semitone (get specs/pitches (:pitch %))) 1 0)))
          (sort-by (juxt (comp - :similarity) (comp - :lowest-pitch-root?))))))
 
 (comment
+  (algo/resolve-shape :Gb4 :scale :major-pentatonic)
   (:pitches (algo/resolve-shape :C4 :chord :maj))
   (resolve-all-shapes :chord)
-  (notes->shapes :scale [:Eb4 :Gb4 :Ab4 :Bbb4 :Bb4 :Db5]))
+  (notes->shapes :scale [:Eb4 :Gb4 :Ab4]))
