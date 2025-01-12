@@ -123,7 +123,7 @@
 
 (re-frame/reg-event-db
  ::set-selected-shape
- (fn [db [_ id selected-shape]]
+ (fn [db [_ id shape-type selected-shape]]
    (let [node (get-in db [:nodes id])
-         new-node (update node :data merge selected-shape)]
+         new-node (update node :data merge (merge selected-shape {:selected-shape-type shape-type}))]
      (assoc-in db [:nodes id] new-node))))
