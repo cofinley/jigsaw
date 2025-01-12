@@ -15,12 +15,7 @@
 (defn js-node->clj-node
   "Converts js node to clj (keywords, sets)"
   [node]
-  (let [data (get-in node [:data])
-        notes (:notes data)
-        name (:name data)
-        pitch (:pitch data)
-        pitches (:pitches data)
-        intervals (:intervals data)
+  (let [{:keys [notes name pitch pitches intervals selected-shape-type]} (:data node)
         type (:type node)]
     (cond-> node
       (some? notes) (assoc-in [:data :notes] (map keyword notes))
@@ -28,6 +23,7 @@
       (some? pitch) (assoc-in [:data :pitch] (keyword pitch))
       (some? pitches) (assoc-in [:data :pitches] (map keyword pitches))
       (some? intervals) (assoc-in [:data :intervals] (map keyword intervals))
+      (some? selected-shape-type) (assoc-in [:data :selected-shape-type] (keyword selected-shape-type))
       (some? type) (assoc :type (keyword type)))))
 
 (re-frame/reg-event-db
@@ -58,14 +54,8 @@
    (add-edge db edge)))
 
 (defn create-node [db node-type & [parent-id]]
-  (let [node (case (keyword node-type)
-               :input-piano (db/->input-piano-node)
-               :input-chord (db/->input-chord-node)
-               :input-scale (db/->input-scale-node)
-               :function-scale-chords (db/->function-scale-chords-node)
-               :output-piano (db/->output-piano-node)
-               :output-music-staff (db/->output-music-staff-node)
-               :output-debug (db/->output-debug-node))
+  (let [parent-node (when parent-id (get-in db [:nodes parent-id]))
+        node (db/->node {:type (keyword node-type) :data {}} parent-node)
         id (:id node)]
     (cond-> db
       true (assoc-in [:nodes id] node)
@@ -130,3 +120,10 @@
          new-node (assoc-in node [:data :selected-chord] selected-chord)]
      {:db (assoc-in db [:nodes id] new-node)
       :fx [[:dispatch [::calculate-shape id]]]})))
+
+(re-frame/reg-event-db
+ ::set-selected-shape
+ (fn [db [_ id selected-shape]]
+   (let [node (get-in db [:nodes id])
+         new-node (update node :data merge selected-shape)]
+     (assoc-in db [:nodes id] new-node))))

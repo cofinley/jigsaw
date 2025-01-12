@@ -8,6 +8,7 @@
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.components.input-shape-node :refer [input-shape-node]]
    [jigsaw.components.function-scale-chords-node :refer [function-scale-chords-node]]
+   [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
    [jigsaw.components.output-piano-node :refer [output-piano-node]]
    [jigsaw.components.output-music-staff-node :refer [output-music-staff-node]]
    [jigsaw.components.output-debug-node :refer [output-debug-node]]
@@ -43,6 +44,10 @@
     :category :function
     :label "Scale Chords"
     :component function-scale-chords-node}
+   {:type :function-find-shape
+    :category :function
+    :label "Find Shape"
+    :component function-find-shape-node}
    {:type :output-piano
     :category :output
     :label "Piano"
@@ -105,7 +110,7 @@
                     :colorMode "dark"}
       [:> Panel {:position "top-right"}
        [select {:on-change #(re-frame/dispatch [::events/add-node (-> % .-target .-value)])
-                :default-value ""}
+                :value ""}
         (cons
          [:option {:disabled true :value ""} "(Add Node)"]
          (for [[cat-k cat-label] node-categories]

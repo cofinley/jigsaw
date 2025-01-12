@@ -24,40 +24,13 @@
                    :source "3"
                    :target "4"}}})
 
-(defn ->node [props]
+(defn ->node [props & [parent-props]]
   (merge
    {:id (str (random-uuid))
     :type "default"
-    :position {:x 200 :y 100}
+    :position (if-let [parent-pos (:position parent-props)]
+                {:x (+ 200 (:x parent-pos) (get-in parent-props [:measured :width]))
+                 :y (:y parent-pos)}
+                {:x 0 :y 0})
     :data {}}
    props))
-
-(defn ->input-piano-node []
-  (->node {:type :input-piano
-           :data {:notes #{}}}))
-
-(defn ->input-chord-node []
-  (->node {:type :input-chord
-           :data {:pitch nil
-                  :name nil
-                  :notes #{}}}))
-
-(defn ->input-scale-node []
-  (->node {:type :input-scale
-           :data {:pitch nil
-                  :name nil
-                  :notes #{}}}))
-
-(defn ->function-scale-chords-node []
-  (->node {:type :function-scale-chords
-           :data {:selected-chord nil}}))
-
-(defn ->output-piano-node []
-  (->node {:type :output-piano}))
-
-(defn ->output-music-staff-node []
-  (->node {:type :output-music-staff}))
-
-(defn ->output-debug-node []
-  (->node {:type :output-debug}))
-

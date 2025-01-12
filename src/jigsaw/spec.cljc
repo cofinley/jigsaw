@@ -159,7 +159,7 @@
    :11         {::intervals [:P1 :P5 :m7 :M9 :P11]           ::aliases ["eleventh"]}
    :b9sus      {::intervals [:P1 :P4 :P5 :m7 :m9]            ::aliases ["phrygian", "phryg","7b9sus","7b9sus4", "suspended fourth flat ninth"]}
    ;; Other
-   :P5         {::intervals [:P1 :P5]                        ::aliases ["fifth"]}
+   :5          {::intervals [:P1 :P5]                        ::aliases ["fifth"]}
    :aug        {::intervals [:P1 :M3 :A5]                    ::aliases ["+","+5","^#5", "augmented"]}
    :m#5        {::intervals [:P1 :m3 :A5]                    ::aliases ["-#5","m+", "minor augmented"]}
    :maj7#5     {::intervals [:P1 :M3 :A5 :M7]                ::aliases ["maj7+5","+maj7","^7#5", "augmented seventh"]}
@@ -232,7 +232,7 @@
    :9sus4      {::intervals [:P1 :P4 :P5 :m7 :M9]            ::aliases ["9sus"]}
    :13sus4     {::intervals [:P1 :P4 :P5 :m7 :M9 :M13]       ::aliases ["13sus"]}
    :7sus4b9b13 {::intervals [:P1 :P4 :P5 :m7 :m9 :m13]       ::aliases ["7b9b13sus4"]}
-   :P4         {::intervals [:P1 :P4 :m7 :m10]               ::aliases ["quartal"]}
+   :q          {::intervals [:P1 :P4 :m7 :m10]               ::aliases ["quartal"]}
    :11b9       {::intervals [:P1 :P5 :m7 :m9 :P11]}))
 
 (def chords-by-intervals
