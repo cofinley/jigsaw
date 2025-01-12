@@ -27,28 +27,38 @@
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
-    (utils/strip-ns (algo/resolve-shape pitch shape-type shape-name))))
+    (let [shape (utils/strip-ns (algo/resolve-shape pitch shape-type shape-name))]
+      (assoc shape :semitones (map #(get specs/pitches %) (:pitches shape))))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
 
 (defn notes->shapes [shape-type notes]
   (let [pitches (into [] (map #(:pitch (algo/parts %)) notes))
+        semitones (map specs/pitches pitches)
         midis (map algo/note->midi notes)
         midi->note (zipmap midis notes)
         lowest-pitch (:pitch (algo/parts (get midi->note (first (sort midis)))))
+        lowest-semitone (get specs/pitches lowest-pitch)
+        ; shapes (map (fn [shape]
+        ;               (assoc shape :similarity (pitch-similarity (set pitches)
+        ;                                                          (set (:pitches shape))
+        ;                                                          (:pitch shape))))
+        ; Match on semitones instead of pitches to capture enharmonic equivalents
         shapes (map (fn [shape]
-                      (assoc shape :similarity (pitch-similarity (set pitches)
-                                                                 (set (:pitches shape))
-                                                                 (:pitch shape))))
+                      (assoc shape :similarity (pitch-similarity (set semitones)
+                                                                 (set (:semitones shape))
+                                                                 (get specs/pitches (:pitch shape)))))
                     (if (= shape-type :chord) all-chords all-scales))
         max-similarity (:similarity (apply max-key :similarity shapes))]
     (->> shapes
          (filter #(= (:similarity %) max-similarity))
-         (map #(assoc % :lowest-pitch-root? (if (= lowest-pitch (:pitch %)) 1 0)
+         ; (map #(assoc % :lowest-pitch-root? (if (= lowest-pitch (:pitch %)) 1 0)
+         (map #(assoc % :lowest-pitch-root? (if (= lowest-semitone (get specs/pitches (:pitch %))) 1 0)
                       :notes (map algo/pitch->note (:pitches %))))
          (sort-by (juxt (comp - :similarity) (comp - :lowest-pitch-root?))))))
 
 (comment
   (:pitches (algo/resolve-shape :C4 :chord :maj))
-  (notes->shapes :chord [:C4 :E4 :G4]))
+  (resolve-all-shapes :chord)
+  (notes->shapes :scale [:Eb4 :Gb4 :Ab4 :Bbb4 :Bb4 :Db5]))
