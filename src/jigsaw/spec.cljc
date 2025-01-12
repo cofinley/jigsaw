@@ -274,23 +274,23 @@
    ;; 5-note
    :ionian-pentatonic {::intervals [:P1 :M3 :P4 :P5 :M7] ::degrees [:1 :3 :4 :5 :7]}
    :mixolydian-pentatonic {::intervals [:P1 :M3 :P4 :P5 :m7] ::aliases ["indian"] ::degrees [:1 :3 :4 :5 :b7]}
-   :ritusen {::intervals [:P1 :M2 :P4 :P5 :M6] ::degrees [:1 :2 :4 :5 :6]}
-   :egyptian {::intervals [:P1 :M2 :P4 :P5 :m7] ::degrees [:1 :2 :4 :5 :b7]}
-   :neopolitan-major-pentatonic {::intervals [:P1 :M3 :P4 :d5 :m7] ::degrees [:1 :3 :4 :b5 :b7]}
-   :vietnamese-1 {::intervals [:P1 :m3 :P4 :P5 :m6] ::degrees [:1 :b3 :4 :5 :b6]}
-   :pelog {::intervals [:P1 :m2 :m3 :P5 :m6] ::degrees [:1 :b2 :b3 :5 :b6]}
-   :kumoijoshi {::intervals [:P1 :m2 :P4 :P5 :m6] ::degrees [:1 :b2 :4 :5 :b6]}
-   :hirajoshi {::intervals [:P1 :M2 :m3 :P5 :m6] ::degrees [:1 :2 :b3 :5 :b6]}
-   :iwato {::intervals [:P1 :m2 :P4 :d5 :m7] ::degrees [:1 :b2 :4 :b5 :b7]}
-   :in-sen {::intervals [:P1 :m2 :P4 :P5 :m7] ::degrees [:1 :b2 :4 :5 :b7]}
+   ; :ritusen {::intervals [:P1 :M2 :P4 :P5 :M6] ::degrees [:1 :2 :4 :5 :6]}
+   ; :egyptian {::intervals [:P1 :M2 :P4 :P5 :m7] ::degrees [:1 :2 :4 :5 :b7]}
+   ; :neopolitan-major-pentatonic {::intervals [:P1 :M3 :P4 :d5 :m7] ::degrees [:1 :3 :4 :b5 :b7]}
+   ; :vietnamese-1 {::intervals [:P1 :m3 :P4 :P5 :m6] ::degrees [:1 :b3 :4 :5 :b6]}
+   ; :pelog {::intervals [:P1 :m2 :m3 :P5 :m6] ::degrees [:1 :b2 :b3 :5 :b6]}
+   ; :kumoijoshi {::intervals [:P1 :m2 :P4 :P5 :m6] ::degrees [:1 :b2 :4 :5 :b6]}
+   ; :hirajoshi {::intervals [:P1 :M2 :m3 :P5 :m6] ::degrees [:1 :2 :b3 :5 :b6]}
+   ; :iwato {::intervals [:P1 :m2 :P4 :d5 :m7] ::degrees [:1 :b2 :4 :b5 :b7]}
+   ; :in-sen {::intervals [:P1 :m2 :P4 :P5 :m7] ::degrees [:1 :b2 :4 :5 :b7]}
    :lydian-pentatonic {::intervals [:P1 :M3 :A4 :P5 :M7] ::aliases ["chinese"] ::degrees [:1 :3 :#4 :5 :7]}
-   :malkos-raga {::intervals [:P1 :m3 :P4 :m6 :m7] ::degrees [:1 :b3 :4 :b6 :b7]}
+   ; :malkos-raga {::intervals [:P1 :m3 :P4 :m6 :m7] ::degrees [:1 :b3 :4 :b6 :b7]}
    :locrian-pentatonic {::intervals [:P1 :m3 :P4 :d5 :m7] ::aliases ["minor seven flat five pentatonic"] ::degrees [:1 :b3 :4 :b5 :b7]}
    :minor-pentatonic {::intervals [:P1 :m3 :P4 :P5 :m7] ::aliases ["vietnamese 2"] ::degrees [:1 :b3 :4 :5 :b7]}
    :minor-six-pentatonic {::intervals [:P1 :m3 :P4 :P5 :M6] ::degrees [:1 :b3 :4 :5 :6]}
    :flat-three-pentatonic {::intervals [:P1 :M2 :m3 :P5 :M6] ::aliases ["kumoi"] ::degrees [:1 :2 :b3 :5 :6]}
    :flat-six-pentatonic {::intervals [:P1 :M2 :M3 :P5 :m6] ::degrees [:1 :2 :3 :5 :b6]}
-   :scriabin {::intervals [:P1 :m2 :M3 :P5 :M6] ::degrees [:1 :b2 :3 :5 :6]}
+   ; :scriabin {::intervals [:P1 :m2 :M3 :P5 :M6] ::degrees [:1 :b2 :3 :5 :6]}
    :whole-tone-pentatonic {::intervals [:P1 :M3 :d5 :m6 :m7] ::degrees [:1 :3 :b5 :b6 :b7]}
    :lydian-#5P-pentatonic {::intervals [:P1 :M3 :A4 :A5 :M7] ::degrees [:1 :3 :#4 :#5 :7]}
    :lydian-dominant-pentatonic {::intervals [:P1 :M3 :A4 :P5 :m7] ::degrees [:1 :3 :#4 :5 :b7]}
@@ -299,13 +299,13 @@
    ;; 6-note
    :minor-hexatonic {::intervals [:P1 :M2 :m3 :P4 :P5 :M7] ::degrees [:1 :2 :b3 :4 :5 :7]}
    :augmented {::intervals [:P1 :A2 :M3 :P5 :A5 :M7] ::degrees [:1 :#2 :3 :5 :#5 :7]}
-   :piongio {::intervals [:P1 :M2 :P4 :P5 :M6 :m7] ::degrees [:1 :2 :4 :5 :6 :b7]}
-   :prometheus-neopolitan {::intervals [:P1 :m2 :M3 :A4 :M6 :m7] ::degrees [:1 :b2 :3 :#4 :6 :b7]}
-   :prometheus {::intervals [:P1 :M2 :M3 :A4 :M6 :m7] ::degrees [:1 :2 :3 :#4 :6 :b7]}
-   :mystery-#1 {::intervals [:P1 :m2 :M3 :d5 :m6 :m7] ::degrees [:1 :b2 :3 :b5 :b6 :b7]}
-   :six-tone-symmetric {::intervals [:P1 :m2 :M3 :P4 :A5 :M6] ::degrees [:1 :b2 :3 :4 :#5 :6]}
+   ; :piongio {::intervals [:P1 :M2 :P4 :P5 :M6 :m7] ::degrees [:1 :2 :4 :5 :6 :b7]}
+   ; :prometheus-neopolitan {::intervals [:P1 :m2 :M3 :A4 :M6 :m7] ::degrees [:1 :b2 :3 :#4 :6 :b7]}
+   ; :prometheus {::intervals [:P1 :M2 :M3 :A4 :M6 :m7] ::degrees [:1 :2 :3 :#4 :6 :b7]}
+   ; :mystery-#1 {::intervals [:P1 :m2 :M3 :d5 :m6 :m7] ::degrees [:1 :b2 :3 :b5 :b6 :b7]}
+   ; :six-tone-symmetric {::intervals [:P1 :m2 :M3 :P4 :A5 :M6] ::degrees [:1 :b2 :3 :4 :#5 :6]}
    :whole-tone {::intervals [:P1 :M2 :M3 :A4 :A5 :A6] ::aliases ["messiaen's mode #1"] ::degrees [:1 :2 :3 :#4 :#5 :#6]}
-   :messiaen's-mode-#5 {::intervals [:P1 :m2 :P4 :A4 :P5 :M7] ::degrees [:1 :b2 :4 :#4 :5 :7]}
+   ; :messiaen's-mode-#5 {::intervals [:P1 :m2 :P4 :A4 :P5 :M7] ::degrees [:1 :b2 :4 :#4 :5 :7]}
    ;; 7-note
    :locrian-major {::intervals [:P1 :M2 :M3 :P4 :d5 :m6 :m7] ::aliases ["arabian"] ::degrees [:1 :2 :3 :4 :b5 :b6 :b7]}
    :double-harmonic-lydian {::intervals [:P1 :m2 :M3 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :3 :#4 :5 :b6 :7]}
@@ -324,39 +324,40 @@
    :leading-whole-tone {::intervals [:P1 :M2 :M3 :A4 :A5 :m7 :M7] ::degrees [:1 :2 :3 :#4 :#5 :b7 :7]}
    :lydian-minor {::intervals [:P1 :M2 :M3 :A4 :P5 :m6 :m7] ::degrees [:1 :2 :3 :#4 :5 :b6 :b7]}
    :phrygian-dominant {::intervals [:P1 :m2 :M3 :P4 :P5 :m6 :m7] ::aliases ["spanish" "phrygian major"] ::degrees [:1 :b2 :3 :4 :5 :b6 :b7]}
-   :balinese {::intervals [:P1 :m2 :m3 :P4 :P5 :m6 :M7] ::degrees [:1 :b2 :b3 :4 :5 :b6 :7]}
-   :neopolitan-major {::intervals [:P1 :m2 :m3 :P4 :P5 :M6 :M7] ::degrees [:1 :b2 :b3 :4 :5 :6 :7]}
+   ; :balinese {::intervals [:P1 :m2 :m3 :P4 :P5 :m6 :M7] ::degrees [:1 :b2 :b3 :4 :5 :b6 :7]}
+   ; :neopolitan-major {::intervals [:P1 :m2 :m3 :P4 :P5 :M6 :M7] ::degrees [:1 :b2 :b3 :4 :5 :6 :7]}
    :harmonic-major {::intervals [:P1 :M2 :M3 :P4 :P5 :m6 :M7] ::degrees [:1 :2 :3 :4 :5 :b6 :7]}
    :double-harmonic-major {::intervals [:P1 :m2 :M3 :P4 :P5 :m6 :M7] ::aliases ["gypsy"] ::degrees [:1 :b2 :3 :4 :5 :b6 :7]}
    :hungarian-minor {::intervals [:P1 :M2 :m3 :A4 :P5 :m6 :M7] ::degrees [:1 :2 :b3 :#4 :5 :b6 :7]}
    :hungarian-major {::intervals [:P1 :A2 :M3 :A4 :P5 :M6 :m7] ::degrees [:1 :#2 :3 :#4 :5 :6 :b7]}
-   :oriental {::intervals [:P1 :m2 :M3 :P4 :d5 :M6 :m7] ::degrees [:1 :b2 :3 :4 :b5 :6 :b7]}
-   :flamenco {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :m7] ::degrees [:1 :b2 :b3 :3 :#4 :5 :b7]}
-   :todi-raga {::intervals [:P1 :m2 :m3 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :b3 :#4 :5 :b6 :7]}
-   :persian {::intervals [:P1 :m2 :M3 :P4 :d5 :m6 :M7] ::degrees [:1 :b2 :3 :4 :b5 :b6 :7]}
-   :enigmatic {::intervals [:P1 :m2 :M3 :d5 :m6 :m7 :M7] ::degrees [:1 :b2 :3 :b5 :b6 :b7 :7]}
+   ; :oriental {::intervals [:P1 :m2 :M3 :P4 :d5 :M6 :m7] ::degrees [:1 :b2 :3 :4 :b5 :6 :b7]}
+   ; :flamenco {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :m7] ::degrees [:1 :b2 :b3 :3 :#4 :5 :b7]}
+   ; :todi-raga {::intervals [:P1 :m2 :m3 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :b3 :#4 :5 :b6 :7]}
+   ; :persian {::intervals [:P1 :m2 :M3 :P4 :d5 :m6 :M7] ::degrees [:1 :b2 :3 :4 :b5 :b6 :7]}
+   ; :enigmatic {::intervals [:P1 :m2 :M3 :d5 :m6 :m7 :M7] ::degrees [:1 :b2 :3 :b5 :b6 :b7 :7]}
    :major-augmented {::intervals [:P1 :M2 :M3 :P4 :A5 :M6 :M7] ::aliases ["major #5" "ionian augmented" "ionian #5"] ::degrees [:1 :2 :3 :4 :#5 :6 :7]}
    :lydian-#9 {::intervals [:P1 :A2 :M3 :A4 :P5 :M6 :M7] ::degrees [:1 :#2 :3 :#4 :5 :6 :7]}
    ;; 8-note
-   :messiaen's-mode-#4 {::intervals [:P1 :m2 :M2 :P4 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :2 :4 :#4 :5 :b6 :7]}
-   :purvi-raga {::intervals [:P1 :m2 :M3 :P4 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :3 :4 :#4 :5 :b6 :7]}
+   ; :messiaen's-mode-#4 {::intervals [:P1 :m2 :M2 :P4 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :2 :4 :#4 :5 :b6 :7]}
+   ; :purvi-raga {::intervals [:P1 :m2 :M3 :P4 :A4 :P5 :m6 :M7] ::degrees [:1 :b2 :3 :4 :#4 :5 :b6 :7]}
    :spanish-heptatonic {::intervals [:P1 :m2 :m3 :M3 :P4 :P5 :m6 :m7] ::degrees [:1 :b2 :b3 :3 :4 :5 :b6 :b7]}
    :bebop-minor {::intervals [:P1 :M2 :m3 :M3 :P4 :P5 :M6 :m7] ::degrees [:1 :2 :b3 :3 :4 :5 :6 :b7]}
    :bebop-major {::intervals [:P1 :M2 :M3 :P4 :P5 :A5 :M6 :M7] ::degrees [:1 :2 :3 :4 :5 :#5 :6 :7]}
    :bebop-locrian {::intervals [:P1 :m2 :m3 :P4 :d5 :P5 :m6 :m7] ::degrees [:1 :b2 :b3 :4 :b5 :5 :b6 :b7]}
    :bebop-harmonic-minor {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7 :M7] ::degrees [:1 :2 :b3 :4 :5 :b6 :b7 :7]}
-   :ichikosucho {::intervals [:P1 :M2 :M3 :P4 :d5 :P5 :M6 :M7] ::degrees [:1 :2 :3 :4 :b5 :5 :6 :7]}
+   ; :ichikosucho {::intervals [:P1 :M2 :M3 :P4 :d5 :P5 :M6 :M7] ::degrees [:1 :2 :3 :4 :b5 :5 :6 :7]}
    :minor-six-diminished {::intervals [:P1 :M2 :m3 :P4 :P5 :m6 :M6 :M7] ::degrees [:1 :2 :b3 :4 :5 :b6 :6 :7]}
    :half-whole-diminished {::intervals [:P1 :m2 :m3 :M3 :A4 :P5 :M6 :m7] ::aliases ["dominant diminished" "messiaen's mode #2"] ::degrees [:1 :b2 :b3 :3 :#4 :5 :6 :b7]}
-   :kafi-raga {::intervals [:P1 :m3 :M3 :P4 :P5 :M6 :m7 :M7] ::degrees [:1 :b3 :3 :4 :5 :6 :b7 :7]}
-   :messiaen's-mode-#6 {::intervals [:P1 :M2 :M3 :P4 :A4 :A5 :A6 :M7] ::degrees [:1 :2 :3 :4 :#4 :#5 :#6 :7]}
+   ; :kafi-raga {::intervals [:P1 :m3 :M3 :P4 :P5 :M6 :m7 :M7] ::degrees [:1 :b3 :3 :4 :5 :6 :b7 :7]}
+   ; :messiaen's-mode-#6 {::intervals [:P1 :M2 :M3 :P4 :A4 :A5 :A6 :M7] ::degrees [:1 :2 :3 :4 :#4 :#5 :#6 :7]}
    ;; 9-note
    :composite-blues {::intervals [:P1 :M2 :m3 :M3 :P4 :d5 :P5 :M6 :m7] ::degrees [:1 :2 :b3 :3 :4 :b5 :5 :6 :b7]}
-   :messiaen's-mode-#3 {::intervals [:P1 :M2 :m3 :M3 :A4 :P5 :m6 :m7 :M7] ::degrees [:1 :2 :b3 :3 :#4 :5 :b6 :b7 :7]}
+   ; :messiaen's-mode-#3 {::intervals [:P1 :M2 :m3 :M3 :A4 :P5 :m6 :m7 :M7] ::degrees [:1 :2 :b3 :3 :#4 :5 :b6 :b7 :7]}
    ;; 10-note
-   :messiaen's-mode-#7 {::intervals [:P1 :m2 :M2 :m3 :P4 :A4 :P5 :m6 :M6 :M7] ::degrees [:1 :b2 :2 :b3 :4 :#4 :5 :b6 :6 :7]}
+   ; :messiaen's-mode-#7 {::intervals [:P1 :m2 :M2 :m3 :P4 :A4 :P5 :m6 :M6 :M7] ::degrees [:1 :b2 :2 :b3 :4 :#4 :5 :b6 :6 :7]}
    ;; 12-note
-   :chromatic {::intervals [:P1 :m2 :M2 :m3 :M3 :P4 :d5 :P5 :m6 :M6 :m7 :M7] ::degrees [:1 :b2 :2 :b3 :3 :4 :b5 :5 :b6 :6 :b7 :7]}))
+   ; :chromatic {::intervals [:P1 :m2 :M2 :m3 :M3 :P4 :d5 :P5 :m6 :M6 :m7 :M7] ::degrees [:1 :b2 :2 :b3 :3 :4 :b5 :5 :b6 :6 :b7 :7]}
+   ))
 
 (def scales-by-intervals
   (reduce-kv (fn [m scale {:keys [::intervals]}] (assoc m intervals scale)) {} scales))
