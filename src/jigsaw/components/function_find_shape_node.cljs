@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as s]
    [re-frame.core :as re-frame]
-   [jigsaw.algo :as algo]
    [jigsaw.search :as search]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
@@ -23,13 +22,15 @@
                      {:type "source" :position "right"}]}
      (if-let [incoming-node (first @incoming-nodes)]
        (if-let [notes (seq (get-in incoming-node [:data :notes]))]
-         (let [selected-shape-type (or (:selected-shape-type @data) :chord)]
-           [:<>
-            [select {:on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
+         (let [selected-shape-type (or (:selected-shape-type @data) :chord)
+               similarity-type (or (:similarity-type @data) :overlap)]
+           [:div {:class "flex flex-col space-y-2"}
+            [select {:class "w-max"
+                     :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
                      :value (or selected-shape-type "")}
              [[:option {:value :chord} "Chord"]
               [:option {:value :scale} "Scale"]]]
-            (let [shapes (search/notes->shapes selected-shape-type notes)
+            (let [shapes (search/notes->shapes notes selected-shape-type similarity-type)
                   pitches (set (map :pitch shapes))
                   pitch->shapes (reduce (fn [m shape]
                                           (update m (:pitch shape) (fnil conj []) shape))
@@ -41,7 +42,12 @@
                                     (let [value (-> e .-target .-value)]
                                       (when (not= "" value)
                                         (let [[pitch shape-type shape-name] (map keyword (s/split value #"_"))]
-                                          (re-frame/dispatch [::events/set-selected-shape id (keyword shape-type) (first (filter #(and (= (:pitch %) pitch) (= (:name %) shape-name)) shapes))])))))}
+                                          (re-frame/dispatch [::events/set-selected-shape
+                                                              id
+                                                              (keyword shape-type)
+                                                              (first (filter #(and (= (:pitch %) pitch)
+                                                                                   (= (:name %) shape-name))
+                                                                             shapes))])))))}
                (cons
                 [:option {:value ""} "(Select " selected-shape-type ")"]
                 (for [pitch pitches
