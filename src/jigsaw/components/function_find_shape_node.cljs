@@ -20,8 +20,8 @@
     [node {:title "Find Shape"
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
-     (if-let [incoming-node (first @incoming-nodes)]
-       (if-let [notes (seq (get-in incoming-node [:data :notes]))]
+     (if-let [incoming-data (first @incoming-nodes)]
+       (if-let [notes (seq (get-in incoming-data [:notes]))]
          (let [selected-shape-type (or (:selected-shape-type @data) :chord)
                similarity-type (or (:similarity-type @data) :overlap)]
            [:div {:class "flex flex-col space-y-2"}

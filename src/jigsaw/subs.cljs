@@ -21,7 +21,7 @@
  ::incoming
  (fn [db [_ id]]
    (let [edges (vals (:edges db))]
-     (map #(get-in db [:nodes (:source %)])
+     (map #(get-in db [:nodes (:source %) :data])
           (filter #(= (:target %) id) edges)))))
 
 (re-frame/reg-sub

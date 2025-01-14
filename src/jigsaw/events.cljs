@@ -15,7 +15,7 @@
 (defn js-node->clj-node
   "Converts js node to clj (keywords, sets)"
   [node]
-  (let [{:keys [notes name pitch pitches intervals selected-shape-type]} (:data node)
+  (let [{:keys [notes name pitch pitches intervals selected-shape-type match-type]} (:data node)
         type (:type node)]
     (cond-> node
       (some? notes) (assoc-in [:data :notes] (map keyword notes))
@@ -24,6 +24,7 @@
       (some? pitches) (assoc-in [:data :pitches] (map keyword pitches))
       (some? intervals) (assoc-in [:data :intervals] (map keyword intervals))
       (some? selected-shape-type) (assoc-in [:data :selected-shape-type] (keyword selected-shape-type))
+      (some? match-type) (assoc-in [:data :match-type] (keyword match-type))
       (some? type) (assoc :type (keyword type)))))
 
 (re-frame/reg-event-db

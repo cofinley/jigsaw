@@ -16,19 +16,18 @@
         label-types [:pitches :intervals :degrees]]
     (fn [{:keys [id]}]
       [node {:title "Piano" :handles [{:type "target" :position "left"}]}
-       (if-let [incoming-node (first @incoming-nodes)]
-         (let [data (:data incoming-node)
-               notes (:notes data)]
+       (if-let [incoming-data (first @incoming-nodes)]
+         (let [notes (:notes incoming-data)]
            (if (seq notes)
              (let [midis (map algo/note->midi notes)
-                   midi->label (zipmap midis (get-in incoming-node [:data @selected-label]))
+                   midi->label (zipmap midis (get incoming-data @selected-label))
                    first-midi (first midis)
                    last-midi (last midis)
                    midi-range-start (- first-midi (mod first-midi 12))
                    midi-range-end (dec (+ last-midi (- 12 (mod last-midi 12))))
                    width (* key-width (- midi-range-end midi-range-start))]
                [:<>
-                (when (some (partial contains? data) label-types)
+                (when (some (partial contains? incoming-data) label-types)
                   [:div {:class "self-start flex space-x-2 items-center mb-2"}
                    [:label "Key Labels"]
                    [select {:value (or @selected-label "")
@@ -36,7 +35,7 @@
                             :on-change #(reset! selected-label (keyword (-> % .-target .-value)))
                             :placeholder "Key Labels"}
                     (for [label-type label-types
-                          :when (contains? (:data incoming-node) label-type)]
+                          :when (contains? incoming-data label-type)]
                       [:option (name label-type)])]])
                 [:div {:style {:pointerEvents "none"}}
                  [:> Piano

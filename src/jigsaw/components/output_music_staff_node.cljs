@@ -57,10 +57,10 @@
 (defn output-music-staff-node [{:keys [id]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])]
     [node {:title "Staff" :handles [{:type "target" :position "left"}]}
-     (if-let [incoming-node (first @incoming-nodes)]
-       (let [notes (get-in incoming-node [:data :notes])]
+     (if-let [incoming-data (first @incoming-nodes)]
+       (let [notes (get-in incoming-data [:notes])]
          (if (seq notes)
-           [score incoming-node]
+           [score incoming-data]
            [:p "No input"]))
        [:p "No input"])]))
 

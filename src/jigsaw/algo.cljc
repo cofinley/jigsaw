@@ -261,21 +261,21 @@
       notes)))
 
 (defn scale-chords-exact
-  [scale & {:keys [num-thirds]}]
+  [scale & {:keys [num-thirds] :or {num-thirds 4}}]
   (let [{start-pitch :pitch scale-name :name} scale
         scale (specs/scales scale-name)
         scale-intervals (::specs/intervals scale)
         scale-pitches (map (partial +interval start-pitch) scale-intervals)]
-    (loop [scale-pitches scale-pitches
-           num (count scale-pitches)
-           chords []]
-      (if (zero? num)
-        chords
-        (let [pitches (take num-thirds (take-nth 2 (cycle scale-pitches)))
-              notes (pitches->notes pitches)
-              intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)
-              chord (specs/chords-by-intervals (set intervals))]
-          (recur (utils/rotate scale-pitches) (dec num) (conj chords [chord])))))))
+    (for [rotation (range (dec (count scale-pitches)))]
+      (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate scale-pitches rotation))))
+            notes (pitches->notes pitches)
+            intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)]
+        [(specs/chords-by-intervals (set intervals))]))))
+
+(comment
+  (take 3 (cycle '(:G :A)))
+  (scale-chords-exact {:pitch :G :name :lydian})
+  (utils/rotate [:G :A :C :F] 3))
 
 (defn scale-chords
   [scale & {:keys [exact? num-thirds] :or {exact? false num-thirds 4}}]
