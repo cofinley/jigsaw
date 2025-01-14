@@ -14,16 +14,18 @@
       (str (name pitch) "_" (name selected-shape-type) "_" (name -name))
       "")))
 
-(defn function-find-shape-node [{:keys [id]}]
+(defn function-find-shape-node [{:keys [id data]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (re-frame/subscribe [::subs/data id])]
+        data (:data (events/js-node->clj-node {:data data}))]
     [node {:title "Find Shape"
+           :id id
+           :data data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if-let [notes (seq (get-in incoming-data [:notes]))]
-         (let [selected-shape-type (or (:selected-shape-type @data) :chord)
-               similarity-type (or (:similarity-type @data) :overlap)]
+         (let [selected-shape-type (or (:selected-shape-type data) :chord)
+               similarity-type (or (:similarity-type data) :overlap)]
            [:div {:class "flex flex-col space-y-2"}
             [select {:class "w-max"
                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
@@ -37,7 +39,7 @@
                                         {}
                                         shapes)]
               [select {:class "text-xl"
-                       :value (selected-shape-value (merge {:selected-shape-type selected-shape-type} @data))
+                       :value (selected-shape-value (merge {:selected-shape-type selected-shape-type} data))
                        :on-change (fn [e]
                                     (let [value (-> e .-target .-value)]
                                       (when (not= "" value)

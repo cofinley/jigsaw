@@ -22,10 +22,7 @@
 
 (def child-node-options
   {:function-scale-chords "Add scale chords node"
-   :function-find-shape "Add find shape node"
-   :output-piano "Add piano output node"
-   :output-music-staff "Add music staff node"
-   :output-debug "Add debug node"})
+   :function-find-shape "Add find shape node"})
 
 (defn node-context-menu [props]
   [context-menu props

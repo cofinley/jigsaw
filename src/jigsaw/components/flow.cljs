@@ -5,14 +5,8 @@
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
    [jigsaw.components.select :refer [select]]
-   [jigsaw.components.input-piano-node :refer [input-piano-node]]
-   [jigsaw.components.input-shape-node :refer [input-shape-node]]
-   [jigsaw.components.function-scale-chords-node :refer [function-scale-chords-node]]
-   [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
-   [jigsaw.components.output-piano-node :refer [output-piano-node]]
-   [jigsaw.components.output-music-staff-node :refer [output-music-staff-node]]
-   [jigsaw.components.output-debug-node :refer [output-debug-node]]
    [jigsaw.components.context-menu :refer [node-context-menu]]
+   [jigsaw.components.node-types :refer [node-types node-categories]]
    ["react" :refer [useMemo useState useRef useCallback]]
    ["@xyflow/react" :refer [ReactFlow
                             Background
@@ -21,45 +15,6 @@
                             applyEdgeChanges
                             addEdge
                             Panel]]))
-
-(def node-categories
-  {:input "Input"
-   :function "Function"
-   :output "Output"})
-
-(def node-types
-  [{:type :input-piano
-    :category :input
-    :label "Piano"
-    :component input-piano-node}
-   {:type :input-chord
-    :category :input
-    :label "Chord"
-    :component input-shape-node}
-   {:type :input-scale
-    :category :input
-    :label "Scale"
-    :component input-shape-node}
-   {:type :function-scale-chords
-    :category :function
-    :label "Scale Chords"
-    :component function-scale-chords-node}
-   {:type :function-find-shape
-    :category :function
-    :label "Find Shape"
-    :component function-find-shape-node}
-   {:type :output-piano
-    :category :output
-    :label "Piano"
-    :component output-piano-node}
-   {:type :output-music-staff
-    :category :output
-    :label "Music Staff"
-    :component output-music-staff-node}
-   {:type :output-debug
-    :category :output
-    :label "Debug"
-    :component output-debug-node}])
 
 (defn memoized-node
   "Memoize node so it only re-renders if data changes"

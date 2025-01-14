@@ -15,7 +15,7 @@
 (defn js-node->clj-node
   "Converts js node to clj (keywords, sets)"
   [node]
-  (let [{:keys [notes name pitch pitches intervals selected-shape-type match-type]} (:data node)
+  (let [{:keys [notes name pitch pitches intervals selected-shape-type match-type view-type]} (:data node)
         type (:type node)]
     (cond-> node
       (some? notes) (assoc-in [:data :notes] (map keyword notes))
@@ -25,6 +25,7 @@
       (some? intervals) (assoc-in [:data :intervals] (map keyword intervals))
       (some? selected-shape-type) (assoc-in [:data :selected-shape-type] (keyword selected-shape-type))
       (some? match-type) (assoc-in [:data :match-type] (keyword match-type))
+      (some? view-type) (assoc-in [:data :view-type] (keyword view-type))
       (some? type) (assoc :type (keyword type)))))
 
 (re-frame/reg-event-db
@@ -126,5 +127,6 @@
  ::set-selected-shape
  (fn [db [_ id shape-type selected-shape]]
    (let [node (get-in db [:nodes id])
-         new-node (assoc node :data (merge selected-shape {:selected-shape-type shape-type}))]
+         ;; TODO: create clear-shape fn to remove any scale/chord keys, like :degrees, before setting new shape
+         new-node (update (update node :data dissoc :degrees) :data merge (merge selected-shape {:selected-shape-type shape-type}))]
      (assoc-in db [:nodes id] new-node))))

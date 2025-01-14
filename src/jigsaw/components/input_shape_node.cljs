@@ -3,22 +3,24 @@
    [clojure.string :as s]
    [re-frame.core :as re-frame]
    [jigsaw.spec :as specs]
-   [jigsaw.subs :as subs]
    [jigsaw.events :as events]
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.node :refer [node]]))
 
-(defn input-shape-node [{:keys [id type]}]
-  (let [data (re-frame/subscribe [::subs/data id])
+(defn input-shape-node [{:keys [id data type]}]
+  (let [data (:data (events/js-node->clj-node {:data data}))
         shape-type (if (= :input-chord (keyword type)) :chord :scale)
         title (if (= shape-type :chord) "Chord" "Scale")
         shapes (if (= shape-type :chord) specs/chords specs/scales)]
-    [node {:title title :handles [{:type "source" :position "right"}]}
+    [node {:title title
+           :id id
+           :data data
+           :handles [{:type "source" :position "right"}]}
      ;; Pitches
      [:div {:class "flex flex-col text-xl items-start space-y-4"}
       [:label {:class "space-x-4"}
        [:span "Pitch"]
-       [select {:value (or (:pitch @data) "")
+       [select {:value (or (:pitch data) "")
                 :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])
                 :placeholder "Pitch"}
         (cons
@@ -29,7 +31,7 @@
        ;; Shape names
       [:label {:class "space-x-2"}
        [:span title]
-       [select {:value (or (:name @data) "")
+       [select {:value (or (:name data) "")
                 :class "text-black"
                 :on-change #(re-frame/dispatch [::events/set-name id (keyword (-> % .-target .-value))])
                 :placeholder (str title "Name")}

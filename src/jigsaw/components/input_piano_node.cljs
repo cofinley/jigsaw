@@ -2,16 +2,18 @@
   (:require
    [re-frame.core :as re-frame]
    [jigsaw.algo :as algo]
-   [jigsaw.subs :as subs]
    [jigsaw.events :as events]
    [jigsaw.components.node :refer [node]]
    ["react-piano" :refer [ControlledPiano]]))
 
 (def key-width 30)
 
-(defn input-piano-node [{:keys [id]}]
-  (let [active-notes (re-frame/subscribe [::subs/active-notes id])]
-    [node {:title "Piano" :handles [{:type "source" :position "right"}]}
+(defn input-piano-node [{:keys [id data]}]
+  (let [data (:data (events/js-node->clj-node {:data data}))]
+    [node {:title "Piano"
+           :id id
+           :data data
+           :handles [{:type "source" :position "right"}]}
      [:div {:class "flex flex-col space-y-2"}
       [:button {:class "px-2 py-1 bg-gray-200 hover:bg-gray-100 cursor-pointer text-black rounded border self-end"
                 :on-click #(re-frame/dispatch [::events/update-node-data id {:notes []}])}
@@ -26,7 +28,7 @@
            :noteRange {:first first-midi :last last-midi}
            :playNote (fn [midi] midi)
            :stopNote #()
-           :activeNotes (map (comp algo/note->midi keyword) @active-notes)
+           :activeNotes (map (comp algo/note->midi keyword) (:notes data))
            :onPlayNoteInput (fn [midi _] (re-frame/dispatch [::events/toggle-note id midi]))
            :onStopNoteInput #()
            :width width}])]]]))

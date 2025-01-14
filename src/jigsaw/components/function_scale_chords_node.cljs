@@ -9,16 +9,18 @@
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.node :refer [node]]))
 
-(defn function-scale-chords-node [{:keys [id]}]
+(defn function-scale-chords-node [{:keys [id data]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (re-frame/subscribe [::subs/data id])]
+        data (:data (events/js-node->clj-node {:data data}))]
     [node {:title "Scale Chords"
+           :id id
+           :data data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :degrees)
-         (let [selected-chord (:selected-chord @data)
-               selected-match-type (or (:match-type @data) :diatonic)
+         (let [selected-chord (:selected-chord data)
+               selected-match-type (or (:match-type data) :diatonic)
                chords-list (algo/scale-chords incoming-data :exact? (= :diatonic selected-match-type))
                pitches (:pitches incoming-data)
                pitch->chord-list (zipmap pitches chords-list)
