@@ -209,7 +209,8 @@
             :C# :A6 :A##
             :C# :M7 :B#
 
-            :F :d4 :Bbb))
+            :F :d4 :Bbb
+            :F :P5 :C))
         (testing "subtracting"
           (are+ [p interval want] (= want (algo/+interval p interval -1))
             :C :d2  :B#

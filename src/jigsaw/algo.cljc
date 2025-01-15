@@ -197,8 +197,6 @@
         new-octave (if keep-octave? octave (+ octave octave-offset))]
     (keyword (str new-pitch-str new-octave))))
 
-(comment (str \C))
-
 (defn +interval
   [x interval & [multiplier]]
   {:pre [(specs/pitch-or-note? x)
@@ -272,11 +270,6 @@
             intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)]
         [(specs/chords-by-intervals (set intervals))]))))
 
-(comment
-  (take 3 (cycle '(:G :A)))
-  (scale-chords-exact {:pitch :G :name :lydian})
-  (utils/rotate [:G :A :C :F] 3))
-
 (defn scale-chords
   [scale & {:keys [exact? num-thirds] :or {exact? false num-thirds 4}}]
   (if exact?
@@ -293,11 +286,6 @@
                                  ((if exact? utils/perfect-set? clojure.set/subset?) chord-pitches scale-pitches)))
                              specs/chords))))
             scale-intervals))))
-
-(comment
-  (let [scale (resolve-shape :E :scale :harmonic-minor)
-        {pitches ::specs/pitches chord-lists :chords} (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))
-        chords (map first chord-lists)]))
 
 (defn scale->mode
   [scale n]
@@ -365,3 +353,12 @@
     (if (pos? n)
       (map (comp keyword #(str % "#")) (set (take n "FCGDAEB")))
       (map (comp keyword #(str % "b")) (set (take (Math/abs n) "BEADGCF"))))))
+
+(comment
+  (let [scale (resolve-shape :E :scale :harmonic-minor)
+        {pitches ::specs/pitches chord-lists :chords} (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))
+        chords (map first chord-lists)])
+  (take 3 (cycle '(:G :A)))
+  (scale-chords-exact {:pitch :G :name :lydian})
+  (utils/rotate [:G :A :C :F] 3)
+  (take 12 (iterate (partial #(+interval % :P5)) :C)))
