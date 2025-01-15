@@ -333,12 +333,8 @@
         :else "")))))
 
 ;; TODO
-;;  - Chord progressions
+;;  - Chord progressions/cadences
 ;;  - Find scale+degree+roman numeral from just the chord
-
-;; TODO move to search.clj
-(defn find-chord [xs])
-(defn find-scale [xs])
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap (case major-or-minor
