@@ -337,12 +337,12 @@
 ;;  - Find scale+degree+roman numeral from just the chord
 
 (defn- circle-of-fifths [major-or-minor]
-  (zipmap (case major-or-minor
-            :major [:Cb :Gb :Db :Ab :Eb :Bb :F
-                    :C :G :D :A :E :B :F# :C#]
-            :minor [:Ab :Eb :Bb :F :C :G :D
-                    :A :E :B :F# :C# :G# :D# :A#])
-          (range -7 8)))
+  (zipmap
+   (take 15 (iterate (partial #(+interval % :P5))
+                     (case major-or-minor
+                       :major :Cb
+                       :minor :Ab)))
+   (range -7 8)))
 
 (defn key-signature [pitch major-or-minor]
   (let [n ((circle-of-fifths major-or-minor) pitch)]
@@ -357,4 +357,5 @@
   (take 3 (cycle '(:G :A)))
   (scale-chords-exact {:pitch :G :name :lydian})
   (utils/rotate [:G :A :C :F] 3)
-  (take 12 (iterate (partial #(+interval % :P5)) :C)))
+  (string/join "" (map name (take 7 (iterate (partial #(+interval % :P5)) :F))))
+  (take 7 (iterate (partial #(+interval % :P5)) :F)))
