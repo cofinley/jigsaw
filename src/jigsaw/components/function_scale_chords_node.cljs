@@ -42,10 +42,9 @@
                                             (get pitch->degrees (:pitch %))
                                             (:name %))}
                     :row-title-render utils/pprint-aliases
-                    :row= (fn [shape] (and (= (:pitch data) (:pitch shape)) (= (:name data) (:name shape))))
+                    :row-selected? (fn [shape] (and (= (:pitch data) (:pitch shape)) (= (:name data) (:name shape))))
                     :on-row-click (fn [shape]
-                                    (let [{pitch :pitch shape-name :name} shape]
-                                      (re-frame/dispatch [::events/set-pitch id pitch])
-                                      (re-frame/dispatch [::events/set-name id shape-name])))}]])
+                                    (re-frame/dispatch [::events/update-node-data id shape])
+                                    (re-frame/dispatch [::events/calculate-shape id]))}]])
          [:p "Input is not a scale"])
        [:p "No input"])]))

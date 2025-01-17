@@ -96,33 +96,6 @@
  (fn [db [_ id data]]
    (update-in db [:nodes id :data] merge data)))
 
-(re-frame/reg-event-fx
- ::set-pitch
- (fn [cofx [_ id pitch]]
-   (let [db (:db cofx)
-         node (get-in db [:nodes id])
-         new-node (assoc-in node [:data :pitch] pitch)]
-     {:db (assoc-in db [:nodes id] new-node)
-      :fx [[:dispatch [::calculate-shape id]]]})))
-
-(re-frame/reg-event-fx
- ::set-name
- (fn [cofx [_ id name]]
-   (let [db (:db cofx)
-         node (get-in db [:nodes id])
-         new-node (assoc-in node [:data :name] name)]
-     {:db (assoc-in db [:nodes id] new-node)
-      :fx [[:dispatch [::calculate-shape id]]]})))
-
-(re-frame/reg-event-fx
- ::set-selected-chord
- (fn [cofx [_ id selected-chord]]
-   (let [db (:db cofx)
-         node (get-in db [:nodes id])
-         new-node (assoc-in node [:data :selected-chord] selected-chord)]
-     {:db (assoc-in db [:nodes id] new-node)
-      :fx [[:dispatch [::calculate-shape id]]]})))
-
 (re-frame/reg-event-db
  ::set-selected-shape
  (fn [db [_ id shape-type selected-shape]]
