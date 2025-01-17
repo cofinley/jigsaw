@@ -9,16 +9,11 @@
    [jigsaw.components.table :refer [table]]
    [jigsaw.components.node :refer [node]]))
 
-(defn title-fn [shape]
-  (let [aliases (:aliases shape)]
-    (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))))
-
 (defn input-shape-node [{:keys [id data type]}]
   (let [shape-type (if (= :input-chord (keyword type)) :chord :scale)
         shapes (into [] (map #(assoc (utils/strip-ns (second %)) :name (first %)))
                      (if (= shape-type :chord) specs/chords specs/scales))
         title (if (= shape-type :chord) "Chord" "Scale")]
-    (prn "mount input shape")
     (fn [{:keys [id data]}]
       (let [data (:data (events/js-node->clj-node {:data data}))]
         [node {:title title
@@ -28,7 +23,7 @@
          [:div {:class "flex flex-col text-xl items-start space-y-4"}
           ;; Pitches
           [:label {:class "space-x-4"}
-           [:span "Pitch"]
+           [:span (if (= shape-type :chord) "Root" "Tonic")]
            [select {:value (or (:pitch data) "")
                     :on-change #(re-frame/dispatch [::events/set-pitch id (keyword (-> % .-target .-value))])
                     :placeholder "Pitch"}
@@ -40,10 +35,10 @@
           ;; Shape names
           [:p title]
           [table {:ms shapes
-                  :col-render {"Name" :name
+                  :row-render {"Name" :name
                                "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))}
-                  :row-title-fn title-fn
-                  :selected-row-fn (fn [shape] (= (:name data) (:name shape)))
+                  :row-title-render utils/pprint-aliases
+                  :row= (fn [shape] (= (:name data) (:name shape)))
                   :on-row-click (fn [shape] (re-frame/dispatch [::events/set-name id (:name shape)]))}]
           (comment [:label {:class "space-x-2"}
                     [:span title]

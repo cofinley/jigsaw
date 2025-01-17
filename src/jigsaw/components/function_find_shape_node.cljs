@@ -5,7 +5,9 @@
    [jigsaw.search :as search]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
+   [jigsaw.utils :as utils]
    [jigsaw.components.select :refer [select]]
+   [jigsaw.components.table :refer [table]]
    [jigsaw.components.node :refer [node]]))
 
 (defn selected-shape-value [data]
@@ -32,34 +34,27 @@
                      :value (or selected-shape-type "")}
              [[:option {:value :chord} "Chord"]
               [:option {:value :scale} "Scale"]]]
+            ;; TODO: find chord from scale - either combine with scale-chords node or this needs to not look for a chord with all scale notes (i.e. look for subsets)
             (let [shapes (search/notes->shapes notes selected-shape-type similarity-type)
                   pitches (set (map :pitch shapes))
                   pitch->shapes (reduce (fn [m shape]
                                           (update m (:pitch shape) (fnil conj []) shape))
                                         {}
                                         shapes)]
-              [select {:class "text-xl"
-                       :value (selected-shape-value (merge {:selected-shape-type selected-shape-type} data))
-                       :on-change (fn [e]
-                                    (let [value (-> e .-target .-value)]
-                                      (when (not= "" value)
-                                        (let [[pitch shape-type shape-name] (map keyword (s/split value #"_"))]
-                                          (re-frame/dispatch [::events/set-selected-shape
-                                                              id
-                                                              (keyword shape-type)
-                                                              (first (filter #(and (= (:pitch %) pitch)
-                                                                                   (= (:name %) shape-name))
-                                                                             shapes))])))))}
-               (cons
-                [:option {:value ""} "(Select " selected-shape-type ")"]
-                (for [pitch pitches
-                      :let [shapes (get pitch->shapes pitch)]]
-                  [:optgroup {:label (str (name pitch))}
-                   (for [shape shapes
-                         :when (some? shape)
-                         :let [aliases (:aliases shape)]]
-                     ^{:key shape} [:option {:value (selected-shape-value {:pitch pitch :selected-shape-type selected-shape-type :name (:name shape)})
-                                             :title (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))}
-                                    (str (name pitch) " " (name (:name shape)) " (" (int (* 100 (:similarity shape))) "% match)")])]))])])
+              [table {:ms shapes
+                      :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
+                                   "Name" :name
+                                   "Similarity" #(str (int (* 100 (:similarity %))) "%")}
+                      :row-title-render utils/pprint-aliases
+                      :row= (fn [shape] (and (= (:pitch data) (:pitch shape)) (= (:name data) (:name shape))))
+                      :on-row-click (fn [shape]
+                                      (let [{pitch :pitch shape-name :name degrees :degrees} shape
+                                            shape-type (if (some? degrees) :scale :chord)]
+                                        (re-frame/dispatch [::events/set-selected-shape
+                                                            id
+                                                            shape-type
+                                                            (first (filter #(and (= (:pitch %) pitch)
+                                                                                 (= (:name %) shape-name))
+                                                                           shapes))])))}])])
          [:p "Need notes in input"])
        [:p "No input"])]))

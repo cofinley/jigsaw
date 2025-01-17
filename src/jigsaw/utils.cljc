@@ -1,6 +1,8 @@
 (ns jigsaw.utils
-  (:require [clojure.set :as set]
-            [clojure.walk :as walk]))
+  (:require
+   [clojure.string :as s]
+   [clojure.set :as set]
+   [clojure.walk :as walk]))
 
 (defn in?
   "Returns true if v in coll, else false."
@@ -38,3 +40,7 @@
                        (into {} (map (fn [[k v]] [(strip-ns-key k) v]) x))
                        x))
                    m)))
+
+(defn pprint-aliases [shape]
+  (let [aliases (:aliases shape)]
+    (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))))

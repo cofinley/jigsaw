@@ -264,7 +264,7 @@
         scale (specs/scales scale-name)
         scale-intervals (::specs/intervals scale)
         scale-pitches (map (partial +interval start-pitch) scale-intervals)]
-    (for [rotation (range (dec (count scale-pitches)))]
+    (for [rotation (range (count scale-pitches))]
       (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate scale-pitches rotation))))
             notes (pitches->notes pitches)
             intervals (conj (rest (map (partial ->interval (first notes)) notes)) :P1)]
@@ -273,11 +273,14 @@
 (defn scale-chords
   [scale & {:keys [exact? num-thirds] :or {exact? false num-thirds 4}}]
   (if exact?
+      ;; TODO: return flat sequence of maps of full shapes
+      ;; TODO: for exact, don't just stack thirds, look for better measure
     (scale-chords-exact scale :num-thirds num-thirds)
     (let [{:keys [pitch name]} scale
           scale (specs/scales name)
           scale-intervals (::specs/intervals scale)
           scale-pitches (set (map (partial +interval pitch) scale-intervals))]
+      ;; TODO: return flat sequence of maps of full shapes
       (mapv (fn [interval]
               (let [pitch (+interval pitch interval)]
                 (mapv first (filter
