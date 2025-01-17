@@ -61,7 +61,43 @@
          (map #(assoc % :lowest-pitch-root? (if (= lowest-semitone (get specs/pitches (:pitch %))) 1 0)))
          (sort-by (juxt (comp - :similarity) (comp - :lowest-pitch-root?))))))
 
+(defn scale-chords-exact
+  [scale & {:keys [num-thirds] :or {num-thirds 4}}]
+  (let [{start-pitch :pitch scale-name :name} scale
+        scale (specs/scales scale-name)
+        scale-intervals (::specs/intervals scale)
+        scale-pitches (map (partial algo/+interval start-pitch) scale-intervals)]
+    (for [rotation (range (count scale-pitches))]
+      (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate scale-pitches rotation))))
+            notes (algo/pitches->notes pitches)
+            intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)]
+        [(specs/chords-by-intervals (set intervals))]))))
+
+(defn scale-chords
+  [scale & {:keys [exact? num-thirds] :or {exact? false num-thirds 4}}]
+  (if exact?
+      ;; TODO: return flat sequence of maps of full shapes
+      ;; TODO: for exact, don't just stack thirds, look for better measure
+    (scale-chords-exact scale :num-thirds num-thirds)
+    (let [{:keys [pitch name]} scale
+          scale (specs/scales name)
+          scale-intervals (::specs/intervals scale)
+          scale-pitches (set (map (partial algo/+interval pitch) scale-intervals))]
+      ;; TODO: return flat sequence of maps of full shapes
+      (mapv (fn [interval]
+              (let [pitch (algo/+interval pitch interval)]
+                (mapv first (filter
+                             (fn [[_ {chord-intervals ::specs/intervals}]]
+                               (let [chord-pitches (set (map (partial algo/+interval pitch) chord-intervals))]
+                                 ((if exact? utils/perfect-set? clojure.set/subset?) chord-pitches scale-pitches)))
+                             specs/chords))))
+            scale-intervals))))
+
 (comment
+  (let [scale (algo/resolve-shape :E :scale :harmonic-minor)
+        {pitches ::specs/pitches chord-lists :chords} (assoc scale :chords (scale-chords scale :exact? true :num-thirds 4))
+        chords (map first chord-lists)])
+  (scale-chords-exact {:pitch :G :name :lydian})
   (algo/resolve-shape :Gb4 :scale :major-pentatonic)
   (:pitches (algo/resolve-shape :C4 :chord :maj))
   (resolve-all-shapes :chord)

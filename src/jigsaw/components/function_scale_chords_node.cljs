@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [jigsaw.algo :as algo]
+   [jigsaw.search :as search]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
    [jigsaw.utils :as utils]
@@ -20,7 +21,7 @@
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :degrees)
          (let [selected-match-type (or (:match-type data) :diatonic)
-               chords-list (algo/scale-chords incoming-data :exact? (= :diatonic selected-match-type))
+               chords-list (search/scale-chords incoming-data :exact? (= :diatonic selected-match-type))
                pitches (:pitches incoming-data)
                pitch->chord-list (zipmap pitches chords-list)
                chord-shapes (flatten (map (fn [[pitch chord-names]]
