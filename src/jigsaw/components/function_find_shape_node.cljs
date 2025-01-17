@@ -19,9 +19,15 @@
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if-let [notes (seq (get-in incoming-data [:notes]))]
-         (let [selected-shape-type (or (:selected-shape-type data) :chord)
+         (let [incoming-shape-type (cond
+                                     (contains? incoming-data :degrees) :scale
+                                     (contains? incoming-data :intervals) :chord ; Scales have intervals too, but we didn't find :degrees
+                                     :else :notes)
+               ; Recommend finding scales by default if incoming shape is a chord, otherwise find chords
+               selected-shape-type (or (:selected-shape-type data) (if (= :chord incoming-shape-type) :scale :chord))
                similarity-type (or (:similarity-type data) :overlap)]
-           [:div {:class "flex flex-col space-y-2"}
+           [:div {:class "flex flex-col space-y-2 items-start"}
+            [:p (str "Incoming: " (name incoming-shape-type))]
             [select {:class "w-max"
                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
                      :value (or selected-shape-type "")}

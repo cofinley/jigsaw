@@ -10,6 +10,7 @@
    [jigsaw.components.table :refer [table]]
    [jigsaw.components.node :refer [node]]))
 
+;; TODO: merge into find-shapes, add 'diatonic' as a search method if incoming type is 'scale' and shape type being searched for is 'chord'
 (defn function-scale-chords-node [{:keys [id data]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
         data (:data (events/js-node->clj-node {:data data}))]
