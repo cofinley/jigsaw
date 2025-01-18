@@ -9,10 +9,11 @@
    [jigsaw.components.table :refer [table]]
    [jigsaw.components.node :refer [node]]))
 
+;; TODO: allow click-and-drag of table row into new input-shape node
 (defn function-find-shape-node [{:keys [id data]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
         data (:data (events/js-node->clj-node {:data data}))]
-    [node {:title "Find Compatible Shapes"
+    [node {:title "Compatible Shapes"
            :id id
            :data data
            :handles [{:type "target" :position "left"}

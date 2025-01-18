@@ -21,8 +21,8 @@
    label])
 
 (def child-node-options
-  {:function-scale-chords "Add scale chords node"
-   :function-find-shape "Add find shape node"})
+  {:function-scale-chords "Find scale chords"
+   :function-find-shape "Find compatible shapes"})
 
 (defn node-context-menu [props]
   [context-menu props

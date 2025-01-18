@@ -22,6 +22,8 @@
      (s/join (take commas (repeat ",")))
      (s/join (take apostrophes (repeat "'"))))))
 
+(def note-length "1/4")
+
 (defn shape->abc [data]
   (let [notes (set (:notes data))
         scale? (contains? data :degrees)
@@ -33,7 +35,7 @@
     (s/join "\n"
             ["X:1"
              (str "K:" key)
-             "L:1/4"
+             (str "L:" note-length)
              (s/join " "
                      [(when-not scale?
                         (str "\"" (str (name pitch) (name shape-name)) "\""))
@@ -50,7 +52,9 @@
         (let [notes (set (:notes data))
               syntax (shape->abc data)
               scale? (contains? data :degrees)]
-          (.renderAbc abcjs dom-id syntax #js {:jazzchords true :lineThickness 0.1 :staffwidth (if scale? (* 50 (count notes)) 100)})))
+          (.renderAbc abcjs dom-id syntax #js {:jazzchords true
+                                               :lineThickness 0.1
+                                               :staffwidth (if scale? (* 50 (count notes)) 100)})))
       :should-component-update (fn [_ prev next]
                                  (let [prev-notes (:notes (second prev))
                                        next-notes (:notes (second next))]
@@ -61,10 +65,13 @@
               notes (set (:notes new-data))
               syntax (shape->abc new-data)
               scale? (contains? new-data :degrees)]
-          (.renderAbc abcjs dom-id syntax #js {:jazzchords true :lineThickness 0.1 :staffwidth (if scale? (* 50 (count notes)) 100)})))
+          (.renderAbc abcjs dom-id syntax #js {:jazzchords true
+                                               :lineThickness 0.1
+                                               :staffwidth (if scale? (* 50 (count notes)) 100)})))
       :reagent-render
       (fn []
-        [:div {:id dom-id}])})))
+        [:div {:id dom-id
+               :class "flex justify-center"}])})))
 
 (defn output-music-staff-view [props]
   (let [data (:data props)

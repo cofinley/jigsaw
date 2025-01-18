@@ -28,6 +28,6 @@
     :component function-scale-chords-node}
    {:type :function-find-shape
     :category :function
-    :label "Find Shape"
+    :label "Compatible Shapes"
     :component function-find-shape-node}])
 

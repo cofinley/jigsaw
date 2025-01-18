@@ -9,6 +9,7 @@
    [jigsaw.components.table :refer [table]]
    [jigsaw.components.node :refer [node]]))
 
+;; TODO: allow changing shape
 (defn input-shape-node [{:keys [id data type]}]
   (let [shape-type (if (= :input-chord (keyword type)) :chord :scale)
         shapes (into [] (map #(assoc (utils/strip-ns (second %)) :name (first %)))

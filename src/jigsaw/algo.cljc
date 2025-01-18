@@ -306,6 +306,8 @@
 ;; TODO
 ;;  - Chord progressions/cadences
 ;;  - Find scale+degree+roman numeral from just the chord
+;;  - Preview scales on top of chord (progression)
+;;    - With different licks/melody rhythm patterns
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap
