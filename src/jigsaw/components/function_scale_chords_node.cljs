@@ -21,8 +21,8 @@
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :degrees)
-         (let [selected-match-type (or (:match-type data) :diatonic)
-               chords-list (search/scale-chords incoming-data :exact? (= :diatonic selected-match-type))
+         (let [num-thirds (or (:num-thirds data) 3)
+               chords-list (search/scale-chords incoming-data :num-thirds num-thirds)
                pitches (:pitches incoming-data)
                pitch->chord-list (zipmap pitches chords-list)
                chord-shapes (flatten (map (fn [[pitch chord-names]]
@@ -31,11 +31,12 @@
                pitch->degrees (zipmap pitches (:degrees incoming-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
-             [:span "Match Type"]
-             [select {:class "w-max"
-                      :value selected-match-type
-                      :on-change #(re-frame/dispatch [::events/update-node-data id {:match-type (-> % .-target .-value keyword)}])}
-              (map #(vector :option {} (name %)) [:diatonic :subset])]]
+             [:span "Thirds"]
+             [:input {:type "number"
+                      :class "p-1 rounded-md border border-gray-400 nodrag text-black"
+                      :size 2
+                      :value num-thirds
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:num-thirds (-> % .-target .-value int)}])}]]
             [:p "Chord"]
             [table {:ms chord-shapes
                     :row-render {"Root" :pitch
