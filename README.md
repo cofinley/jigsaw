@@ -1,4 +1,6 @@
-# jigsaw
+# Jigsaw
+
+Exploring music theory as a graph with depth-first search and heuristics to find harmony
 
 Project created with [deps-new](https://github.com/seancorfield/deps-new) and the [practicalli/application template](https://github.com/practicalli/project-templates)
 

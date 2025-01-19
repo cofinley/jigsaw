@@ -1,5 +1,6 @@
 (ns jigsaw.components.function-find-shape-node
   (:require
+   [clojure.string :as s]
    [re-frame.core :as re-frame]
    [jigsaw.search :as search]
    [jigsaw.subs :as subs]
@@ -26,20 +27,41 @@
                                      :else :notes)
                ; Recommend finding scales by default if incoming shape is a chord, otherwise find chords
                selected-shape-type (or (:selected-shape-type data) (if (= :chord incoming-shape-type) :scale :chord))
-               similarity-type (or (:similarity-type data) :overlap)]
+               heuristic (or (:heuristic data) :overlap)
+               max-shapes (or (:max-shapes data) 10)]
            [:div {:class "flex flex-col space-y-2 items-start"}
-            [:p (str "Incoming: " (name incoming-shape-type))]
-            [select {:class "w-max"
-                     :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
-                     :value (or selected-shape-type "")}
-             [[:option {:value :chord} "Chord"]
-              [:option {:value :scale} "Scale"]]]
+            [:div {:class "flex items-center space-x-4"}
+             [:label {:class "space-x-2"}
+              [:span "Find"]
+              [select {:class "w-max"
+                       :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
+                       :value (or selected-shape-type "")}
+               [[:option {:value :chord} "Chords"]
+                [:option {:value :scale} "Scales"]]]]
+             [:label {:class "space-x-2"}
+              [:span "Heuristic"]
+              [select {:class "w-max"
+                       :on-change #(re-frame/dispatch [::events/update-node-data id {:heuristic (keyword (-> % .-target .-value))}])
+                       :value heuristic}
+               (for [heuristic-type (keys search/heuristics)]
+                 [:option {:value heuristic-type} (s/replace (name heuristic-type) #"-" " ")])]]
+             [:label {:class "space-x-2"}
+              [:span "Max shapes"]
+              [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
+                       :type "number"
+                       :size 2
+                       :value max-shapes
+                       :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]]
             ;; TODO: find chord from scale - either combine with scale-chords node or this needs to not look for a chord with all scale notes (i.e. look for subsets)
-            (let [shapes (search/notes->shapes notes selected-shape-type similarity-type)]
+            ;; TODO: make search an event and update data with results, otherwise it blocks event loop/animation
+            (let [shapes (search/notes->shapes notes
+                                               selected-shape-type
+                                               :max-shapes max-shapes
+                                               :heuristic (keyword heuristic))]
               [table {:ms shapes
                       :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
                                    "Name" :name
-                                   "Similarity" #(str (int (* 100 (:similarity %))) "%")}
+                                   "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")}
                       :row-title-render utils/pprint-aliases
                       :row-selected? (fn [shape] (and (= (:pitch data) (:pitch shape)) (= (:name data) (:name shape))))
                       :on-row-click (fn [shape]

@@ -1,20 +1,9 @@
 (ns jigsaw.algo-test
   (:require
-   [clojure.test :refer [deftest testing is are]]
+   [clojure.test :refer [deftest testing]]
+   [jigsaw.test-utils :refer [are+]]
    [jigsaw.algo :as algo]
-   [jigsaw.spec :as specs]
-   [clojure.template :as temp]))
-
-(defmacro are+
-  "are but with assertion message like with `is`"
-  [argv expr & args]
-  (if (or
-       (and (empty? argv) (empty? args))
-       (and (pos? (count argv))
-            (pos? (count args))
-            (zero? (mod (count args) (count argv)))))
-    `(temp/do-template ~argv (is ~expr (str '~expr " => " ~expr)) ~@args)
-    (throw (IllegalArgumentException. "The number of args doesn't match are's argv."))))
+   [jigsaw.spec :as specs]))
 
 (deftest algo-test
   (testing "Algo"

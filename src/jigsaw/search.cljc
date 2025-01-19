@@ -6,30 +6,6 @@
    [jigsaw.utils :as utils]
    [jigsaw.spec :as specs]))
 
-(defn jaccard-index [set1 set2]
-  (let [intersection (count (set/intersection set1 set2))
-        union (count (set/union set1 set2))]
-    (if (zero? union)
-      0
-      (float (/ intersection union)))))
-
-(defn subset-index [set1 set2]
-  (let [intersection (count (set/intersection set1 set2))
-        smallest (min (count set1) (count set2))]
-    (float (/ intersection smallest))))
-
-(defn- similarity
-  [input-coll dest-coll dest-coll-root similarity-type]
-  (let [index ((case similarity-type
-                 :overlap jaccard-index
-                 :subset subset-index)
-               input-coll dest-coll)
-        dest-root-in-input (contains? input-coll dest-coll-root)
-        dest-root-in-input-weight 1
-        dest-root-in-input-coefficient (if dest-root-in-input dest-root-in-input-weight 0)]
-    (/ (+ index dest-root-in-input-coefficient)
-       (+ 1             dest-root-in-input-weight))))
-
 (defn- resolve-all-shapes [shape-type]
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
@@ -40,26 +16,55 @@
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
 
-;; TODO: record multiple types of similarity measures, return all at once; convert UI to table?
-(defn notes->shapes [notes shape-type & {:keys [similarity-type] :or {similarity-type :overlap}}]
+(defn jaccard-index [set1 set2]
+  (let [intersection (count (set/intersection set1 set2))
+        union (count (set/union set1 set2))]
+    (if (zero? union)
+      0
+      (float (/ intersection union)))))
+
+(def heuristics
+  ; Read as input <heurstic> possible shape
+  {:contains? set/superset?
+   :fully-contains? #(and (set/superset? %1 %2) (not= %1 %2))
+   :contained-in? set/subset?
+   :fully-contained-in? #(and (set/subset? %1 %2) (not= %1 %2))
+   :overlap jaccard-index})
+
+(defn- heuristic->float [x]
+  (case x
+    false 0
+    true 1
+    x))
+
+(defn calculate-heuristics
+  [input-coll dest-coll]
+  (reduce-kv (fn [m heuristic heuristic-fn]
+               (assoc m heuristic (heuristic->float (heuristic-fn input-coll dest-coll)))) {} heuristics))
+
+(defn notes->shapes [notes shape-type & {:keys [heuristic max-shapes] :or {heuristic :overlap
+                                                                           max-shapes 10}}]
   (let [pitches (into [] (map #(:pitch (algo/parts %)) notes))
         semitones (map specs/pitches pitches)
         midis (map algo/note->midi notes)
         midi->note (zipmap midis notes)
         lowest-pitch (:pitch (algo/parts (get midi->note (first (sort midis)))))
         lowest-semitone (get specs/pitches lowest-pitch)
-        ; Match on semitones instead of pitches to capture enharmonic equivalents
-        shapes (map (fn [shape]
-                      (assoc shape :similarity (similarity (set semitones)
-                                                           (set (:semitones shape))
-                                                           (get specs/pitches (:pitch shape))
-                                                           similarity-type)))
-                    (if (= shape-type :chord) all-chords all-scales))
-        max-similarity (:similarity (apply max-key :similarity shapes))]
-    (->> shapes
-         (filter #(= (:similarity %) max-similarity))
-         (map #(assoc % :lowest-pitch-root? (if (= lowest-semitone (get specs/pitches (:pitch %))) 1 0)))
-         (sort-by (juxt (comp - :similarity) (comp - :lowest-pitch-root?))))))
+        shapes (if (= shape-type :chord) all-chords all-scales)
+        ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
+        shapes-with-heuristics (map (fn [shape]
+                                      (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape)))))
+                                    shapes)]
+    (->> shapes-with-heuristics
+         (map #(update % :heuristics merge {:root-in-input? (heuristic->float (contains? (set semitones) (get specs/pitches (:pitch %))))
+                                            :lowest-input-root? (heuristic->float (= lowest-semitone (get specs/pitches (:pitch %))))
+                                            :root-pitches-match? (heuristic->float (= lowest-pitch (:pitch %)))}))
+         (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
+         (sort-by (juxt (comp - :root-in-input? :heuristics)
+                        ;(comp - :lowest-input-root? :heuristics)
+                        (comp - :root-pitches-match? :heuristics)
+                        (comp - heuristic :heuristics)))
+         (take max-shapes))))
 
 (defn scale-chords-exact
   [scale & {:keys [num-thirds] :or {num-thirds 4}}]
