@@ -1,14 +1,15 @@
 (ns jigsaw.components.function-find-shape-node
   (:require
    [clojure.string :as s]
-   [re-frame.core :as re-frame]
-   [jigsaw.search :as search]
-   [jigsaw.subs :as subs]
-   [jigsaw.events :as events]
-   [jigsaw.utils :as utils]
+   [jigsaw.components.node :refer [node]]
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.table :refer [table]]
-   [jigsaw.components.node :refer [node]]))
+   [jigsaw.events :as events]
+   [jigsaw.search :as search]
+   [jigsaw.spec :as specs]
+   [jigsaw.subs :as subs]
+   [jigsaw.utils :as utils]
+   [re-frame.core :as re-frame]))
 
 ;; TODO: allow click-and-drag of table row into new input-shape node
 (defn function-find-shape-node [{:keys [id data]}]
@@ -27,6 +28,7 @@
                                      :else :notes)
                ; Recommend finding scales by default if incoming shape is a chord, otherwise find chords
                selected-shape-type (or (:selected-shape-type data) (if (= :chord incoming-shape-type) :scale :chord))
+               selected-pitch (or (:selected-pitch data) "")
                heuristic (or (:heuristic data) :overlap)
                max-shapes (or (:max-shapes data) 10)]
            [:div {:class "flex flex-col space-y-2 items-start"}
@@ -46,18 +48,26 @@
                (for [heuristic-type (keys search/heuristics)]
                  [:option {:value heuristic-type} (s/replace (name heuristic-type) #"-" " ")])]]
              [:label {:class "space-x-2"}
+              [:span (if (= selected-shape-type :chord) "Root" "Tonic")]
+              [select {:class "w-max"
+                       :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-pitch (keyword (-> % .-target .-value))}])
+                       :value selected-pitch}
+               (cons [:option {:value "all"} "(Show all)"]
+                     (for [pitch (filter #(and (not (s/includes? (name %) "bb")) (not (s/includes? (name %) "##"))) (keys specs/pitches))]
+                       [:option {:value pitch} (name pitch)]))]]
+             [:label {:class "space-x-2"}
               [:span "Max shapes"]
               [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
                        :type "number"
                        :size 2
                        :value max-shapes
                        :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]]
-            ;; TODO: find chord from scale - either combine with scale-chords node or this needs to not look for a chord with all scale notes (i.e. look for subsets)
             ;; TODO: make search an event and update data with results, otherwise it blocks event loop/animation
             (let [shapes (search/notes->shapes notes
                                                selected-shape-type
                                                :max-shapes max-shapes
-                                               :heuristic (keyword heuristic))]
+                                               :heuristic (keyword heuristic)
+                                               :selected-pitch (if (= selected-pitch :all) nil selected-pitch))]
               [table {:ms shapes
                       :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
                                    "Name" :name

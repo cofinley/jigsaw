@@ -1,16 +1,14 @@
 (ns jigsaw.components.function-scale-chords-node
   (:require
-   [re-frame.core :as re-frame]
    [jigsaw.algo :as algo]
+   [jigsaw.components.node :refer [node]]
+   [jigsaw.components.table :refer [table]]
+   [jigsaw.events :as events]
    [jigsaw.search :as search]
    [jigsaw.subs :as subs]
-   [jigsaw.events :as events]
    [jigsaw.utils :as utils]
-   [jigsaw.components.select :refer [select]]
-   [jigsaw.components.table :refer [table]]
-   [jigsaw.components.node :refer [node]]))
+   [re-frame.core :as re-frame]))
 
-;; TODO: merge into find-shapes, add 'diatonic' as a search method if incoming type is 'scale' and shape type being searched for is 'chord'
 (defn function-scale-chords-node [{:keys [id data]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
         data (:data (events/js-node->clj-node {:data data}))]
@@ -22,12 +20,12 @@
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :degrees)
          (let [num-thirds (or (:num-thirds data) 3)
-               chords-list (search/scale-chords incoming-data :num-thirds num-thirds)
+               chords (search/scale-chords incoming-data :num-thirds num-thirds)
                pitches (:pitches incoming-data)
-               pitch->chord-list (zipmap pitches chords-list)
-               chord-shapes (flatten (map (fn [[pitch chord-names]]
-                                            (map (fn [name] {:pitch pitch :name name}) chord-names))
-                                          pitch->chord-list))
+               pitch->chord (zipmap pitches chords)
+               chord-shapes (map (fn [[pitch chord-name]]
+                                   {:pitch pitch :name chord-name})
+                                 pitch->chord)
                pitch->degrees (zipmap pitches (:degrees incoming-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}

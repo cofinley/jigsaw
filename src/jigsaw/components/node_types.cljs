@@ -3,6 +3,7 @@
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.components.input-shape-node :refer [input-shape-node]]
    [jigsaw.components.function-scale-chords-node :refer [function-scale-chords-node]]
+   [jigsaw.components.function-chord-scales-node :refer [function-chord-scales-node]]
    [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]))
 
 (def node-categories
@@ -26,6 +27,10 @@
     :category :function
     :label "Scale Chords"
     :component function-scale-chords-node}
+   {:type :function-chord-scales
+    :category :function
+    :label "Chord Scales"
+    :component function-chord-scales-node}
    {:type :function-find-shape
     :category :function
     :label "Compatible Shapes"
