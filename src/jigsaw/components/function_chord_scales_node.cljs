@@ -21,13 +21,13 @@
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :intervals)
-         (let [degree (or (:degree data) :i)
-               scales (search/chord-scales incoming-data :degree degree)]
+         (let [selected-degree (or (:selected-degree data) :i)
+               scales (search/chord-scales incoming-data :degree selected-degree)]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
              [:span "Degree"]
-             [select {:value degree
-                      :on-change #(re-frame/dispatch [::events/update-node-data id {:degree (-> % .-target .-value keyword)}])}
+             [select {:value selected-degree
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-degree (-> % .-target .-value keyword)}])}
               (cons [:option {:value :all} "All"]
                     (for [deg (sort-by utils/parse-int specs/degrees)]
                       [:option {:value deg} deg]))]]

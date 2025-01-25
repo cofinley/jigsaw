@@ -4,6 +4,7 @@
    [clojure.string :as s]
    [jigsaw.algo :as algo]
    [jigsaw.spec :as specs]
+   [jigsaw.scales-by-chord :refer [scales-by-chord]]
    [jigsaw.utils :as utils]))
 
 (defn- resolve-all-shapes [shape-type]
@@ -84,20 +85,25 @@
             intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)]
         (specs/chords-by-intervals (set intervals))))))
 
-(def scales-by-chord
+(defn generate-scales-by-chord []
   (reduce (fn [m chord-name]
             (assoc m chord-name
                    (reduce (fn [coll scale]
-                             (let [chord (utils/strip-ns (algo/resolve-shape :C4 :chord chord-name))
+                             (let [chord (utils/strip-ns (algo/resolve-shape :C :chord chord-name))
                                    degrees (:degrees scale)
-                                   chord-pitches (set (:pitches chord))
-                                   scale-pitches (set (:pitches scale))
+                                   chord-pitches (:pitches chord)
+                                   scale-pitches (:pitches scale)
                                    pitch->degree (zipmap scale-pitches degrees)]
-                               (if (set/subset? chord-pitches scale-pitches)
+                               (if (set/subset? (set chord-pitches) (set scale-pitches))
                                  (conj coll {:scale-name (:name scale) :chord-degree (pitch->degree :C)})
                                  coll)))
-                           [] all-scales)))
+                           #{} all-scales)))
           {} (keys specs/chords)))
+
+; (comment
+    ; Use to generate json of scale chords (needs converted to clojure/edn)
+;   (require '[clojure.data.json :as json])
+;   (spit "scales-by-chord.json" (json/write-str (generate-scales-by-chord))))
 
 (defn degree->tonic
   "Given some pitch (e.g. :Eb), scale, and degree (e.g. :5), find the tonic pitch (e.g. :)"
