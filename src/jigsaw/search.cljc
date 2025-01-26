@@ -70,8 +70,6 @@
                    (comp - heuristic :heuristics)))
          (take max-shapes))))
 
-;; TODO make inverse of this where scales found from chord and degree of the chord is called out
-;;  - Maybe with tonic function filter (e.g. this chord sounds like home/tonic, find scales where it's the I/i chord)
 (defn scale-chords
   "Diatonic chords based on thirds"
   [scale & {:keys [num-thirds] :or {num-thirds 3}}]

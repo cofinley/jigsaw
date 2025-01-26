@@ -1,4 +1,4 @@
-(ns jigsaw.components.function-scale-chords-node
+(ns jigsaw.components.function-find-chords-node
   (:require
    [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
@@ -9,7 +9,7 @@
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
-(defn function-scale-chords-node [{:keys [id data]}]
+(defn function-find-chords-node [{:keys [id data]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
         data (:data (events/js-node->clj-node {:data data}))]
     [node {:title "Scale Chords"

@@ -45,4 +45,4 @@
                                          (midi->label midi)]))))
                 :activeNotes midis
                 :width width}]]])
-          [:p "No input"])))))
+          [:p "Nothing selected"])))))

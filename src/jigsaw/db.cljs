@@ -6,7 +6,7 @@
                 :type :input-chord
                 :data {:pitch :Eb :name :m}}
            "3" {:id "3"
-                :position {:x 0 :y 450}
+                :position {:x 0 :y 750}
                 :type :input-scale
                 :data {:pitch :Eb :name :mixolydian}}}
    :edges {}})

@@ -2,8 +2,8 @@
   (:require
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.components.input-shape-node :refer [input-shape-node]]
-   [jigsaw.components.function-scale-chords-node :refer [function-scale-chords-node]]
-   [jigsaw.components.function-chord-scales-node :refer [function-chord-scales-node]]
+   [jigsaw.components.function-find-chords-node :refer [function-find-chords-node]]
+   [jigsaw.components.function-find-scales-node :refer [function-find-scales-node]]
    [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]))
 
 (def node-categories
@@ -25,12 +25,12 @@
     :component input-shape-node}
    {:type :function-scale-chords
     :category :function
-    :label "Scale Chords"
-    :component function-scale-chords-node}
+    :label "Find Chords"
+    :component function-find-chords-node}
    {:type :function-chord-scales
     :category :function
-    :label "Chord Scales"
-    :component function-chord-scales-node}
+    :label "Find Scales"
+    :component function-find-scales-node}
    {:type :function-find-shape
     :category :function
     :label "Compatible Shapes"
