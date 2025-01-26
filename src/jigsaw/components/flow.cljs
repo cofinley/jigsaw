@@ -6,7 +6,7 @@
    [jigsaw.events :as events]
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.context-menu :refer [node-context-menu]]
-   [jigsaw.components.node-types :refer [node-types node-categories]]
+   [jigsaw.components.node-types :refer [node-types node-types-memo node-categories]]
    ["react" :refer [useMemo useState useRef useCallback]]
    ["@xyflow/react" :refer [ReactFlow
                             Background
@@ -19,23 +19,33 @@
 (defn memoized-node
   "Memoize node so it only re-renders if data changes"
   [props]
-  (let [{:keys [id type data]} (js->clj props :keywordize-keys true)]
+  (let [{:keys [id type]} (js->clj props :keywordize-keys true)]
     (useMemo
      (fn []
        (r/as-element
-        [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
-         {:id id :type type :data data}]))
-     #js [data])))
+        (let [data (re-frame/subscribe [::subs/data id])]
+          [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
+           {:id id :type type :data @data}])))
+     #js [])))
+
+; (defn memoized-node
+;   "Memoize node so it only re-renders if data changes"
+;   [props]
+;   (let [{:keys [id type]} (js->clj props :keywordize-keys true)
+;         data (re-frame/subscribe [::subs/data id])]
+;     (r/as-element
+;      [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
+;       {:id id :type type :data @data}])))
 
 (defn flow []
   (let [nodes (re-frame/subscribe [::subs/nodes])
         edges (re-frame/subscribe [::subs/edges])
         on-nodes-change (fn [changes]
-                          (re-frame/dispatch [::events/set-nodes (js->clj (applyNodeChanges changes (clj->js @nodes)) :keywordize-keys true)]))
+                          (re-frame/dispatch [::events/set-nodes (applyNodeChanges changes @nodes)]))
         on-edges-change (fn [changes]
-                          (re-frame/dispatch [::events/set-edges (js->clj (applyEdgeChanges changes (clj->js @edges)) :keywordize-keys true)]))
+                          (re-frame/dispatch [::events/set-edges (applyEdgeChanges changes @edges)]))
         on-connect (fn [params]
-                     (re-frame/dispatch [::events/set-edges (js->clj (addEdge params (clj->js @edges)) :keywordize-keys true)]))
+                     (re-frame/dispatch [::events/set-edges (addEdge params @edges)]))
         ref (useRef nil)
         [node-menu set-node-menu] (useState nil)
         on-node-context-menu (useCallback (fn [e node]
@@ -51,10 +61,11 @@
         flow-node-types (useMemo #(clj->js (reduce (fn [m node-type]
                                                      (assoc m (:type node-type) memoized-node))
                                                    {} node-types)) #js [])]
+        ; flow-node-types (useMemo #(clj->js node-types-memo) #js [])]
     [:div {:style {:height "100%"}}
      [:> ReactFlow {:ref ref
-                    :nodes (clj->js @nodes)
-                    :edges (clj->js @edges)
+                    :nodes (or @nodes #js [])
+                    :edges (or @edges #js [])
                     :onNodesChange on-nodes-change
                     :onEdgesChange on-edges-change
                     :onConnect on-connect

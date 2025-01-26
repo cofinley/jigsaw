@@ -9,8 +9,9 @@
  ::initialize-db
  (fn [_ _]
    {:db db/default-db
-    :fx [[:dispatch [::calculate-shape "1"]]
-         [:dispatch [::calculate-shape "3"]]]}))
+    ; :fx [[:dispatch [::calculate-shape "1"]]
+    ;      [:dispatch [::calculate-shape "3"]]]
+    }))
 
 (defn js-node->clj-node
   "Converts js node to clj (keywords, sets)"
@@ -34,24 +35,16 @@
 (re-frame/reg-event-db
  ::set-nodes
  (fn [db [_ nodes]]
-   (assoc db :nodes
-          (reduce (fn [m node]
-                    (assoc m (:id node) (js-node->clj-node node)))
-                  {}
-                  nodes))))
+   (assoc db :nodes nodes)))
 
 (re-frame/reg-event-db
  ::set-edges
  (fn [db [_ edges]]
-   (assoc db :edges
-          (reduce (fn [m edge]
-                    (assoc m (:id edge) edge))
-                  {}
-                  edges))))
+   (assoc db :nodes edges)))
 
 (defn add-edge [db edge]
-  (let [id (str (:source edge) "->" (:target edge))]
-    (assoc-in db [:edges id] (merge {:id id} edge))))
+  (-> db
+      (assoc :edges (.concat (:edges db) edge))))
 
 (re-frame/reg-event-db
  ::add-edge
@@ -59,11 +52,17 @@
    (add-edge db edge)))
 
 (defn create-node [db node-type & [parent-id]]
-  (let [parent-node (when parent-id (get-in db [:nodes parent-id]))
+  (let [;parent-node (when parent-id (get-in db [:nodes parent-id]))
+        parent-node nil
         node (db/->node {:type (keyword node-type) :data {}} parent-node)
         id (:id node)]
     (cond-> db
-      true (assoc-in [:nodes id] node)
+      true (assoc :nodes (.concat (:nodes db)
+                                  (clj->js {:id id
+                                            :position {:x 0 :y 0}
+                                            :type node-type
+                                            :data {}})))
+      true (assoc-in [:node-data id] {:type node-type})
       (some? parent-id) (add-edge {:source parent-id :target id}))))
 
 (re-frame/reg-event-db
@@ -74,7 +73,7 @@
 (re-frame/reg-event-db
  ::toggle-note
  (fn [db [_ id midi]]
-   (let [notes-path [:nodes id :data :notes]
+   (let [notes-path [:node-data id :notes]
          notes (set (or (get-in db notes-path) #{}))
          note (algo/midi->note midi nil)]
      (assoc-in db notes-path ((if (some? (some #{note} notes)) disj conj) notes note)))))
@@ -89,20 +88,20 @@
 (re-frame/reg-event-db
  ::calculate-shape
  (fn [db [_ id]]
-   (let [node (get-in db [:nodes id])
+   (let [node (get-in db [:node-data id])
          shape (calculate-shape node)]
      (cond-> db
-       (some? shape) (update-in [:nodes id :data] merge (utils/strip-ns shape))))))
+       (some? shape) (update-in [:node-data id] merge (utils/strip-ns shape))))))
 
 (re-frame/reg-event-db
  ::update-node-data
  (fn [db [_ id data]]
-   (update-in db [:nodes id :data] merge data)))
+   (update-in db [:node-data id] merge data)))
 
 (re-frame/reg-event-db
  ::set-selected-shape
  (fn [db [_ id shape-type selected-shape]]
-   (let [node (get-in db [:nodes id])
+   (let [node (get-in db [:node-data id])
          ;; TODO: create clear-shape fn to remove any scale/chord keys, like :degrees, before setting new shape
-         new-node (update (update node :data dissoc :degrees) :data merge (merge selected-shape {:selected-shape-type shape-type}))]
-     (assoc-in db [:nodes id] new-node))))
+         new-node (merge (update node :data dissoc :degrees) (merge selected-shape {:selected-shape-type shape-type}))]
+     (assoc-in db [:node-data id] new-node))))
