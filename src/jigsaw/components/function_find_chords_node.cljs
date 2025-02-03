@@ -20,7 +20,7 @@
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :degrees)
          (let [num-thirds (or (:num-thirds data) 3)
-               chords (search/scale-chords incoming-data :num-thirds num-thirds)
+               chords (search/scale->chords incoming-data :num-thirds num-thirds)
                pitches (:pitches incoming-data)
                pitch->chord (zipmap pitches chords)
                chord-shapes (map (fn [[pitch chord-name]]

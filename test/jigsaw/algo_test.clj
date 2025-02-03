@@ -130,7 +130,9 @@
           ; 21 semitone ceiling reached
           :C4 :A5 :M13
           ; 22 semitones, fold down octave
-          :C4 :A#5 :A6)))
+          :C4 :A#5 :A6
+          ; First note higher than second, bump second note's octave up
+          :D4 :C4 :m7)))
     (testing "with note->midi"
       (are+ [note want] (= want (algo/note->midi note))
         :C4  60

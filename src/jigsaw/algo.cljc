@@ -69,13 +69,13 @@
     (keyword (str (name p) octave))))
 
 (defn fold-notes
-  "Fold notes into a 21 semitone range so the highest interval is a 13th"
-  [notes]
+  "Fold notes into a 21 semitone range so the highest interval is a 13th (by default)"
+  [notes & {:keys [max-semitone] :or {max-semitone 21}}]
   {:pre [(every? specs/note? notes)]}
   (let [notes->midis (zipmap notes (map note->midi notes))
         [_ low-midi] (apply min-key val notes->midis)
         [high-note high-midi] (apply max-key val notes->midis)]
-    (if (<= (- high-midi low-midi) 21)
+    (if (<= (- high-midi low-midi) max-semitone)
       notes
       (let [{:keys [pitch octave]} (parts high-note)
             new-note (keyword (str (name pitch) (dec octave)))]
@@ -102,15 +102,18 @@
 (defn ->interval
   [x1 x2]
   {:pre [(every? specs/pitch-or-note? [x1 x2])]
-   :post [(specs/interval? %)]}
-  (let [semitone-distance (semitone-distance x1 x2)
-        matching-intervals (specs/intervals-by-semitone semitone-distance)]
-    (if (= (count matching-intervals) 1)
-      (first matching-intervals)
-      (let [distance (staff-distance x1 x2)]
-        (first (filter #(or (string/includes? (name %) (str distance))
-                            (string/includes? (name %) (str (+ 7 distance))))
-                       matching-intervals))))))
+   :post [(or (specs/interval? %) (nil? %))]}
+  (if (and (specs/note? x1) (< (note->midi x2) (note->midi x1)))
+    (let [{:keys [pitch octave]} (parts x2)]
+      (->interval x1 (keyword (str (name pitch) (inc octave)))))
+    (let [semitone-distance (semitone-distance x1 x2)
+          matching-intervals (specs/intervals-by-semitone semitone-distance)]
+      (if (= (count matching-intervals) 1)
+        (first matching-intervals)
+        (let [distance (staff-distance x1 x2)]
+          (first (filter #(or (string/includes? (name %) (str distance))
+                              (string/includes? (name %) (str (+ 7 distance))))
+                         matching-intervals)))))))
 
 (defn- letter+
   "Given a letter (as a capital character, like \\A) and an interval to move
@@ -308,6 +311,7 @@
 ;;  - Find scale+degree+roman numeral from just the chord
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
+;;  - Handle list views/multiplexing the node views
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap
