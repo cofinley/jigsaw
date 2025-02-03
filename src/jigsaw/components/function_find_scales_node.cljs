@@ -22,7 +22,7 @@
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :intervals)
          (let [selected-degree (or (:selected-degree data) :i)
-               scales (search/chord-scales incoming-data :degree selected-degree)]
+               scales (search/chord->scales incoming-data)]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
              [:span "Degree"]
@@ -45,7 +45,8 @@
                                                 (= (:name data) (:name shape))
                                                 (= (:degree data) (:degree shape))))
                     :on-row-click (fn [shape]
-                                    (re-frame/dispatch [::events/update-node-data id shape])
+                                    (re-frame/dispatch [::events/update-node-data id
+                                                        (merge shape (algo/resolve-shape (algo/pitch->note (:pitch shape)) :scale (:name shape)))])
                                     (re-frame/dispatch [::events/calculate-shape id]))}]])
          [:p "Input is not a chord"])
        [:p "No input"])]))
