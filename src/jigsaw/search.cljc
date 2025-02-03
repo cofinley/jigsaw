@@ -123,8 +123,9 @@
    []
    specs/scales-by-intervals))
 
-(defn chord->scales [chord]
-  (let [search-intervals (chord->search-intervals chord)
+(defn chord->scales [{pitch :pitch chord-name :name}]
+  (let [chord (utils/strip-ns (algo/resolve-shape pitch :chord chord-name))
+        search-intervals (chord->search-intervals chord)
         base-scales (mapcat intervals->scales search-intervals)]
     (map (fn [m]
            (let [{:keys [chord-degree scale-name]} m
@@ -142,9 +143,4 @@
   (resolve-all-shapes :chord)
   (notes->shapes :scale [:Eb4 :Gb4 :Ab4])
   (map (juxt :pitch :degree :name) (chord->scales {:pitch :C :name :maj}))
-  (algo/->interval :D4 :C5)
-  (algo/semitone-distance :D4 :C5)
-  (chord->search-intervals (utils/strip-ns (algo/resolve-shape :Eb4 :chord :6add9)))
-  (utils/strip-ns (algo/resolve-shape :C :scale :minor))
-  (algo/->interval :C :C)
-  (chord->scales (utils/strip-ns (algo/resolve-shape :C :chord :13sus4))))
+  (chord->scales {:pitch :C :name :13sus4}))

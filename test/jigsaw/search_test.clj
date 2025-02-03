@@ -46,7 +46,7 @@
                            :fully-contains? 1
                            :overlap (float (/ 1 3))}))
     (testing "chord->scales"
-      (are+ [pitch chord-name expected] (= expected (search/chord->scales (utils/strip-ns (algo/resolve-shape pitch :chord chord-name))))
+      (are+ [pitch chord-name expected] (= expected (search/chord->scales {:pitch pitch :name chord-name}))
         :C :maj [{:pitch :C, :degree :1, :name :lydian-dominant-pentatonic}
                  {:pitch :C, :degree :1, :name :bebop-major}
                  {:pitch :C, :degree :1, :name :lydian}
