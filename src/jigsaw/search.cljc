@@ -56,7 +56,7 @@
         lowest-pitch (:pitch (algo/parts (get midi->note (first (sort midis)))))
         lowest-semitone (get specs/pitches lowest-pitch)
         shapes (if (= shape-type :chord) all-chords all-scales)
-        filtered-shapes (filter #(if (some? selected-pitch) (= selected-pitch (:pitch %)) true) shapes)
+        filtered-shapes (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true) shapes)
         ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
         shapes-with-heuristics (map (fn [shape]
                                       (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape)))))
@@ -69,7 +69,7 @@
          (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
          (sort-by (juxt ;(comp - :root-in-input? :heuristics)
                         ;(comp - :lowest-input-root? :heuristics)
-                        ;(comp - :root-pitches-match? :heuristics)
+                   (comp - :root-pitches-match? :heuristics)
                    (comp - heuristic :heuristics)))
          (take max-shapes))))
 
