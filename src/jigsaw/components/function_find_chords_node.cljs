@@ -5,6 +5,7 @@
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
    [jigsaw.search :as search]
+   [jigsaw.spec :as specs]
    [jigsaw.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
@@ -24,7 +25,9 @@
                pitches (:pitches incoming-data)
                pitch->chord (zipmap pitches chords)
                chord-shapes (map (fn [[pitch chord-name]]
-                                   {:pitch pitch :name chord-name})
+                                   {:pitch pitch
+                                    :name chord-name
+                                    :aliases (:aliases (utils/strip-ns (specs/chords chord-name)))})
                                  pitch->chord)
                pitch->degrees (zipmap pitches (:degrees incoming-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}

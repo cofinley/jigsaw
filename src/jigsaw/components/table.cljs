@@ -1,7 +1,13 @@
 (ns jigsaw.components.table
   (:require [clojure.string :as s]))
 
-(defn table [{:keys [ms row-render row-selected? on-row-hover on-row-click row-title-render]}]
+(defn table [{:keys [ms
+                     row-render
+                     row-selected?
+                     on-row-hover
+                     on-row-click
+                     row-title-render
+                     row-filter]}]
   [:div {:class "max-h-72 w-full overflow-scroll nowheel nodrag"}
    [:table
     [:thead
@@ -10,7 +16,10 @@
         ^{:key (str "header-" header)}
         [:th {:class "text-xl"} header])]]
     [:tbody
-     (for [m ms]
+     (for [m ms
+           :when (if (some? row-filter)
+                   (row-filter m)
+                   true)]
        (let [selected? (and (some? row-selected?) (row-selected? m))]
          ^{:key m}
          [:tr {:class (s/join
