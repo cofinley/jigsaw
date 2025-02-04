@@ -23,7 +23,8 @@
    {:app {:init-fn jigsaw.core/init}}
    :devtools
    {:preloads
-    [day8.re-frame-10x.preload]}
+    [;day8.re-frame-10x.preload
+     ]}
    :dev
    {:compiler-options
     {:closure-defines

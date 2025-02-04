@@ -5,32 +5,9 @@
    [jigsaw.algo :as algo]
    [jigsaw.utils :as utils]))
 
-(re-frame/reg-event-fx
+(re-frame/reg-event-db
  ::initialize-db
- (fn [_ _]
-   {:db db/default-db
-    ; :fx [[:dispatch [::calculate-shape "1"]]
-    ;      [:dispatch [::calculate-shape "3"]]]
-    }))
-
-(defn js-node->clj-node
-  "Converts js node to clj (keywords, sets)"
-  [node]
-  (let [{:keys [notes name pitch pitches intervals selected-shape-type match-type view-type degree selected-pitch selected-degree]} (:data node)
-        type (:type node)]
-    (cond-> node
-      (some? notes) (assoc-in [:data :notes] (map keyword notes))
-      (some? name) (assoc-in [:data :name] (keyword name))
-      (some? pitch) (assoc-in [:data :pitch] (keyword pitch))
-      (some? pitches) (assoc-in [:data :pitches] (map keyword pitches))
-      (some? intervals) (assoc-in [:data :intervals] (map keyword intervals))
-      (some? selected-shape-type) (assoc-in [:data :selected-shape-type] (keyword selected-shape-type))
-      (some? match-type) (assoc-in [:data :match-type] (keyword match-type))
-      (some? view-type) (assoc-in [:data :view-type] (keyword view-type))
-      (some? degree) (assoc-in [:data :degree] (keyword degree))
-      (some? selected-pitch) (assoc-in [:data :selected-pitch] (keyword selected-pitch))
-      (some? selected-degree) (assoc-in [:data :selected-degree] (keyword selected-degree))
-      (some? type) (assoc :type (keyword type)))))
+ (fn [_ _] db/default-db))
 
 (re-frame/reg-event-db
  ::set-nodes
@@ -52,17 +29,14 @@
    (add-edge db edge)))
 
 (defn create-node [db node-type & [parent-id]]
-  (let [;parent-node (when parent-id (get-in db [:nodes parent-id]))
-        parent-node nil
-        node (db/->node {:type (keyword node-type) :data {}} parent-node)
+  (let [parent-node (when parent-id
+                      (assoc (js->clj (first (filter #(= parent-id (.-id %)) (:nodes db))) :keywordize-keys true)
+                             :data (get-in db [:node-data parent-id])))
+        node (db/->node {:type (keyword node-type)} parent-node)
         id (:id node)]
     (cond-> db
-      true (assoc :nodes (.concat (:nodes db)
-                                  (clj->js {:id id
-                                            :position {:x 0 :y 0}
-                                            :type node-type
-                                            :data {}})))
-      true (assoc-in [:node-data id] {:type node-type})
+      true (assoc :nodes (.concat (:nodes db) (clj->js node)))
+      true (assoc-in [:node-data id] {:type (keyword node-type)})
       (some? parent-id) (add-edge {:source parent-id :target id}))))
 
 (re-frame/reg-event-db
@@ -80,8 +54,8 @@
 
 ;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
 (defn calculate-shape [node]
-  (let [shape-type (if (utils/in? [:input-chord :function-scale-chords] (keyword (:type node))) :chord :scale)
-        {:keys [pitch name]} (:data node)]
+  (let [shape-type (if (utils/in? [:input-chord :function-scale-chords] (:type node)) :chord :scale)
+        {:keys [pitch name]} node]
     (when (and (some? pitch) (some? name))
       (algo/resolve-shape (algo/pitch->note pitch) shape-type (keyword name)))))
 

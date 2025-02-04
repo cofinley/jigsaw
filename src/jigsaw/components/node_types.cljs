@@ -36,11 +36,3 @@
     :category :function
     :label "Compatible Shapes"
     :component function-find-shape-node}])
-
-(def node-types-memo
-  {:input-piano (r/reactify-component input-piano-node)
-   :input-chord (r/reactify-component input-shape-node)
-   :input-scale (r/reactify-component input-shape-node)
-   :function-scale-chords (r/reactify-component function-find-chords-node)
-   :function-chord-scales (r/reactify-component function-find-scales-node)
-   :function-find-shape (r/reactify-component function-find-shape-node)})

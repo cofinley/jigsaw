@@ -6,7 +6,7 @@
    [jigsaw.events :as events]
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.context-menu :refer [node-context-menu]]
-   [jigsaw.components.node-types :refer [node-types node-types-memo node-categories]]
+   [jigsaw.components.node-types :refer [node-types node-categories]]
    ["react" :refer [useMemo useState useRef useCallback]]
    ["@xyflow/react" :refer [ReactFlow
                             Background
@@ -23,19 +23,9 @@
     (useMemo
      (fn []
        (r/as-element
-        (let [data (re-frame/subscribe [::subs/data id])]
-          [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
-           {:id id :type type :data @data}])))
+        [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
+         {:id id :type type}]))
      #js [])))
-
-; (defn memoized-node
-;   "Memoize node so it only re-renders if data changes"
-;   [props]
-;   (let [{:keys [id type]} (js->clj props :keywordize-keys true)
-;         data (re-frame/subscribe [::subs/data id])]
-;     (r/as-element
-;      [(:component (first (filter #(= (:type %) (keyword type)) node-types)))
-;       {:id id :type type :data @data}])))
 
 (defn flow []
   (let [nodes (re-frame/subscribe [::subs/nodes])
@@ -58,10 +48,12 @@
                                                               :bottom (and (>= (.-clientY e) (- (.-height pane) 200)) (- (.-height pane) (.-clientY e)))})))
                                           #js [set-node-menu])
         on-pane-click (useCallback #(set-node-menu nil) #js [set-node-menu])
-        flow-node-types (useMemo #(clj->js (reduce (fn [m node-type]
-                                                     (assoc m (:type node-type) memoized-node))
-                                                   {} node-types)) #js [])]
-        ; flow-node-types (useMemo #(clj->js node-types-memo) #js [])]
+        flow-node-types (useMemo
+                         #(clj->js
+                           (reduce (fn [m node-type]
+                                     (assoc m (:type node-type) memoized-node))
+                                   {} node-types))
+                         #js [])]
     [:div {:style {:height "100%"}}
      [:> ReactFlow {:ref ref
                     :nodes (or @nodes #js [])
@@ -83,7 +75,7 @@
            [:optgroup {:label cat-label}
             (for [node-type node-types
                   :when (= cat-k (:category node-type))]
-              ^{:key node-type} [:option {:value (:type node-type)} (:label node-type)])]))]]
+              ^{:key (:label node-type)} [:option {:value (:type node-type)} (:label node-type)])]))]]
       [:> Background]
       (when node-menu
         [node-context-menu (merge {:on-click on-pane-click} node-menu)])
