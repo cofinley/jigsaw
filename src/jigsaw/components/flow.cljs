@@ -75,7 +75,7 @@
            [:optgroup {:label cat-label}
             (for [node-type node-types
                   :when (= cat-k (:category node-type))]
-              ^{:key (:label node-type)} [:option {:value (:type node-type)} (:label node-type)])]))]]
+              ^{:key (:type node-type)} [:option {:value (:type node-type)} (:label node-type)])]))]]
       [:> Background]
       (when node-menu
         [node-context-menu (merge {:on-click on-pane-click} node-menu)])

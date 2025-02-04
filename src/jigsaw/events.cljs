@@ -17,11 +17,10 @@
 (re-frame/reg-event-db
  ::set-edges
  (fn [db [_ edges]]
-   (assoc db :nodes edges)))
+   (assoc db :edges edges)))
 
 (defn add-edge [db edge]
-  (-> db
-      (assoc :edges (.concat (:edges db) edge))))
+  (assoc db :edges (.concat (:edges db) edge)))
 
 (re-frame/reg-event-db
  ::add-edge
@@ -37,7 +36,7 @@
     (cond-> db
       true (assoc :nodes (.concat (:nodes db) (clj->js node)))
       true (assoc-in [:node-data id] {:type (keyword node-type)})
-      (some? parent-id) (add-edge {:source parent-id :target id}))))
+      (some? parent-id) (add-edge #js {:source parent-id :target id}))))
 
 (re-frame/reg-event-db
  ::add-node
