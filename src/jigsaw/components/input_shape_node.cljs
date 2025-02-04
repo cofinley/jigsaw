@@ -15,10 +15,10 @@
   (let [shape-type (if (= :input-chord (keyword type)) :chord :scale)
         shapes (into [] (map #(assoc (utils/strip-ns (second %)) :name (first %)))
                      (if (= shape-type :chord) specs/chords specs/scales))
-        title (if (= shape-type :chord) "Chord" "Scale")]
+        title (if (= shape-type :chord) "Chord" "Scale")
+        search (r/atom "")]
     (fn [{:keys [id data type]}]
-      (let [data (:data (events/js-node->clj-node {:data data}))
-            search (or (:search data) "")]
+      (let [data (:data (events/js-node->clj-node {:data data}))]
         [node {:title title
                :id id
                :data data
@@ -42,8 +42,8 @@
           [:label {:class "space-x-4"}
            [:span "Search"]
            [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
-                    :value search
-                    :on-change #(re-frame/dispatch [::events/update-node-data id {:search (-> % .-target .-value)}])}]]
+                    :value @search
+                    :on-change #(reset! search (-> % .-target .-value))}]]
           ;; Shape names
           [:p title]
           [table {:ms shapes
@@ -51,7 +51,7 @@
                                "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))}
                   :row-title-render utils/pprint-aliases
                   :row-selected? (fn [shape] (= (:name data) (:name shape)))
-                  :row-filter (fn [shape] (s/includes? (name (:name shape)) search))
+                  :row-filter (fn [shape] (if (> (count @search) 0) (s/includes? (name (:name shape)) @search) true))
                   :on-row-click (fn [shape]
                                   (re-frame/dispatch [::events/update-node-data id shape])
                                   (re-frame/dispatch [::events/calculate-shape id]))}]]]))))
