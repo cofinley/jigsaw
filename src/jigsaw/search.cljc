@@ -74,6 +74,8 @@
                    (comp - heuristic :heuristics)))
          (take max-shapes))))
 
+(def notes->shapes-memo (memoize notes->shapes))
+
 ; Find chords from scales
 
 (defn scale->chords

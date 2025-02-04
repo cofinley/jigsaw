@@ -1,15 +1,9 @@
 (ns jigsaw.db)
 
 (def default-db
-  {:nodes {"1" {:id "1"
-                :position {:x 0 :y 0}
-                :type :input-chord
-                :data {:pitch :Eb :name :m}}
-           "3" {:id "3"
-                :position {:x 0 :y 750}
-                :type :input-scale
-                :data {:pitch :Eb :name :mixolydian}}}
-   :edges {}})
+  {:nodes #js []
+   :edges #js []
+   :node-data {}})
 
 (defn ->node [props & [parent-props]]
   (merge

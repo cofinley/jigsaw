@@ -1,10 +1,11 @@
 (ns jigsaw.components.node-types
   (:require
-   [jigsaw.components.input-piano-node :refer [input-piano-node]]
-   [jigsaw.components.input-shape-node :refer [input-shape-node]]
    [jigsaw.components.function-find-chords-node :refer [function-find-chords-node]]
    [jigsaw.components.function-find-scales-node :refer [function-find-scales-node]]
-   [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]))
+   [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
+   [jigsaw.components.input-piano-node :refer [input-piano-node]]
+   [jigsaw.components.input-shape-node :refer [input-shape-node]]
+   [reagent.core :as r]))
 
 (def node-categories
   {:input "Input"
@@ -35,4 +36,3 @@
     :category :function
     :label "Compatible Shapes"
     :component function-find-shape-node}])
-

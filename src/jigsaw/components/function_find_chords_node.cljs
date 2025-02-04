@@ -10,17 +10,17 @@
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
-(defn function-find-chords-node [{:keys [id data]}]
+(defn function-find-chords-node [{:keys [id]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (:data (events/js-node->clj-node {:data data}))]
+        data (re-frame/subscribe [::subs/data id])]
     [node {:title "Scale Chords"
            :id id
-           :data data
+           :data @data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :degrees)
-         (let [num-thirds (or (:num-thirds data) 3)
+         (let [num-thirds (or (:num-thirds @data) 3)
                chords (search/scale->chords incoming-data :num-thirds num-thirds)
                pitches (:pitches incoming-data)
                pitch->chord (zipmap pitches chords)
@@ -46,7 +46,7 @@
                                             (get pitch->degrees (:pitch %))
                                             (:name %))}
                     :row-title-render utils/pprint-aliases
-                    :row-selected? (fn [shape] (and (= (:pitch data) (:pitch shape)) (= (:name data) (:name shape))))
+                    :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id shape])
                                     (re-frame/dispatch [::events/calculate-shape id]))}]])

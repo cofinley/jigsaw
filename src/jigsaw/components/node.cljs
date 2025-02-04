@@ -27,41 +27,44 @@
 (defn handle [props]
   [:> Handle (r/merge-props {:class "h-8 w-5 rounded-md"} props)])
 
-(defn node [{:keys [title id data handles class]} & body]
+(defn node [{:keys [title id handles class]} & body]
   (let [open? (r/atom true)]
     (fn [{:keys [title id data handles class]} & body]
-      (let [data (:data (events/js-node->clj-node {:data data}))]
-        (r/as-element
-         [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
-          [:div {:class "border-b border-gray-400 mb-4 flex space-x-1"}
-           [:span {:class "text-lg cursor-pointer"
-                   :on-click #(reset! open? (not @open?))}
-            (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
-           [:h4 {:class "w-max font-semibold text-2xl"} title]]
+      (r/as-element
+       [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
+        [:div {:class "border-b border-gray-400 mb-4 flex space-x-1"}
+         [:span {:class "text-lg cursor-pointer"
+                 :on-click #(reset! open? (not @open?))}
+          (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
+         [:h4 {:class "w-max font-semibold text-2xl"} title]]
 
-          (for [h handles
-                :when (= "target" (:type h))]
-            ^{:key (random-uuid)} [handle h])
+        (for [i (range (count handles))
+              :let [h (nth handles i)
+                    k (str "handle-target-" id "-" i)]
+              :when (= "target" (:type h))]
+          ^{:key k} [handle h])
 
-          (when @open?
-            (for [child body]
-              (with-meta child {:key (str (random-uuid))})))
+        (when @open?
+          (for [child body]
+            (with-meta child {:key (str "node-body-" id)})))
 
-          (let [view-type (or (:view-type data) :output-piano)]
-            [:div {:class "flex flex-col space-y-4"}
-             [:div {:class "flex space-x-2 items-center mt-4"}
-              [:span "View"]
-              [select {:value view-type
-                       :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (-> % .-target .-value keyword)}])}
-               (for [view node-output-views]
-                 [:option {:value (:type view)} (:label view)])]]
+        (let [view-type (or (:view-type data) :output-piano)]
+          [:div {:class "flex flex-col space-y-4"}
+           [:div {:class "flex space-x-2 items-center mt-4"}
+            [:span "View"]
+            [select {:value view-type
+                     :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (-> % .-target .-value keyword)}])}
+             (for [view node-output-views]
+               [:option {:value (:type view)} (:label view)])]]
 
-             (when (some? view-type)
-               (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
-                     props {:data data}]
-                 [view props]))])
+           (when (some? view-type)
+             (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
+                   props {:data data}]
+               [view props]))])
 
-          (for [h handles
-                :when (= "source" (:type h))]
-            ^{:key (random-uuid)} [handle h])])))))
+        (for [i (range (count handles))
+              :let [h (nth handles i)
+                    k (str "handle-source-" id "-" i)]
+              :when (= "source" (:type h))]
+          ^{:key k} [handle h])]))))
 

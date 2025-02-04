@@ -12,12 +12,12 @@
    [re-frame.core :as re-frame]))
 
 ;; TODO: allow click-and-drag of table row into new input-shape node
-(defn function-find-shape-node [{:keys [id data]}]
+(defn function-find-shape-node [{:keys [id]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (:data (events/js-node->clj-node {:data data}))]
+        data (re-frame/subscribe [::subs/data id])]
     [node {:title "Compatible Shapes"
            :id id
-           :data data
+           :data @data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
@@ -27,10 +27,15 @@
                                      (contains? incoming-data :intervals) :chord ; Scales have intervals too, but we didn't find :degrees
                                      :else :notes)
                ; Recommend finding scales by default if incoming shape is a chord, otherwise find chords
-               selected-shape-type (or (:selected-shape-type data) (if (= :chord incoming-shape-type) :scale :chord))
-               selected-pitch (or (:selected-pitch data) "")
-               heuristic (or (:heuristic data) :overlap)
-               max-shapes (or (:max-shapes data) 10)]
+               selected-shape-type (or (:selected-shape-type @data) (if (= :chord incoming-shape-type) :scale :chord))
+               selected-pitch (or (:selected-pitch @data) "")
+               heuristic (or (:heuristic @data) :overlap)
+               max-shapes (or (:max-shapes @data) 10)
+               shapes (search/notes->shapes-memo notes
+                                                 selected-shape-type
+                                                 :max-shapes max-shapes
+                                                 :heuristic (keyword heuristic)
+                                                 :selected-pitch (if (= selected-pitch :all) nil selected-pitch))]
            [:div {:class "flex flex-col space-y-2 items-start"}
             [:div {:class "flex items-center space-x-4"}
              [:label {:class "space-x-2"}
@@ -63,18 +68,13 @@
                        :value max-shapes
                        :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]]
             ;; TODO: make search an event and update data with results, otherwise it blocks event loop/animation
-            (let [shapes (search/notes->shapes notes
-                                               selected-shape-type
-                                               :max-shapes max-shapes
-                                               :heuristic (keyword heuristic)
-                                               :selected-pitch (if (= selected-pitch :all) nil selected-pitch))]
-              [table {:ms shapes
-                      :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
-                                   "Name" :name
-                                   "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")}
-                      :row-title-render utils/pprint-aliases
-                      :row-selected? (fn [shape] (and (= (:pitch data) (:pitch shape)) (= (:name data) (:name shape))))
-                      :on-row-click (fn [shape]
-                                      (re-frame/dispatch [::events/update-node-data id shape]))}])])
+            [table {:ms shapes
+                    :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
+                                 "Name" :name
+                                 "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")}
+                    :row-title-render utils/pprint-aliases
+                    :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
+                    :on-row-click (fn [shape]
+                                    (re-frame/dispatch [::events/update-node-data id shape]))}]])
          [:p "No notes in input"])
        [:p "No input"])]))

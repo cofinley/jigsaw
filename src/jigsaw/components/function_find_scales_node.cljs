@@ -11,17 +11,17 @@
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
-(defn function-find-scales-node [{:keys [id data]}]
+(defn function-find-scales-node [{:keys [id]}]
   (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (:data (events/js-node->clj-node {:data data}))]
+        data (re-frame/subscribe [::subs/data id])]
     [node {:title "Chord Scales"
            :id id
-           :data data
+           :data @data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if-let [incoming-data (first @incoming-nodes)]
        (if (contains? incoming-data :intervals)
-         (let [selected-degree (or (:selected-degree data) :i)
+         (let [selected-degree (or (:selected-degree @data) :i)
                scales (search/chord->scales incoming-data)]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
@@ -39,14 +39,14 @@
                                  #(algo/degree-chord->roman-numeral
                                    (:degree %)
                                    (:name incoming-data))}
-                    :row-title-render utils/pprint-aliases
+                    :row-title-render (fn [shape] (utils/pprint-aliases (utils/strip-ns (specs/scales (:name shape)))))
                     :row-selected? (fn [shape] (and
-                                                (= (:pitch data) (:pitch shape))
-                                                (= (:name data) (:name shape))
-                                                (= (:degree data) (:degree shape))))
+                                                (= (:pitch @data) (:pitch shape))
+                                                (= (:name @data) (:name shape))
+                                                (= (:degree @data) (:degree shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id
-                                                        (merge shape (algo/resolve-shape (algo/pitch->note (:pitch shape)) :scale (:name shape)))])
+                                                        (merge shape (utils/strip-ns (algo/resolve-shape (algo/pitch->note (:pitch shape)) :scale (:name shape))))])
                                     (re-frame/dispatch [::events/calculate-shape id]))}]])
          [:p "Input is not a chord"])
        [:p "No input"])]))

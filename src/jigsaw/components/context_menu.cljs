@@ -7,11 +7,12 @@
 (defn context-menu [{:keys [top right bottom left]} & body]
   [:div {:style {:top top :right right :bottom bottom :left left}
          :class "flex flex-col items-start py-2 bg-white rounded border border-black absolute z-10 shadow-lg"}
-   (for [child body]
-     (with-meta child {:key (random-uuid)}))])
+   body])
 
 (defn menu-item [props label]
-  [:button (r/merge-props {:class "p-2 w-full text-left hover:bg-black hover:text-white cursor-pointer"} props)
+  [:button (r/merge-props
+            {:class "p-2 w-full text-left hover:bg-black hover:text-white cursor-pointer"}
+            props)
    label])
 
 (defn add-child-node-menu-item [context-menu-props node-type label]
