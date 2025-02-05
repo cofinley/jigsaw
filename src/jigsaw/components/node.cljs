@@ -32,9 +32,9 @@
     (fn [{:keys [title id data handles class]} & body]
       (r/as-element
        [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
-        [:div {:class "border-b border-gray-400 mb-4 flex space-x-1"}
-         [:span {:class "text-lg cursor-pointer"
-                 :on-click #(reset! open? (not @open?))}
+        [:div {:class "border-b border-gray-400 mb-4 flex space-x-1"
+               :on-click #(reset! open? (not @open?))}
+         [:span {:class "text-lg cursor-pointer"}
           (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
          [:h4 {:class "w-max font-semibold text-2xl"} title]]
 
@@ -45,22 +45,23 @@
           ^{:key k} [handle h])
 
         (when @open?
-          (for [child body]
-            (with-meta child {:key (str "node-body-" id)})))
+          [:<>
+           (for [child body]
+             (with-meta child {:key (str "node-body-" id)}))
 
-        (let [view-type (or (:view-type data) :output-piano)]
-          [:div {:class "flex flex-col space-y-4"}
-           [:div {:class "flex space-x-2 items-center mt-4"}
-            [:span "View"]
-            [select {:value view-type
-                     :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (-> % .-target .-value keyword)}])}
-             (for [view node-output-views]
-               [:option {:value (:type view)} (:label view)])]]
+           (let [view-type (or (:view-type data) :output-piano)]
+             [:div {:class "flex flex-col space-y-4"}
+              [:div {:class "flex space-x-2 items-center mt-4"}
+               [:span "View"]
+               [select {:value view-type
+                        :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (-> % .-target .-value keyword)}])}
+                (for [view node-output-views]
+                  [:option {:value (:type view)} (:label view)])]]
 
-           (when (some? view-type)
-             (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
-                   props {:data data}]
-               [view props]))])
+              (when (some? view-type)
+                (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
+                      props {:data data}]
+                  [view props]))])])
 
         (for [i (range (count handles))
               :let [h (nth handles i)

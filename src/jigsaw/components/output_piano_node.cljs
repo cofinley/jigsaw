@@ -17,9 +17,10 @@
           (let [midis (map algo/note->midi notes)
                 midi->label (zipmap midis (get data @selected-label))
                 first-midi (first midis)
-                last-midi (last midis)
                 midi-range-start (- first-midi (mod first-midi 12))
-                midi-range-end (dec (+ last-midi (- 12 (mod last-midi 12))))
+                ; last-midi (last midis)
+                ; midi-range-end (dec (+ last-midi (- 12 (mod last-midi 12))))
+                midi-range-end (+ 23 midi-range-start)
                 width (* key-width (- midi-range-end midi-range-start))]
             [:<>
              (when (some (partial contains? data) label-types)
