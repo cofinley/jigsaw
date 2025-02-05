@@ -27,7 +27,7 @@
                chord-shapes (map (fn [[pitch chord-name]]
                                    {:pitch pitch
                                     :name chord-name
-                                    :aliases (:aliases (utils/strip-ns (specs/chords chord-name)))})
+                                    :aliases (:aliases (specs/chords chord-name))})
                                  pitch->chord)
                pitch->degrees (zipmap pitches (:degrees incoming-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}

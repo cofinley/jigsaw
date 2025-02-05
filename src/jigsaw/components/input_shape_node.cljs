@@ -15,7 +15,7 @@
 (defn input-shape-node [{:keys [id type]}]
   (let [data (re-frame/subscribe [::subs/data id])
         shape-type (if (= :input-chord (keyword type)) :chord :scale)
-        shapes (into [] (map #(assoc (utils/strip-ns (second %)) :name (first %)))
+        shapes (into [] (map #(assoc (second %) :name (first %)))
                      (if (= shape-type :chord) specs/chords specs/scales))
         title (if (= shape-type :chord) "Chord" "Scale")
         search (r/atom "")]

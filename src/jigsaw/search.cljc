@@ -10,7 +10,7 @@
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
-    (let [shape (utils/strip-ns (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name))]
+    (let [shape (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name)]
       (assoc shape :semitones (map #(get specs/pitches %) (:pitches shape))))))
 
 (def all-chords (resolve-all-shapes :chord))
@@ -83,7 +83,7 @@
   [scale & {:keys [num-thirds] :or {num-thirds 3}}]
   (let [{start-pitch :pitch scale-name :name} scale
         scale (specs/scales scale-name)
-        scale-intervals (::specs/intervals scale)
+        scale-intervals (:intervals scale)
         scale-pitches (map (partial algo/+interval start-pitch) scale-intervals)]
     (for [rotation (range (count scale-pitches))]
       (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate scale-pitches rotation))))
@@ -96,7 +96,7 @@
 (defn degree->tonic
   "Given some pitch (e.g. :Eb), scale, and degree (e.g. :5), find the tonic pitch (e.g. :)"
   [p scale-name degree]
-  (let [scale (utils/strip-ns (specs/scales scale-name))
+  (let [scale (specs/scales scale-name)
         n (.indexOf (:degrees scale) degree)
         interval (nth (:intervals scale) n)]
     (algo/+interval p interval -1)))
@@ -119,7 +119,7 @@
   (reduce
    (fn [v [scale-intervals scale-name]]
      (if (set/subset? (set intervals) (set scale-intervals))
-       (let [scale (utils/strip-ns (get specs/scales scale-name))]
+       (let [scale (get specs/scales scale-name)]
          (conj v {:scale-name scale-name
                   :chord-degree (nth (:degrees scale) (.indexOf scale-intervals (first intervals)))}))
        v))
@@ -127,7 +127,7 @@
    specs/scales-by-intervals))
 
 (defn chord->scales [{pitch :pitch chord-name :name}]
-  (let [chord (utils/strip-ns (algo/resolve-shape pitch :chord chord-name))
+  (let [chord (algo/resolve-shape pitch :chord chord-name)
         search-intervals (chord->search-intervals chord)
         base-scales (mapcat intervals->scales search-intervals)]
     (map (fn [m]
@@ -138,7 +138,7 @@
 
 (comment
   (let [scale (algo/resolve-shape :E :scale :harmonic-minor)
-        {pitches ::specs/pitches chord-lists :chords} (assoc scale :chords (scale->chords scale :num-thirds 4))
+        {pitches :pitches chord-lists :chords} (assoc scale :chords (scale->chords scale :num-thirds 4))
         chords (map first chord-lists)])
   (scale->chords {:pitch :G :name :lydian})
   (algo/resolve-shape :Gb4 :scale :major-pentatonic)

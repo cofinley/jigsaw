@@ -27,7 +27,6 @@
     (inc (mod (- i2 i1) 7))))
 
 (defn- lesser? [s] (some (partial string/includes? s) ["d" "m"]))
-(defn- greater? [s] (some (partial string/includes? s) ["A"]))
 
 (defn- accidental-match? [accidental-string]
   (fn [p]
@@ -55,14 +54,14 @@
 
 (defn note->midi [note]
   {:pre [(specs/note? note)]
-   :post [(s/valid? ::specs/midi %)]}
+   :post [(specs/midi? %)]}
   (let [{:keys [pitch octave]} (parts note)
         index (get specs/pitches pitch)]
     (+ index (* 12 (inc octave)))))
 
 (defn midi->note [midi _key]
-  {:pre [(s/valid? ::specs/midi midi)]
-   :post [(s/valid? ::specs/note %)]}
+  {:pre [(specs/midi? midi)]
+   :post [(specs/note? %)]}
   (let [octave (dec (int (/ midi 12)))
         index (mod midi 12)
         p (get specs/default-pitch-by-index index)]
@@ -163,7 +162,7 @@
     (let [{:keys [letter]} (parts p)
           interval-staff-distance (utils/parse-int interval)
           new-letter (letter+ letter interval-staff-distance multiplier)
-          interval-semitone (get-in specs/intervals [interval ::specs/semitone])
+          interval-semitone (get-in specs/intervals [interval :semitone])
           semitone (specs/pitches p)
           new-semitone ((if (= multiplier -1) - +) semitone interval-semitone)
           difference (* (or multiplier 1)
@@ -185,7 +184,7 @@
    :post [(specs/note? %)]}
   (let [{:keys [pitch octave]} (parts n)
         semitone (specs/pitches pitch)
-        interval-semitone (get-in specs/intervals [interval ::specs/semitone])
+        interval-semitone (get-in specs/intervals [interval :semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
         crossing-octaves? (if (= 1 (or multiplier 1))
@@ -216,13 +215,13 @@
   {:pre [(specs/pitch-or-note? x)]}
   (let [{:keys [pitch note]} (parts x)
         shape (get (if (= shape-type :chord) specs/chords specs/scales) shape-name)
-        intervals (::specs/intervals shape)
+        intervals (:intervals shape)
         pitches (mapv (partial +interval pitch) intervals)]
     (cond-> shape
-      true (merge #::specs{:pitch pitch
-                           :name shape-name
-                           :pitches pitches})
-      (specs/note? x) (assoc ::specs/notes (mapv (partial +interval note) intervals)))))
+      true (merge {:pitch pitch
+                   :name shape-name
+                   :pitches pitches})
+      (specs/note? x) (assoc :notes (mapv (partial +interval note) intervals)))))
 
 (defn intervals->chord [intervals]
   (when (seq intervals)
@@ -263,14 +262,14 @@
 
 (defn scale->mode
   [scale n]
-  (let [pitches (utils/rotate (::specs/pitches scale) (dec n))
+  (let [pitches (utils/rotate (:pitches scale) (dec n))
         intervals (into [:P1] (map #(->interval (first pitches) %)) (rest pitches))]
     (when-let [new-scale-name (get specs/scales-by-intervals intervals)]
       (resolve-shape (first pitches) :scale new-scale-name))))
 
 (defn interval->degree [interval]
   {:pre [(specs/interval? interval)]}
-  (let [major-intervals (get-in specs/scales [:major ::specs/intervals])
+  (let [major-intervals (get-in specs/scales [:major :intervals])
         matching-idx (.indexOf major-intervals interval)]
     (keyword
      (if (neg? matching-idx)
@@ -279,9 +278,9 @@
 
 ;; Used for generating initial scale degrees
 ; (defn- scales-with-degrees []
-;   (let [major-intervals (get-in specs/scales [:major ::specs/intervals])]
+;   (let [major-intervals (get-in specs/scales [:major :intervals])]
 ;     (map (fn [[scale-name details]]
-;            (let [{intervals ::specs/intervals} details
+;            (let [{intervals :intervals} details
 ;                  degrees (mapv interval->degree intervals)]
 ;              {scale-name (assoc details :degrees degrees)})) specs/scales)))
 
@@ -291,7 +290,7 @@
 
 (defn degree-chord->roman-numeral
   [degree chord-name]
-  (let [intervals (::specs/intervals (specs/chords chord-name))
+  (let [intervals (:intervals (specs/chords chord-name))
         major? (utils/in? intervals :M3)
         degree-str (name degree)
         accidental (if (< 1 (count degree-str)) (first degree-str) "")
@@ -308,10 +307,11 @@
 
 ;; TODO
 ;;  - Chord progressions/cadences
-;;  - Find scale+degree+roman numeral from just the chord
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
 ;;  - Handle list views/multiplexing the node views
+;;  - Circle of fifths view
+;;  - Key signature, proper accidentals on music staff
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap

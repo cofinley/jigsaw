@@ -39,14 +39,14 @@
                                  #(algo/degree-chord->roman-numeral
                                    (:degree %)
                                    (:name incoming-data))}
-                    :row-title-render (fn [shape] (utils/pprint-aliases (utils/strip-ns (specs/scales (:name shape)))))
+                    :row-title-render (fn [shape] (utils/pprint-aliases (specs/scales (:name shape))))
                     :row-selected? (fn [shape] (and
                                                 (= (:pitch @data) (:pitch shape))
                                                 (= (:name @data) (:name shape))
                                                 (= (:degree @data) (:degree shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id
-                                                        (merge shape (utils/strip-ns (algo/resolve-shape (algo/pitch->note (:pitch shape)) :scale (:name shape))))])
+                                                        (merge shape (algo/resolve-shape (algo/pitch->note (:pitch shape)) :scale (:name shape)))])
                                     (re-frame/dispatch [::events/calculate-shape id]))}]])
          [:p "Input is not a chord"])
        [:p "No input"])]))

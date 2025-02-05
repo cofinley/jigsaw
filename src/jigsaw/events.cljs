@@ -64,7 +64,7 @@
    (let [node (get-in db [:node-data id])
          shape (calculate-shape node)]
      (cond-> db
-       (some? shape) (update-in [:node-data id] merge (utils/strip-ns shape))))))
+       (some? shape) (update-in [:node-data id] merge shape)))))
 
 (re-frame/reg-event-db
  ::update-node-data
