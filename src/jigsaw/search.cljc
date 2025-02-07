@@ -11,7 +11,7 @@
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
     (let [shape (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name)]
-      (assoc shape :semitones (map #(get specs/pitches %) (:pitches shape))))))
+      (assoc shape :semitones (map specs/pitches (:pitches shape))))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -49,23 +49,21 @@
                        :or {heuristic :overlap
                             max-shapes 10
                             selected-pitch nil}}]
-  (let [pitches (into [] (map #(:pitch (algo/parts %)) notes))
-        semitones (map specs/pitches pitches)
+  (let [semitones (map #(-> % algo/parts :pitch specs/pitches) notes)
         ; midis (map algo/note->midi notes)
         ; midi->note (zipmap midis notes)
         ; lowest-pitch (:pitch (algo/parts (get midi->note (first (sort midis)))))
         ; lowest-semitone (get specs/pitches lowest-pitch)
-        shapes (if (= shape-type :chord) all-chords all-scales)
-        filtered-shapes (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true) shapes)
-        ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
-        shapes-with-heuristics (map (fn [shape]
-                                      (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape)))))
+        shapes (if (= shape-type :chord) all-chords all-scales)]
+    (->> shapes
+         (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
+         ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
+         (map (fn [shape] (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape)))))
                                       ; (assoc shape :heuristics (merge (calculate-heuristics (set semitones) (set (:semitones shape)))
                                                                       ; {:root-in-input? (heuristic->float (contains? (set semitones) (get specs/pitches (:pitch shape))))
                                                                       ;  :lowest-input-root? (heuristic->float (= lowest-semitone (get specs/pitches (:pitch shape))))
-                                                                      ;  :root-pitches-match? (heuristic->float (= lowest-pitch (:pitch shape)))})))
-                                    filtered-shapes)]
-    (->> shapes-with-heuristics
+                                                                      ;  :root-pitches-match? (heuristic->float (= lowest-pitch (:pitch shape)))}))
+              )
          ; TODO: check if enharmonics are the same for intersecting semitones
          (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
          (sort-by (juxt ;(comp - :root-in-input? :heuristics)

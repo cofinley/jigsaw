@@ -11,7 +11,6 @@
    [jigsaw.components.table :refer [table]]
    [reagent.core :as r]))
 
-;; TODO: allow changing shape
 (defn input-shape-node [{:keys [id type]}]
   (let [data (re-frame/subscribe [::subs/data id])
         shape-type (if (= :input-chord (keyword type)) :chord :scale)

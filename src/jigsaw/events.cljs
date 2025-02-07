@@ -5,9 +5,11 @@
    [jigsaw.algo :as algo]
    [jigsaw.utils :as utils]))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::initialize-db
- (fn [_ _] db/default-db))
+ (fn [_ _]
+   {:db db/default-db
+    :fx [[:dispatch [::add-node :input-chord]]]}))
 
 (re-frame/reg-event-db
  ::set-nodes
