@@ -4,8 +4,7 @@
    [jigsaw.components.function-find-scales-node :refer [function-find-scales-node]]
    [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
-   [jigsaw.components.input-shape-node :refer [input-shape-node]]
-   [reagent.core :as r]))
+   [jigsaw.components.input-shape-node :refer [input-shape-node]]))
 
 (def node-categories
   {:input "Input"
@@ -14,15 +13,15 @@
 (def node-types
   [{:type :input-piano
     :category :input
-    :label "Piano"
+    :label "Input Piano"
     :component input-piano-node}
    {:type :input-chord
     :category :input
-    :label "Chord"
+    :label "Input Chord"
     :component input-shape-node}
    {:type :input-scale
     :category :input
-    :label "Scale"
+    :label "Input Scale"
     :component input-shape-node}
    {:type :function-scale-chords
     :category :function
@@ -34,5 +33,5 @@
     :component function-find-scales-node}
    {:type :function-find-shape
     :category :function
-    :label "Compatible Shapes"
+    :label "Find Compatible Shapes"
     :component function-find-shape-node}])

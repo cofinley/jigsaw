@@ -2,7 +2,9 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as re-frame]
-   [jigsaw.events :as events]))
+   [jigsaw.components.node-types :refer [node-types]]
+   [jigsaw.events :as events]
+   [jigsaw.utils :as utils]))
 
 (defn context-menu [{:keys [top right bottom left]} & body]
   [:div {:style {:top top :right right :bottom bottom :left left}
@@ -21,17 +23,17 @@
                           ((:on-click context-menu-props)))}
    label])
 
-(def root-node-options
-  {:input-piano "New Piano"
-   :input-chord "New Chord"
-   :input-scale "New Scale"})
-
-(def child-node-options
-  {:function-scale-chords "Find chords"
-   :function-chord-scales "Find scales"
-   :function-find-shape "Find compatible shapes"})
+(def node-type-allowed-children
+  {nil (map :type node-types)
+   :input-chord [:function-chord-scales :function-find-shape]
+   :input-scale [:function-scale-chords :function-find-shape]
+   :input-piano [:function-find-shape]
+   :function-chord-scales [:function-scale-chords :function-find-shape]
+   :function-scale-chords [:function-chord-scales :function-find-shape]
+   :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape]})
 
 (defn node-context-menu [{:keys [type] :as props}]
   [context-menu props
-   (for [[node-type label] (if (some? type) child-node-options root-node-options)]
-     ^{:key node-type} [add-node-menu-item props node-type label])])
+   (for [node-type node-types
+         :when (utils/in? (node-type-allowed-children type) (:type node-type))]
+     ^{:key node-type} [add-node-menu-item props (:type node-type) (:label node-type)])])
