@@ -32,11 +32,12 @@
     (fn [{:keys [title id data handles class]} & body]
       (r/as-element
        [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
-        [:div {:class "border-b border-gray-400 mb-4 flex space-x-1"
-               :on-click #(reset! open? (not @open?))}
-         [:span {:class "text-lg cursor-pointer"}
-          (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
-         [:h4 {:class "w-max font-semibold text-2xl"} title]]
+        [:div {:class "border-b border-gray-400 mb-4"}
+         [:div {:class "w-max flex cursor-pointer space-x-1"
+                :on-click #(reset! open? (not @open?))}
+          [:span {:class "text-lg cursor-pointer"}
+           (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
+          [:h4 {:class "w-max font-semibold text-2xl"} title]]]
 
         (for [i (range (count handles))
               :let [h (nth handles i)

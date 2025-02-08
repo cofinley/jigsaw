@@ -1,10 +1,10 @@
 (ns jigsaw.algo
-  (:require [clojure.spec.alpha :as s]
-            [clojure.string :as string]
-            [clojure.set]
-            [clojure.math :as math]
-            [jigsaw.utils :as utils]
-            [jigsaw.spec :as specs]))
+  (:require
+   [clojure.string :as string]
+   [clojure.set]
+   [clojure.math :as math]
+   [jigsaw.utils :as utils]
+   [jigsaw.spec :as specs]))
 
 (defn parts
   [x]

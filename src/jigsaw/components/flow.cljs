@@ -38,15 +38,18 @@
                      (re-frame/dispatch [::events/set-edges (addEdge params @edges)]))
         ref (useRef nil)
         [node-menu set-node-menu] (useState nil)
-        on-node-context-menu (useCallback (fn [e node]
-                                            (.preventDefault e)
-                                            (let [pane (-> ref .-current .getBoundingClientRect)]
-                                              (set-node-menu {:id (.-id node)
-                                                              :top (and (< (.-clientY e) (- (.-height pane) 200)) (.-clientY e))
-                                                              :left (and (< (.-clientX e) (- (.-width pane) 200)) (.-clientX e))
-                                                              :right (and (>= (.-clientX e) (- (.-width pane) 200)) (- (.-width pane) (.-clientX e)))
-                                                              :bottom (and (>= (.-clientY e) (- (.-height pane) 200)) (- (.-height pane) (.-clientY e)))})))
-                                          #js [set-node-menu])
+        on-node-context-menu (useCallback
+                              (fn [e node]
+                                (.preventDefault e)
+                                (let [pane (-> ref .-current .getBoundingClientRect)]
+                                  (set-node-menu
+                                   (cond-> {:top (and (< (.-clientY e) (- (.-height pane) 200)) (.-clientY e))
+                                            :left (and (< (.-clientX e) (- (.-width pane) 200)) (.-clientX e))
+                                            :right (and (>= (.-clientX e) (- (.-width pane) 200)) (- (.-width pane) (.-clientX e)))
+                                            :bottom (and (>= (.-clientY e) (- (.-height pane) 200)) (- (.-height pane) (.-clientY e)))}
+                                     (some? node) (merge {:id (.-id node)
+                                                          :type (keyword (.-type node))})))))
+                              #js [set-node-menu])
         on-pane-click (useCallback #(set-node-menu nil) #js [set-node-menu])
         flow-node-types (useMemo
                          #(clj->js
@@ -62,6 +65,7 @@
                     :onEdgesChange on-edges-change
                     :onConnect on-connect
                     :onNodeContextMenu on-node-context-menu
+                    :onPaneContextMenu on-node-context-menu
                     :onPaneClick on-pane-click
                     :nodeTypes flow-node-types
                     :fitView true

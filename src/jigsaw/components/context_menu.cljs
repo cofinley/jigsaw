@@ -15,18 +15,23 @@
             props)
    label])
 
-(defn add-child-node-menu-item [context-menu-props node-type label]
+(defn add-node-menu-item [context-menu-props node-type label]
   [menu-item {:on-click (fn []
                           (re-frame/dispatch [::events/add-node node-type (:id context-menu-props)])
                           ((:on-click context-menu-props)))}
    label])
+
+(def root-node-options
+  {:input-piano "New Piano"
+   :input-chord "New Chord"
+   :input-scale "New Scale"})
 
 (def child-node-options
   {:function-scale-chords "Find chords"
    :function-chord-scales "Find scales"
    :function-find-shape "Find compatible shapes"})
 
-(defn node-context-menu [props]
+(defn node-context-menu [{:keys [type] :as props}]
   [context-menu props
-   (for [[node-type label] child-node-options]
-     ^{:key node-type} [add-child-node-menu-item props node-type label])])
+   (for [[node-type label] (if (some? type) child-node-options root-node-options)]
+     ^{:key node-type} [add-node-menu-item props node-type label])])
