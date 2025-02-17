@@ -12,12 +12,18 @@
  (fn [db]
    (:edges db)))
 
+(defn get-parent-id [db id]
+  (.-source (first (filter #(= (.-target %) id) (:edges db)))))
+
 (re-frame/reg-sub
- ::incoming
+ ::parent-id
  (fn [db [_ id]]
-   (let [edges (:edges db)]
-     (map #(get-in db [:node-data (:source (js->clj % :keywordize-keys true))])
-          (filter #(= (:target (js->clj % :keywordize-keys true)) id) edges)))))
+   (get-parent-id db id)))
+
+(re-frame/reg-sub
+ ::parent-data
+ (fn [db [_ id]]
+   (get-in db [:node-data (get-parent-id db id)])))
 
 (re-frame/reg-sub
  ::outgoing
@@ -26,15 +32,14 @@
      (map #(get-in db [:node-data (:source %)])
           (filter #(= (:source %) id) edges)))))
 
-(re-frame/reg-sub
- ::active-notes
- (fn [db [_ id]]
-   (or (get-in db [:node-data id :notes]) #{})))
-
-(re-frame/reg-sub
- ::active-midis
- (fn [db [_ id]]
-   (or (get-in db [:node-data id :midis]) #{})))
+(defn get-ancestor-ids [db id]
+  (loop [ancestor-ids []
+         db db
+         id id]
+    (if (nil? id)
+      ancestor-ids)
+    (let [parent-id (get-parent-id db id)]
+      (recur (conj ancestor-ids parent-id) db parent-id))))
 
 (re-frame/reg-sub
  ::data

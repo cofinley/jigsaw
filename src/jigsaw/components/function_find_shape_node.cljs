@@ -1,7 +1,9 @@
 (ns jigsaw.components.function-find-shape-node
   (:require
    [clojure.string :as s]
+   [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
+   [jigsaw.components.output-piano-node :refer [piano-preview]]
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
@@ -13,18 +15,19 @@
 
 ;; TODO: allow click-and-drag of table row into new input-shape node
 (defn function-find-shape-node [{:keys [id]}]
-  (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (re-frame/subscribe [::subs/data id])]
+  (let [data (re-frame/subscribe [::subs/data id])
+        parent-data (re-frame/subscribe [::subs/parent-data id])]
     [node {:title "Compatible Shapes"
            :id id
            :data @data
+           :parent-data @parent-data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
-     (if-let [incoming-data (first @incoming-nodes)]
-       (if-let [notes (seq (get-in incoming-data [:notes]))]
+     (if @parent-data
+       (if-let [notes (seq (get-in @parent-data [:notes]))]
          (let [incoming-shape-type (cond
-                                     (contains? incoming-data :degrees) :scale
-                                     (contains? incoming-data :intervals) :chord ; Scales have intervals too, but we didn't find :degrees
+                                     (contains? @parent-data :degrees) :scale
+                                     (contains? @parent-data :intervals) :chord ; Scales have intervals too, but we didn't find :degrees
                                      :else :notes)
                ; Recommend finding scales by default if incoming shape is a chord, otherwise find chords
                selected-shape-type (or (:selected-shape-type @data) (if (= :chord incoming-shape-type) :scale :chord))
@@ -58,7 +61,9 @@
                        :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-pitch (keyword (-> % .-target .-value))}])
                        :value selected-pitch}
                (cons [:option {:value "all"} "(Show all)"]
-                     (for [pitch (filter #(and (not (s/includes? (name %) "bb")) (not (s/includes? (name %) "##"))) (keys specs/pitches))]
+                     (for [pitch (keys (sort-by val < specs/pitches))
+                           :when (and (not (s/includes? (name pitch) "bb"))
+                                      (not (s/includes? (name pitch) "##")))]
                        [:option {:value pitch} (name pitch)]))]]
              [:label {:class "space-x-2"}
               [:span "Max shapes"]
@@ -71,7 +76,13 @@
             [table {:ms shapes
                     :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
                                  "Name" :name
-                                 "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")}
+                                 "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")
+                                 ; "Piano" (fn [shape] [output-piano-view {:data shape :key-width 20 :display-label-options? false}])
+                                 "Piano" (fn [shape]
+                                           (when (:name shape)
+                                             [piano-preview
+                                              (:notes shape)
+                                              :parent-notes (:notes @parent-data)]))}
                     :row-title-render utils/pprint-aliases
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]

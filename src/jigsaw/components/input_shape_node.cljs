@@ -9,7 +9,9 @@
    [jigsaw.components.node :refer [node]]
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.table :refer [table]]
-   [reagent.core :as r]))
+   [jigsaw.components.output-piano-node :refer [output-piano-view piano-preview]]
+   [reagent.core :as r]
+   [jigsaw.algo :as algo]))
 
 (defn input-shape-node [{:keys [id type]}]
   (let [data (re-frame/subscribe [::subs/data id])
@@ -24,7 +26,7 @@
              :data @data
              :handles [{:type "source" :position "right"}]}
        [:div {:class "flex flex-col text-xl items-start space-y-4"}
-          ;; Pitches
+        ;; Starting pitch
         [:label {:class "space-x-4"}
          [:span (if (= shape-type :chord) "Root" "Tonic")]
          [select {:value (or (:pitch @data) "")
@@ -38,16 +40,18 @@
            (for [pitch (keys (sort-by val < specs/pitches))
                  :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
              [:option {:value pitch} (name pitch)]))]]
-          ;; TODO: flush data to app-db only on blur, maybe xyflow.useOnSelectionChange ?
         [:label {:class "space-x-4"}
          [:span "Search"]
          [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
                   :on-change #(reset! search (-> % .-target .-value))}]]
-          ;; Shape names
+        ;; Shape names
         [:p title]
-        [table {:ms shapes
+        [table {:ms (cond->> shapes
+                      (some? (:pitch @data)) (map #(algo/resolve-shape (algo/pitch->note (:pitch @data)) shape-type (:name %))))
                 :row-render {"Name" :name
-                             "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))}
+                             "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))
+                             ; "Piano" (fn [shape] [output-piano-view {:data shape :key-width 20 :display-label-options? false}])
+                             "Piano" (fn [shape] [piano-preview (:notes shape)])}
                 :row-title-render utils/pprint-aliases
                 :row-selected? (fn [shape] (= (:name @data) (:name shape)))
                 :row-filter (fn [shape] (if (> (count @search) 0) (s/includes? (name (:name shape)) @search) true))
