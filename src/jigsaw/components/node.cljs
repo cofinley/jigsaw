@@ -27,9 +27,9 @@
 (defn handle [props]
   [:> Handle (r/merge-props {:class "h-8 w-5 rounded-md"} props)])
 
-(defn node [{:keys [title id handles class]} & body]
+(defn node [props & body]
   (let [open? (r/atom true)]
-    (fn [{:keys [title id data handles class]} & body]
+    (fn [{:keys [title id data parent-data handles class]} & body]
       (r/as-element
        [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
         [:div {:class "border-b border-gray-400 mb-4"}
@@ -61,7 +61,7 @@
 
               (when (some? view-type)
                 (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
-                      props {:data data}]
+                      props {:data data :parent-data parent-data}]
                   [view props]))])])
 
         (for [i (range (count handles))

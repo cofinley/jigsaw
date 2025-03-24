@@ -107,6 +107,7 @@
           :B :F :d5))
       (testing "starting from a note"
         (are+ [n1 n2 want] (= want (algo/->interval n1 n2))
+          :C4 :C4 :P1
           :C4 :C#4 :m2
           :C4 :Db4 :m2
           :C4 :D4 :M2
@@ -126,6 +127,7 @@
           :C4 :Bb4 :m7
           :C4 :B4 :M7
           :C4 :B#4 :A7
+          :C4 :C5 :P8
           :C4 :E5 :M10
           ; 21 semitone ceiling reached
           :C4 :A5 :M13

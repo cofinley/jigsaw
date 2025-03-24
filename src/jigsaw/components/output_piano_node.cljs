@@ -1,20 +1,26 @@
 (ns jigsaw.components.output-piano-node
   (:require
+   [clojure.set :as set]
+   [clojure.string :as s]
    [reagent.core :as r]
    [jigsaw.algo :as algo]
    [jigsaw.components.select :refer [select]]
-   ["react-piano" :refer [Piano]]))
-
-(def key-width 30)
+   ["react-piano" :refer [Piano]]
+   [jigsaw.utils :as utils]))
 
 (defn output-piano-view [props]
   (let [selected-label (r/atom :pitches)
         label-types [:pitches :intervals :degrees]]
     (fn [props]
       (let [data (:data props)
-            notes (:notes data)]
+            notes (:notes data)
+            parent-data (:parent-data props)
+            parent-notes (:notes parent-data)
+            key-width (or (:key-width props) 30)
+            display-label-options? (if-some [a (:display-label-options? props)] a true)]
         (if (seq notes)
           (let [midis (map algo/note->midi notes)
+                parent-midis (map algo/note->midi parent-notes)
                 midi->label (zipmap midis (get data @selected-label))
                 first-midi (first midis)
                 midi-range-start (- first-midi (mod first-midi 12))
@@ -23,7 +29,7 @@
                 midi-range-end (+ 23 midi-range-start)
                 width (* key-width (- midi-range-end midi-range-start))]
             [:<>
-             (when (some (partial contains? data) label-types)
+             (when (and (some (partial contains? data) label-types) display-label-options?)
                [:div {:class "self-start flex space-x-2 items-center mb-2"}
                 [:label "Key Labels"]
                 [select {:value (or @selected-label "")
@@ -47,3 +53,88 @@
                 :activeNotes midis
                 :width width}]]])
           [:p "Nothing selected"])))))
+
+(def white-key-color "#CBCBCB")
+(def white-key-border-color "#AAA")
+(def black-key-color "#222")
+(def black-key-border-color "#000")
+(def white-key-color-played "#6366f1") ;; indigo-500
+(def black-key-color-played "#4338CA") ;; indigo-700
+(def white-key-color-overridden "#A855F7")  ;; purple-500
+(def black-key-color-overridden "#9333EA")  ;; purple-600
+(def key-kept-in-chord "gray")
+(def key-added-in-chord "#16A34A")  ;; green-600
+(def key-removed-in-chord "#EF4444")  ;; red-500
+
+(def piano-keys
+  (take 88
+        (map
+         (fn [index pitch color]
+           {:index index
+            :pitch pitch
+            :midi (+ 21 index)
+            :color color})
+         (range)
+         (cycle [:A :Bb :B :C :C# :D :Eb :E :F :F# :G :Ab])
+         (cycle [:w :b  :w :w :b  :w :b  :w :w :b  :w :b]))))
+
+(def margin-keys #{:A :B :D :E :G})
+
+(defn piano-preview [notes & {:keys [parent-notes]
+                              :or {parent-notes []}}]
+  (let [midis (map algo/note->midi notes)
+        parent-midis (map algo/note->midi parent-notes)
+        white-key-width 20
+        first-midi (first midis)
+        midi-range-start (- first-midi (mod first-midi 12))
+        midi-range-end (+ 23 midi-range-start)
+        piano-key-span (filter #(<= midi-range-start (:midi %) midi-range-end) piano-keys)
+        num-white-keys (count (filter #(= :w (:color %)) piano-key-span))
+        current-specific-notes (set/difference (set midis) (set parent-midis))
+        parent-specific-notes (set/difference (set parent-midis) (set midis))
+        shared-notes (set/intersection (set midis) (set parent-midis))
+        piano-width (* white-key-width num-white-keys)
+        piano-height (* 2.3 white-key-width)
+        border-width (* 0.0015 piano-width)
+        black-key-width (/ white-key-width 2)
+        black-key-height (/ piano-height 1.6)
+        black-key-offset (- (- (/ black-key-width 2)) border-width)
+        margin (str "0 0 0 " black-key-offset "px")]
+    [:div.flex.rounded.overflow-hidden.pl-2
+     {:class "cursor-pointer"}
+     (for [key piano-key-span
+           :let [white? (= :w (:color key))
+                 octave? (= 0 (mod (:midi key) 12))
+                 highlighted? (utils/in? (if (seq parent-midis) parent-midis midis) (:midi key))
+                 parent-specific-note? (utils/in? parent-specific-notes (:midi key))
+                 current-specific-note? (if (seq parent-midis) (utils/in? current-specific-notes (:midi key)) false)
+                 shared-note? (utils/in? shared-notes (:midi key))
+                 key-color (cond
+                             parent-specific-note? key-removed-in-chord
+                             current-specific-note? key-added-in-chord
+                             shared-note? key-kept-in-chord
+                             highlighted? (if white? white-key-color-played black-key-color-played)
+                             :else (if white? white-key-color black-key-color))
+                 border (str border-width "px solid rgba(0,0,0,0.5)")]]
+
+       ^{:key (:index key)}
+       [:button.flex.flex-col.justify-end
+        {:style (if white?
+                  {:height piano-height
+                   :width white-key-width
+                   :border-top border
+                   :border-bottom border
+                   :border-left border
+                   :background-color key-color
+                   :margin (if (contains? margin-keys (:pitch key)) margin 0)}
+                  {:height black-key-height
+                   :width black-key-width
+                   :z-index 2
+                   :border border
+                   :background-color key-color
+                   :margin margin})}
+        (comment
+          (when (and octave? (not (seq parent-midis)))
+            [:span
+             {:class (s/join " " [(if highlighted? "dark:text-neutral-100" "dark:text-neutral-900") "relative text-xs opacity-80"])}
+             (str "C" (dec (int (/ (:midi key) 12))))]))])]))

@@ -47,17 +47,17 @@
                            :overlap (float (/ 1 3))}))
     (testing "scale->chords"
       (testing "with default num-thirds"
-        (are+ [pitch scale-name expected] (= expected (search/scale->chords {:pitch pitch :name scale-name}))
+        (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name)))
           :C :major  [:maj :m :m :maj :maj :m :dim]
           :C :dorian [:m :m :maj :maj :m :dim :maj]
           :C :minor  [:m :dim :maj :m :m :maj :maj]))
       (testing "with 4 num-thirds"
-        (are+ [pitch scale-name expected] (= expected (search/scale->chords {:pitch pitch :name scale-name} :num-thirds 4))
+        (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name) :num-thirds 4))
           :C :major  [:maj7 :m7 :m7 :maj7 :7 :m7 :m7b5]
           :C :dorian [:m7 :m7 :maj7 :7 :m7 :m7b5 :maj7]
           :C :minor  [:m7 :m7b5 :maj7 :m7 :m7 :maj7 :7])))
     (testing "chord->scales"
-      (are+ [pitch chord-name expected] (= expected (search/chord->scales {:pitch pitch :name chord-name}))
+      (are+ [pitch chord-name expected] (= expected (search/chord->scales (algo/resolve-shape pitch :chord chord-name)))
         :C :maj [{:pitch :C, :degree :1, :name :lydian-dominant-pentatonic}
                  {:pitch :C, :degree :1, :name :bebop-major}
                  {:pitch :C, :degree :1, :name :lydian}

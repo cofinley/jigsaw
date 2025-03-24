@@ -1,3 +1,5 @@
+"Functions to find and test compatibility between shapes in the entire search space"
+
 (ns jigsaw.search
   (:require
    [clojure.set :as set]
@@ -16,7 +18,7 @@
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
 
-(defn jaccard-index [set1 set2]
+(defn- jaccard-index [set1 set2]
   (let [intersection (count (set/intersection set1 set2))
         union (count (set/union set1 set2))]
     (if (zero? union)
@@ -24,12 +26,19 @@
       (float (/ intersection union)))))
 
 (def heuristics
-  ; Read as input <heurstic> possible shape
+  ; Read as "<input> <heurstic> <possible shape>"
   {:contains? set/superset?
    :fully-contains? #(and (set/superset? %1 %2) (not= %1 %2))
    :contained-in? set/subset?
    :fully-contained-in? #(and (set/subset? %1 %2) (not= %1 %2))
    :overlap jaccard-index})
+
+(def heuristic-labels
+  {:contains? "partially contains"
+   :fully-contains? "fully contains"
+   :contained-in? "is partially contained by"
+   :fully-contained-in? "is fully contained by"
+   :overlap "overlaps with"})
 
 (defn- heuristic->float [x]
   (case x
@@ -77,62 +86,60 @@
 ; Find chords from scales
 
 (defn scale->chords
-  "Diatonic chords based on thirds; lines up with indexes of :pitches, :degrees, and :notes"
-  [scale & {:keys [num-thirds] :or {num-thirds 3}}]
-  (let [{start-pitch :pitch scale-name :name} scale
-        scale (specs/scales scale-name)
-        scale-intervals (:intervals scale)
-        scale-pitches (map (partial algo/+interval start-pitch) scale-intervals)]
-    (for [rotation (range (count scale-pitches))]
-      (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate scale-pitches rotation))))
-            notes (algo/pitches->notes pitches)
-            intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)]
-        (specs/chords-by-intervals (set intervals))))))
+  "Harmonize; generate diatonic chords based on thirds; lines up with indexes of :pitches, :degrees, and :notes"
+  [{pitches :pitches} & {:keys [num-thirds] :or {num-thirds 3}}]
+  (for [rotation (range (count pitches))]
+    (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
+          notes (algo/pitches->notes pitches)
+          intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)]
+      (specs/chords-by-intervals (set intervals)))))
 
 ; Find scales from chords
+; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
 
-(defn degree->tonic
-  "Given some pitch (e.g. :Eb), scale, and degree (e.g. :5), find the tonic pitch (e.g. :)"
+(defn- degree->tonic
+  "Given some pitch (e.g. :Eb), scale (e.g. :major), and the pitch's degree (e.g. :5), find the original tonic pitch (e.g. :Ab)"
   [p scale-name degree]
   (let [scale (specs/scales scale-name)
         n (.indexOf (:degrees scale) degree)
         interval (nth (:intervals scale) n)]
     (algo/+interval p interval -1)))
 
-(defn chord->search-intervals
-  "Generate chord intervals from perspective of all pitches"
-  [{:keys [pitches intervals]}]
-  (into
-   []
-   (comp
-    (map (fn [base-pitch]
-           (map (fn [chord-pitch]
-                  (let [interval (algo/->interval base-pitch chord-pitch)]
-                    (if (= :P8 interval) :P1 interval)))
-                pitches)))
-    (filter (fn [new-intervals] (= (count intervals) (count (remove nil? new-intervals))))))
-   (keys specs/pitches)))
+(defn- pitches->interval-seqs
+  "Generate new intervals to supplied pitches from perspective of all pitches (i.e. test all roots)"
+  [pitches]
+  (map (fn [root-pitch]
+         (keep #(let [interval (algo/->interval root-pitch %)]
+                  (if (= :P8 interval) :P1 interval))
+               pitches))
+       (keys specs/pitches)))
 
-(defn intervals->scales [intervals]
-  (reduce
-   (fn [v [scale-intervals scale-name]]
-     (if (set/subset? (set intervals) (set scale-intervals))
-       (let [scale (get specs/scales scale-name)]
-         (conj v {:scale-name scale-name
-                  :chord-degree (nth (:degrees scale) (.indexOf scale-intervals (first intervals)))}))
-       v))
-   []
-   specs/scales-by-intervals))
+(defn- intervals->scales
+  "Find scale (names) by intervals, calculate degree of first interval"
+  [intervals]
+  (->> specs/scales-by-intervals
+       (filter (fn [[scale-intervals _]] (set/subset? (set intervals) (set scale-intervals))))
+       (map (fn [[scale-intervals scale-name]]
+              (let [scale (get specs/scales scale-name)]
+                {:name scale-name
+                 :degree (nth (:degrees scale) (.indexOf scale-intervals (first intervals)))})))))
 
-(defn chord->scales [{pitch :pitch chord-name :name}]
-  (let [chord (algo/resolve-shape pitch :chord chord-name)
-        search-intervals (chord->search-intervals chord)
-        base-scales (mapcat intervals->scales search-intervals)]
-    (map (fn [m]
-           (let [{:keys [chord-degree scale-name]} m
-                 tonic (degree->tonic (:pitch chord) scale-name chord-degree)]
-             {:pitch tonic :degree chord-degree :name scale-name}))
-         (sort-by (comp utils/parse-int name :chord-degree) base-scales))))
+(defn chord->scales
+  "Find scales by chord
+   Look for overlapping intervals based on pitches
+   Optionally filter by desired degree"
+  [{pitch :pitch pitches :pitches intervals :intervals} & {:keys [degree] :or {degree nil}}]
+  (let [interval-seqs (pitches->interval-seqs pitches)
+        ; Only consider interval seqs with same count as chord intervals
+        same-size-interval-seqs (filter #(= (count intervals) (count %)) interval-seqs)
+        scales (mapcat intervals->scales same-size-interval-seqs)]
+    (->> scales
+         (filter #(if (some? degree) (= degree (:degree %)) true))
+         (map (fn [m]
+                (let [{scale-name :name chord-degree :degree} m
+                      tonic (degree->tonic pitch scale-name chord-degree)]
+                  (assoc m :pitch tonic))))
+         (sort-by (comp utils/parse-int name :degree)))))
 
 (comment
   (let [scale (algo/resolve-shape :E :scale :harmonic-minor)
@@ -144,4 +151,4 @@
   (resolve-all-shapes :chord)
   (notes->shapes :scale [:Eb4 :Gb4 :Ab4])
   (map (juxt :pitch :degree :name) (chord->scales {:pitch :C :name :maj}))
-  (chord->scales {:pitch :C :name :13sus4}))
+  (chord->scales (algo/resolve-shape :C :chord :13sus4)))

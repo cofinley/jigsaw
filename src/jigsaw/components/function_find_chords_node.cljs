@@ -2,6 +2,7 @@
   (:require
    [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
+   [jigsaw.components.output-piano-node :refer [piano-preview]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
    [jigsaw.search :as search]
@@ -11,40 +12,45 @@
    [re-frame.core :as re-frame]))
 
 (defn function-find-chords-node [{:keys [id]}]
-  (let [incoming-nodes (re-frame/subscribe [::subs/incoming id])
-        data (re-frame/subscribe [::subs/data id])]
+  (let [data (re-frame/subscribe [::subs/data id])
+        parent-data (re-frame/subscribe [::subs/parent-data id])]
     [node {:title "Scale Chords"
            :id id
            :data @data
+           :parent-data @parent-data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
-     (if-let [incoming-data (first @incoming-nodes)]
-       (if (contains? incoming-data :degrees)
+     (if @parent-data
+       (if (contains? @parent-data :degrees)
          (let [num-thirds (or (:num-thirds @data) 3)
-               chords (search/scale->chords incoming-data :num-thirds num-thirds)
-               pitches (:pitches incoming-data)
+               chords (search/scale->chords @parent-data :num-thirds num-thirds)
+               pitches (:pitches @parent-data)
                pitch->chord (zipmap pitches chords)
                chord-shapes (map (fn [[pitch chord-name]]
                                    {:pitch pitch
                                     :name chord-name
                                     :aliases (:aliases (specs/chords chord-name))})
                                  pitch->chord)
-               pitch->degrees (zipmap pitches (:degrees incoming-data))]
+               pitch->degrees (zipmap pitches (:degrees @parent-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
-             [:span "Thirds"]
+             [:span {:class "font-semibold"} "Thirds"]
              [:input {:type "number"
                       :class "p-1 rounded-md border border-gray-400 nodrag text-black"
                       :size 2
                       :value num-thirds
                       :on-change #(re-frame/dispatch [::events/update-node-data id {:num-thirds (-> % .-target .-value int)}])}]]
-            [:p "Chord"]
             [table {:ms chord-shapes
                     :row-render {"Root" :pitch
                                  "Name" :name
                                  "Degree" #(algo/degree-chord->roman-numeral
                                             (get pitch->degrees (:pitch %))
-                                            (:name %))}
+                                            (:name %))
+                                 "Piano" (fn [shape]
+                                           (when (:name shape)
+                                             [piano-preview
+                                              (:notes (algo/resolve-shape (algo/pitch->note (:pitch shape)) :chord (:name shape)))
+                                              :parent-notes (:notes @parent-data)]))}
                     :row-title-render utils/pprint-aliases
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]
