@@ -17,6 +17,10 @@
          (some? octave-str) (assoc :octave (utils/parse-int octave-str)
                                    :note (keyword (str pitch-str octave-str)))))))
 
+(defn pitch->note
+  [p & [octave]]
+  (keyword (str (name p) (or octave 4))))
+
 (defn- staff-distance
   [x1 x2]
   {:pre [(every? specs/pitch-or-note? [x1 x2])]}
@@ -87,7 +91,6 @@
   (inc (mod (dec (- (specs/pitches p2) (specs/pitches p1))) 12)))
 
 (defn- note-semitone-distance
-  "Semitone distance, preserving 12, but modulo 12 otherwise"
   [n1 n2]
   {:pre [(every? specs/note? [n1 n2])]}
   (abs (apply - (map note->midi (fold-notes [n1 n2])))))
@@ -99,12 +102,14 @@
     (note-semitone-distance x1 x2)))
 
 (defn ->interval
+  "Find interval between two pitches/notes
+   Start with semitone distance, and use staff distance if needed to split hairs between augmented/diminished"
   [x1 x2]
   {:pre [(every? specs/pitch-or-note? [x1 x2])]
    :post [(or (specs/interval? %) (nil? %))]}
   (if (and (specs/note? x1) (< (note->midi x2) (note->midi x1)))
     (let [{:keys [pitch octave]} (parts x2)]
-      (->interval x1 (keyword (str (name pitch) (inc octave)))))
+      (->interval x1 (pitch->note pitch (inc octave))))
     (let [semitone-distance (semitone-distance x1 x2)
           matching-intervals (specs/intervals-by-semitone semitone-distance)]
       (if (= (count matching-intervals) 1)
@@ -200,6 +205,7 @@
     (keyword (str new-pitch-str new-octave))))
 
 (defn +interval
+  "Add/subtract interval to/from pitch or note"
   [x interval & [multiplier]]
   {:pre [(specs/pitch-or-note? x)
          (specs/interval? interval)]
@@ -211,6 +217,7 @@
       (note+interval x interval multiplier))))
 
 (defn resolve-shape
+  "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
   [x shape-type shape-name]
   {:pre [(specs/pitch-or-note? x)]}
   (let [{:keys [pitch note]} (parts x)
@@ -235,10 +242,6 @@
                       (map val))
             specs/chords-by-intervals))
     []))
-
-(defn pitch->note
-  [p & [octave]]
-  (keyword (str (name p) (or octave 4))))
 
 (defn pitches->notes
   [pitches]
@@ -306,7 +309,7 @@
         :else "")))))
 
 ;; TODO
-;;  - Chord progressions/cadences
+;;  - Chord progressions/cadences (i.e. shape of shapes)
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
 ;;  - Handle list views/multiplexing the node views

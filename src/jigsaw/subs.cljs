@@ -13,7 +13,9 @@
    (:edges db)))
 
 (defn get-parent-id [db id]
-  (.-source (first (filter #(= (.-target %) id) (:edges db)))))
+  (let [sources (filter #(= (.-target %) id) (:edges db))]
+    (when (seq sources)
+      (.-source (first sources)))))
 
 (re-frame/reg-sub
  ::parent-id

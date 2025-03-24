@@ -39,39 +39,40 @@
                                                  :max-shapes max-shapes
                                                  :heuristic (keyword heuristic)
                                                  :selected-pitch (if (= selected-pitch :all) nil selected-pitch))]
-           [:div {:class "flex flex-col space-y-2 items-start"}
-            [:div {:class "flex items-center space-x-4"}
-             [:label {:class "space-x-2"}
-              [:span "Find"]
-              [select {:class "w-max"
-                       :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
-                       :value (or selected-shape-type "")}
-               [[:option {:value :chord} "Chords"]
-                [:option {:value :scale} "Scales"]]]]
-             [:label {:class "space-x-2"}
-              [:span "Heuristic"]
-              [select {:class "w-max"
-                       :on-change #(re-frame/dispatch [::events/update-node-data id {:heuristic (keyword (-> % .-target .-value))}])
-                       :value heuristic}
-               (for [heuristic-type (keys search/heuristics)]
-                 [:option {:value heuristic-type} (s/replace (name heuristic-type) #"-" " ")])]]
-             [:label {:class "space-x-2"}
-              [:span (if (= selected-shape-type :chord) "Root" "Tonic")]
-              [select {:class "w-max"
-                       :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-pitch (keyword (-> % .-target .-value))}])
-                       :value selected-pitch}
-               (cons [:option {:value "all"} "(Show all)"]
-                     (for [pitch (keys (sort-by val < specs/pitches))
-                           :when (and (not (s/includes? (name pitch) "bb"))
-                                      (not (s/includes? (name pitch) "##")))]
-                       [:option {:value pitch} (name pitch)]))]]
-             [:label {:class "space-x-2"}
-              [:span "Max shapes"]
-              [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
-                       :type "number"
-                       :size 2
-                       :value max-shapes
-                       :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]]
+           [:div {:class "flex flex-col space-y-2 items-start text-xl"}
+            [:label {:class "space-x-4"}
+             [:span {:class "font-semibold"} "Find"]
+             [select {:class "w-max"
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-shape-type (keyword (-> % .-target .-value))}])
+                      :value (or selected-shape-type "")}
+              [[:option {:value :chord} "Chords"]
+               [:option {:value :scale} "Scales"]]]]
+            [:label {:class "space-x-4 inline-flex items-baseline"}
+             [:span {:class "font-semibold"} "Where"]
+             [:span "input"]
+             [select {:class "w-max"
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:heuristic (keyword (-> % .-target .-value))}])
+                      :value heuristic}
+              (for [[value label] search/heuristic-labels]
+                [:option {:value value} label])]
+             [:span (str "the " (name selected-shape-type))]]
+            [:label {:class "space-x-4"}
+             [:span {:class "font-semibold"} (if (= selected-shape-type :chord) "Root" "Tonic")]
+             [select {:class "w-max"
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-pitch (keyword (-> % .-target .-value))}])
+                      :value selected-pitch}
+              (cons [:option {:value "all"} "(Show all)"]
+                    (for [pitch (keys (sort-by val < specs/pitches))
+                          :when (and (not (s/includes? (name pitch) "bb"))
+                                     (not (s/includes? (name pitch) "##")))]
+                      [:option {:value pitch} (name pitch)]))]]
+            [:label {:class "space-x-4"}
+             [:span {:class "font-semibold"} "Max shapes"]
+             [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
+                      :type "number"
+                      :size 2
+                      :value max-shapes
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]
             ;; TODO: make search an event and update data with results, otherwise it blocks event loop/animation
             [table {:ms shapes
                     :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch

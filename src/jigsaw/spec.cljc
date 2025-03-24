@@ -93,21 +93,15 @@
 (def intervals-by-semitone
   (reduce-kv (fn [m interval {:keys [:semitone]}] (update m semitone conj interval)) {} intervals))
 
-(s/def ::name string?)
-(s/def ::aliases (s/coll-of string?))
-
 ;; Chord and scales are composition of pitch, name, intervals
 ;;  e.g. a pitch with intervals is a chord or a scale (think ECS)
 ;;    maybe use degrees instead of intervals for scale to be able to differentiate
 
-(s/def ::octave (s/and int? #(<= -1 % 9)))
-
 ;; Note: pitch+octave
 (def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
-(def pitch-or-note-pattern (re-pattern (str "^" (str note-pattern-str "?") "$")))
+(def pitch-or-note-pattern (re-pattern (str "^" note-pattern-str "?" "$")))
 (s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
-(s/def ::notes (s/coll-of ::note))
 (defn note? [n] (s/valid? ::note n))
 (s/def ::pitch-or-note (s/or :pitch pitch? :note note?))
 (defn pitch-or-note? [x] (s/valid? ::pitch-or-note x))
@@ -239,8 +233,6 @@
 (def chords-by-intervals
   (reduce-kv (fn [m chord {:keys [:intervals]}] (assoc m (set intervals) chord)) {} chords))
 
-(s/def ::inversion (s/and int? #(<= 1 % 6))) ; 1st up to 6th chord inversion (e.g. 13th chord)
-
 ;; Derived
 ;; Chord: Maj, Maj7, min7, minMaj7
 ;;   Made up of root pitch (which will have a scale degree, when figured out (e.g. I, IV)) and intervals (relative to the root)
@@ -361,7 +353,7 @@
    ))
 
 (def scales-by-intervals
-  (reduce-kv (fn [m scale {:keys [:intervals]}] (assoc m intervals scale)) {} scales))
+  (reduce-kv (fn [m scale-name {:keys [:intervals]}] (assoc m intervals scale-name)) {} scales))
 
 ;; Derived: (scale) degree(s), inversions (based on notes and chord intervals)
 ;; Degree: I, II, III,, bIII, V, #V, VII, etc.

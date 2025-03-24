@@ -23,17 +23,17 @@
                      {:type "source" :position "right"}]}
      (if @parent-data
        (if (contains? @parent-data :intervals)
-         (let [selected-degree (or (:selected-degree @data) :i)
-               scales (search/chord->scales @parent-data)]
+         (let [selected-degree (:selected-degree @data)
+               scales (search/chord->scales @parent-data :degree selected-degree)]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
-             [:span "Degree"]
+             [:span {:class "font-semibold"} "Degree"]
              [select {:value selected-degree
-                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-degree (-> % .-target .-value keyword)}])}
-              (cons [:option {:value :all} "All"]
+                      :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-degree (let [value (-> % .-target .-value)]
+                                                                                                       (when (not= "" value) (keyword value)))}])}
+              (cons [:option {:value ""} "All"]
                     (for [deg (sort-by utils/parse-int specs/degrees)]
                       [:option {:value deg} deg]))]]
-            [:p "Scale"]
             [table {:ms scales
                     :row-render {"Tonic" :pitch
                                  "Name" :name

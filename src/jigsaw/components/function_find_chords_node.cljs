@@ -34,13 +34,12 @@
                pitch->degrees (zipmap pitches (:degrees @parent-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
-             [:span "Thirds"]
+             [:span {:class "font-semibold"} "Thirds"]
              [:input {:type "number"
                       :class "p-1 rounded-md border border-gray-400 nodrag text-black"
                       :size 2
                       :value num-thirds
                       :on-change #(re-frame/dispatch [::events/update-node-data id {:num-thirds (-> % .-target .-value int)}])}]]
-            [:p "Chord"]
             [table {:ms chord-shapes
                     :row-render {"Root" :pitch
                                  "Name" :name
