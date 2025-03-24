@@ -50,14 +50,17 @@
            (for [child body]
              (with-meta child {:key (str "node-body-" id)}))
 
-           (let [view-type (or (:view-type data) :output-piano)]
+           (let [view-type (:view-type data)]
              [:div {:class "flex flex-col space-y-4"}
               [:div {:class "flex space-x-2 items-center mt-4"}
                [:span "View"]
-               [select {:value view-type
-                        :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (-> % .-target .-value keyword)}])}
-                (for [view node-output-views]
-                  [:option {:value (:type view)} (:label view)])]]
+               [select {:value (or view-type "")
+                        :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (let [value (-> % .-target .-value)]
+                                                                                                   (when (not= "" value) (keyword value)))}])}
+                (cons
+                 [:option {:value ""} "None"]
+                 (for [view node-output-views]
+                   [:option {:value (:type view)} (:label view)]))]]
 
               (when (some? view-type)
                 (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
