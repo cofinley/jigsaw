@@ -12,8 +12,10 @@
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
-    (let [shape (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name)]
-      (assoc shape :semitones (map specs/pitches (:pitches shape))))))
+    (let [shape (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name)
+          semitones (map specs/pitches (:pitches shape))]
+      (assoc (select-keys shape [:name :pitch])
+             :semitones semitones))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -67,7 +69,8 @@
     (->> shapes
          (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
          ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
-         (map (fn [shape] (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape)))))
+         (map (fn [shape] (dissoc (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape))))
+                                  :semitones))
                                       ; (assoc shape :heuristics (merge (calculate-heuristics (set semitones) (set (:semitones shape)))
                                                                       ; {:root-in-input? (heuristic->float (contains? (set semitones) (get specs/pitches (:pitch shape))))
                                                                       ;  :lowest-input-root? (heuristic->float (= lowest-semitone (get specs/pitches (:pitch shape))))
@@ -91,8 +94,9 @@
   (for [rotation (range (count pitches))]
     (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
           notes (algo/pitches->notes pitches)
-          intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)]
-      (specs/chords-by-intervals (set intervals)))))
+          intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)
+          chord-name (specs/chords-by-intervals (set intervals))]
+      {:pitch (first pitches) :name chord-name})))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
@@ -128,7 +132,7 @@
   "Find scales by chord
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
-  [{pitch :pitch pitches :pitches intervals :intervals} & {:keys [degree] :or {degree nil}}]
+  [{:keys [pitch pitches intervals]} & {:keys [degree] :or {degree nil}}]
   (let [interval-seqs (pitches->interval-seqs pitches)
         ; Only consider interval seqs with same count as chord intervals
         same-size-interval-seqs (filter #(= (count intervals) (count %)) interval-seqs)
@@ -145,10 +149,8 @@
   (let [scale (algo/resolve-shape :E :scale :harmonic-minor)
         {pitches :pitches chord-lists :chords} (assoc scale :chords (scale->chords scale :num-thirds 4))
         chords (map first chord-lists)])
-  (scale->chords {:pitch :G :name :lydian})
   (algo/resolve-shape :Gb4 :scale :major-pentatonic)
   (:pitches (algo/resolve-shape :C4 :chord :maj))
-  (resolve-all-shapes :chord)
-  (notes->shapes :scale [:Eb4 :Gb4 :Ab4])
-  (map (juxt :pitch :degree :name) (chord->scales {:pitch :C :name :maj}))
+  (notes->shapes [:Eb4 :Gb4 :Ab4] :scale)
+  (scale->chords (algo/resolve-shape :G :scale :lydian))
   (chord->scales (algo/resolve-shape :C :chord :13sus4)))

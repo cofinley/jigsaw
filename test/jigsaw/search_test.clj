@@ -3,8 +3,7 @@
    [clojure.test :refer [deftest testing]]
    [jigsaw.algo :as algo]
    [jigsaw.search :as search]
-   [jigsaw.test-utils :refer [are+]]
-   [jigsaw.utils :as utils]))
+   [jigsaw.test-utils :refer [are+]]))
 
 (deftest search-test
   (testing "Search"
@@ -48,14 +47,14 @@
     (testing "scale->chords"
       (testing "with default num-thirds"
         (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name)))
-          :C :major  [:maj :m :m :maj :maj :m :dim]
-          :C :dorian [:m :m :maj :maj :m :dim :maj]
-          :C :minor  [:m :dim :maj :m :m :maj :maj]))
+          :C :major  [{:pitch :C :name :maj} {:pitch :D :name :m} {:pitch :E :name :m} {:pitch :F :name :maj} {:pitch :G :name :maj} {:pitch :A :name :m} {:pitch :B :name :dim}]
+          :C :dorian  [{:pitch :C :name :m} {:pitch :D :name :m} {:pitch :Eb :name :maj} {:pitch :F :name :maj} {:pitch :G :name :m} {:pitch :A :name :dim} {:pitch :Bb :name :maj}]
+          :C :minor  [{:pitch :C :name :m} {:pitch :D :name :dim} {:pitch :Eb :name :maj} {:pitch :F :name :m} {:pitch :G :name :m} {:pitch :Ab :name :maj} {:pitch :Bb :name :maj}]))
       (testing "with 4 num-thirds"
         (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name) :num-thirds 4))
-          :C :major  [:maj7 :m7 :m7 :maj7 :7 :m7 :m7b5]
-          :C :dorian [:m7 :m7 :maj7 :7 :m7 :m7b5 :maj7]
-          :C :minor  [:m7 :m7b5 :maj7 :m7 :m7 :maj7 :7])))
+          :C :major  [{:pitch :C :name :maj7} {:pitch :D :name :m7} {:pitch :E :name :m7} {:pitch :F :name :maj7} {:pitch :G :name :7} {:pitch :A :name :m7} {:pitch :B :name :m7b5}]
+          :C :dorian  [{:pitch :C :name :m7} {:pitch :D :name :m7} {:pitch :Eb :name :maj7} {:pitch :F :name :7} {:pitch :G :name :m7} {:pitch :A :name :m7b5} {:pitch :Bb :name :maj7}]
+          :C :minor  [{:pitch :C :name :m7} {:pitch :D :name :m7b5} {:pitch :Eb :name :maj7} {:pitch :F :name :m7} {:pitch :G :name :m7} {:pitch :Ab :name :maj7} {:pitch :Bb :name :7}])))
     (testing "chord->scales"
       (are+ [pitch chord-name expected] (= expected (search/chord->scales (algo/resolve-shape pitch :chord chord-name)))
         :C :maj [{:pitch :C, :degree :1, :name :lydian-dominant-pentatonic}

@@ -244,6 +244,7 @@
     []))
 
 (defn pitches->notes
+  "Convert one or more pitches to notes, incrementing octaves as needed"
   [pitches]
   (loop [pitches pitches
          notes []
