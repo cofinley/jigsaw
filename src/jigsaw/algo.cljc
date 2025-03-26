@@ -230,19 +230,6 @@
                    :pitches pitches})
       (specs/note? x) (assoc :notes (mapv (partial +interval note) intervals)))))
 
-(defn intervals->chord [intervals]
-  (when (seq intervals)
-    (let [interval-set (set intervals)]
-      (specs/chords-by-intervals interval-set))))
-
-(defn intervals->chords [intervals]
-  (if (seq intervals)
-    (let [interval-set (set intervals)]
-      (into #{} (comp (filter (fn [[chord-interval-set _]] (clojure.set/subset? interval-set chord-interval-set)))
-                      (map val))
-            specs/chords-by-intervals))
-    []))
-
 (defn pitches->notes
   "Convert one or more pitches to notes, incrementing octaves as needed"
   [pitches]
@@ -263,6 +250,15 @@
               (recur (rest pitches) (conj notes note) octave)))
           (recur (rest pitches) (conj notes note) octave)))
       notes)))
+
+(defn ->intervals
+  "Convert pitches to intervals, where the first pitch is :P1"
+  [xs]
+  {:pre [(every? specs/pitch-or-note? xs)]
+   :post [(every? specs/interval? %)]}
+  (if (specs/pitch? (first xs))
+    (->intervals (pitches->notes xs))
+    (map (partial ->interval (first xs)) xs)))
 
 (defn scale->mode
   [scale n]

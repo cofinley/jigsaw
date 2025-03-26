@@ -1,4 +1,4 @@
-"Functions to find and test compatibility between shapes in the entire search space"
+"Functions to find and test compatibility between shapes (really intervals) in the entire search space"
 
 (ns jigsaw.search
   (:require
@@ -14,7 +14,7 @@
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
     (let [shape (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name)
           semitones (map specs/pitches (:pitches shape))]
-      (assoc (select-keys shape [:name :pitch])
+      (assoc (select-keys shape [:pitch :name])
              :semitones semitones))))
 
 (def all-chords (resolve-all-shapes :chord))
@@ -53,7 +53,7 @@
   (reduce-kv (fn [m heuristic heuristic-fn]
                (assoc m heuristic (heuristic->float (heuristic-fn input-coll dest-coll)))) {} heuristics))
 
-; Fuzzy-find any shape from any shape
+; Fuzzy-find any shape from notes (really semitones)
 
 (defn notes->shapes
   [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
@@ -86,15 +86,27 @@
 
 (def notes->shapes-memo (memoize notes->shapes))
 
-; Find chords from scales
+; Find chords from scales (via matching intervals)
+
+(defn intervals->chord [intervals]
+  (when (seq intervals)
+    (let [interval-set (set intervals)]
+      (specs/chords-by-intervals interval-set))))
+
+(defn intervals->chords [intervals]
+  (if (seq intervals)
+    (let [interval-set (set intervals)]
+      (->> specs/chords-by-intervals
+           (filter (fn [[chord-interval-set _]] (clojure.set/subset? interval-set chord-interval-set)))
+           (map val)))
+    []))
 
 (defn scale->chords
   "Harmonize; generate diatonic chords based on thirds; lines up with indexes of :pitches, :degrees, and :notes"
   [{pitches :pitches} & {:keys [num-thirds] :or {num-thirds 3}}]
   (for [rotation (range (count pitches))]
     (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
-          notes (algo/pitches->notes pitches)
-          intervals (conj (rest (map (partial algo/->interval (first notes)) notes)) :P1)
+          intervals (algo/->intervals pitches)
           chord-name (specs/chords-by-intervals (set intervals))]
       {:pitch (first pitches) :name chord-name})))
 
@@ -119,14 +131,13 @@
        (keys specs/pitches)))
 
 (defn- intervals->scales
-  "Find scale (names) by intervals, calculate degree of first interval"
+  "Find scale (names) by intervals"
   [intervals]
   (->> specs/scales-by-intervals
-       (filter (fn [[scale-intervals _]] (set/subset? (set intervals) (set scale-intervals))))
-       (map (fn [[scale-intervals scale-name]]
-              (let [scale (get specs/scales scale-name)]
-                {:name scale-name
-                 :degree (nth (:degrees scale) (.indexOf scale-intervals (first intervals)))})))))
+       (filter (fn [[scale-intervals _]]
+                 (set/subset? (set intervals) (set scale-intervals))))
+       ; Return intervals passed in because they're used later to find degree
+       (map #(vec [intervals (second %)]))))
 
 (defn chord->scales
   "Find scales by chord
@@ -136,21 +147,29 @@
   (let [interval-seqs (pitches->interval-seqs pitches)
         ; Only consider interval seqs with same count as chord intervals
         same-size-interval-seqs (filter #(= (count intervals) (count %)) interval-seqs)
-        scales (mapcat intervals->scales same-size-interval-seqs)]
-    (->> scales
-         (filter #(if (some? degree) (= degree (:degree %)) true))
-         (map (fn [m]
-                (let [{scale-name :name chord-degree :degree} m
+        scale-names (mapcat intervals->scales same-size-interval-seqs)]
+    (->> scale-names
+         (map (fn [[chord-intervals-variant scale-name]]
+                (let [scale (get specs/scales scale-name)
+                      chord-degree (nth (:degrees scale) (.indexOf (:intervals scale) (first chord-intervals-variant)))
                       tonic (degree->tonic pitch scale-name chord-degree)]
-                  (assoc m :pitch tonic))))
+                  {:pitch tonic
+                   :name scale-name
+                   :degree chord-degree})))
+         (filter #(if (some? degree) (= degree (:degree %)) true))
          (sort-by (comp utils/parse-int name :degree)))))
 
 (comment
+  ; TODO:
+  ; contextualize (chord/scale + shape name => how does it fit?)
+  ; connect (chord/scale + chord/scale => what is the path between them?)
   (let [scale (algo/resolve-shape :E :scale :harmonic-minor)
         {pitches :pitches chord-lists :chords} (assoc scale :chords (scale->chords scale :num-thirds 4))
         chords (map first chord-lists)])
   (algo/resolve-shape :Gb4 :scale :major-pentatonic)
   (:pitches (algo/resolve-shape :C4 :chord :maj))
+  (intervals->chords [:P1 :M3 :P5 :M6])
+  (intervals->scales [:P1 :M3 :P5 :M6])
   (notes->shapes [:Eb4 :Gb4 :Ab4] :scale)
   (scale->chords (algo/resolve-shape :G :scale :lydian))
   (chord->scales (algo/resolve-shape :C :chord :13sus4)))

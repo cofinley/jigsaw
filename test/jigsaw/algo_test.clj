@@ -355,16 +355,6 @@
                          :degrees [:1 :2 :3 :4 :5 :6 :7]
                          :pitches [:F# :G# :A# :B :C# :D# :E#]
                          :notes [:F#4 :G#4 :A#4 :B4 :C#5 :D#5 :E#5]}))))
-    (testing "with intervals->chord"
-      (are+ [intervals want] (= want (algo/intervals->chord intervals))
-        [] nil
-        [:P1 :M3] nil
-        [:P1 :M3 :P5] :maj
-        [:P1 :m3 :P5] :m))
-    (testing "with intervals->chords"
-      (are+ [intervals want] (= want (algo/intervals->chords intervals))
-        [] []
-        [:P1 :m3 :P5 :m7 :P11] #{:m11 :m7add11}))
     (testing "with interval->degree"
       (are+ [interval want] (= want (algo/interval->degree interval))
         :P1 :1
