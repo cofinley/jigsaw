@@ -44,7 +44,7 @@
   [p notation]
   {:post [(specs/pitch? %)]}
   (let [chroma (specs/pitches p)
-        equivalent-pitches (specs/pitches-by-chroma chroma)]
+        equivalent-pitches (specs/chroma->pitches chroma)]
     (when (pos? (count equivalent-pitches))
       (if (= 1 (count equivalent-pitches))
         p
@@ -73,7 +73,7 @@
    :post [(specs/note? %)]}
   (let [octave (dec (int (/ midi 12)))
         chroma (mod midi 12)
-        p (get specs/default-pitch-by-chroma chroma)]
+        p (get specs/chroma->default-pitch chroma)]
     (keyword (str (name p) octave))))
 
 (defn fold-notes
@@ -116,7 +116,7 @@
     (let [{:keys [pitch octave]} (parts x2)]
       (->interval x1 (pitch->note pitch (inc octave))))
     (let [semitone-distance (semitone-distance x1 x2 :fold? true)
-          matching-intervals (specs/intervals-by-semitone semitone-distance)]
+          matching-intervals (specs/semitones->intervals semitone-distance)]
       (if (= (count matching-intervals) 1)
         (first matching-intervals)
         (let [distance (staff-distance x1 x2)]
@@ -172,11 +172,11 @@
     (let [{:keys [letter]} (parts p)
           interval-staff-distance (utils/parse-int interval)
           new-letter (letter+ letter interval-staff-distance multiplier)
-          interval-semitone (get-in specs/intervals [interval :semitone])
+          interval-semitones (get-in specs/intervals [interval :semitones])
           chroma (specs/pitches p)
-          new-semitone ((if (= multiplier -1) - +) chroma interval-semitone)
+          new-semitones ((if (= multiplier -1) - +) chroma interval-semitones)
           difference (* (or multiplier 1)
-                        (mod (- new-semitone (specs/pitches (keyword (str new-letter)))) 12))
+                        (mod (- new-semitones (specs/pitches (keyword (str new-letter)))) 12))
           new-difference (cond
                            (< difference -2) (+ difference 12)
                            (< 2 difference) (- difference 12)
@@ -194,7 +194,7 @@
    :post [(specs/note? %)]}
   (let [{:keys [pitch octave]} (parts n)
         chroma (specs/pitches pitch)
-        interval-semitone (get-in specs/intervals [interval :semitone])
+        interval-semitones (get-in specs/intervals [interval :semitones])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
         crossing-octaves? (if (= 1 (or multiplier 1))
@@ -205,7 +205,7 @@
                        (= :Cb new-pitch)) ; If going up an interval to boundary pitch but not crossing boundary, keep octave
         octave-offset (* (or multiplier 1)
                          (if crossing-octaves? 1
-                             (math/floor-div (+ chroma interval-semitone) 12)))
+                             (math/floor-div (+ chroma interval-semitones) 12)))
         new-octave (if keep-octave? octave (+ octave octave-offset))]
     (keyword (str new-pitch-str new-octave))))
 
@@ -269,7 +269,7 @@
   [scale n]
   (let [pitches (utils/rotate (:pitches scale) (dec n))
         intervals (into [:P1] (map #(->interval (first pitches) %)) (rest pitches))]
-    (when-let [new-scale-name (get specs/scales-by-intervals intervals)]
+    (when-let [new-scale-name (get specs/intervals->scales intervals)]
       (resolve-shape (first pitches) :scale new-scale-name))))
 
 (defn interval->degree [interval]
@@ -283,7 +283,7 @@
 
 (defn intervals->semitones
   [intervals]
-  (map #(get-in specs/intervals [% :semitone]) intervals))
+  (map #(get-in specs/intervals [% :semitones]) intervals))
 
 ;; Used for generating initial scale degrees
 ; (defn- scales-with-degrees []

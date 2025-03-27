@@ -115,12 +115,12 @@
 (defn intervals->chord [intervals]
   (when (seq intervals)
     (let [interval-set (set intervals)]
-      (specs/chords-by-intervals interval-set))))
+      (specs/intervals->chords interval-set))))
 
 (defn intervals->chords [intervals]
   (if (seq intervals)
     (let [interval-set (set intervals)]
-      (->> specs/chords-by-intervals
+      (->> specs/intervals->chords
            (filter (fn [[chord-interval-set _]] (clojure.set/subset? interval-set chord-interval-set)))
            vals))
     []))
@@ -131,7 +131,7 @@
   (for [rotation (range (count pitches))]
     (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
           intervals (algo/->intervals pitches)
-          chord-name (specs/chords-by-intervals (set intervals))]
+          chord-name (specs/intervals->chords (set intervals))]
       {:pitch (first pitches) :name chord-name})))
 
 ; Find scales from chords
@@ -157,7 +157,7 @@
 (defn- intervals->scales
   "Find scale (names) by intervals"
   [intervals]
-  (->> specs/scales-by-intervals
+  (->> specs/intervals->scales
        (filter (fn [[scale-intervals _]]
                  (set/subset? (set intervals) (set scale-intervals))))
        ; Return intervals passed in because they're used later to find degree

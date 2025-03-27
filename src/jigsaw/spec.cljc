@@ -5,7 +5,7 @@
 (s/def ::chroma (s/and int? #(<= 0 % 11)))
 
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
-(s/def ::semitone (s/and int? #(<= 0 % 21)))
+(s/def ::semitones (s/and int? #(<= 0 % 21)))
 
 (def letters->chroma {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11})
 ;; Pitch (class): C, C#, Db, etc.
@@ -27,10 +27,10 @@
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
 (defn pitch? [p] (s/valid? ::pitch p))
 
-(def pitches-by-chroma
+(def chroma->pitches
   (reduce-kv (fn [m pitch chroma] (update m chroma conj pitch)) {} pitches))
 
-(def default-pitch-by-chroma
+(def chroma->default-pitch
   {0 :C
    1 :C#
    2 :D
@@ -53,48 +53,48 @@
 ;;   4th usually on major and sus chords, 11th on dominant and minor chords
 ;;   6th usually on major and minor chords, 13th usually on dominant chords
 (def intervals
-  {:P1  {:name "Root" :semitone 0}
-   :d2  {:name "Diminished 2nd" :semitone 0}
-   :m2  {:name "Minor 2nd" :semitone 1}
-   :M2  {:name "Major 2nd" :semitone 2}
-   :d3  {:name "Diminished 3rd" :semitone 2}
-   :m3  {:name "Minor 3rd" :semitone 3}
-   :A2  {:name "Augmented 2nd" :semitone 3}
-   :M3  {:name "Major 3rd" :semitone 4}
-   :d4  {:name "Diminished 4th" :semitone 4}
-   :P4  {:name "Perfect 4th" :semitone 5}
-   :A3  {:name "Augmented 3rd" :semitone 5}
-   :d5  {:name "Diminished 5th" :semitone 6 :aliases ["Tritone"]}
-   :A4  {:name "Augmented 4th" :semitone 6 :aliases ["Tritone"]}
-   :P5  {:name "Perfect 5th" :semitone 7}
-   :d6  {:name "Diminished 6th" :semitone 7}
-   :m6  {:name "Minor 6th" :semitone 8}
-   :A5  {:name "Augmented 5th" :semitone 8}
-   :M6  {:name "Major 6th" :semitone 9}
-   :d7  {:name "Diminished 7th" :semitone 9}
-   :m7  {:name "Minor 7th" :semitone 10}
-   :A6  {:name "Augmented 6th" :semitone 10}
-   :M7  {:name "Major 7th" :semitone 11}
-   :A7  {:name "Augmented 7th" :semitone 12}
-   :P8  {:name "Octave" :semitone 12}
-   :A8  {:name "Augmented 8th" :semitone 13}
-   :m9  {:name "Minor 9th" :semitone 13}
-   :M9  {:name "Major 9th" :semitone 14}
-   :m10 {:name "Minor 10th" :semitone 15}
-   :A9  {:name "Augmented 9th" :semitone 15}
-   :M10 {:name "Major 10th" :semitone 16}
-   :d11 {:name "Diminished 11th" :semitone 16}
-   :P11 {:name "Perfect 11th" :semitone 17}
-   :A11 {:name "Augmented 11th" :semitone 18}
-   :P12 {:name "Perfect 12th" :semitone 19}
-   :m13 {:name "Minor 13th" :semitone 20}
-   :M13 {:name "Major 13th" :semitone 21}})
+  {:P1  {:name "Root" :semitones 0}
+   :d2  {:name "Diminished 2nd" :semitones 0}
+   :m2  {:name "Minor 2nd" :semitones 1}
+   :M2  {:name "Major 2nd" :semitones 2}
+   :d3  {:name "Diminished 3rd" :semitones 2}
+   :m3  {:name "Minor 3rd" :semitones 3}
+   :A2  {:name "Augmented 2nd" :semitones 3}
+   :M3  {:name "Major 3rd" :semitones 4}
+   :d4  {:name "Diminished 4th" :semitones 4}
+   :P4  {:name "Perfect 4th" :semitones 5}
+   :A3  {:name "Augmented 3rd" :semitones 5}
+   :d5  {:name "Diminished 5th" :semitones 6 :aliases ["Tritone"]}
+   :A4  {:name "Augmented 4th" :semitones 6 :aliases ["Tritone"]}
+   :P5  {:name "Perfect 5th" :semitones 7}
+   :d6  {:name "Diminished 6th" :semitones 7}
+   :m6  {:name "Minor 6th" :semitones 8}
+   :A5  {:name "Augmented 5th" :semitones 8}
+   :M6  {:name "Major 6th" :semitones 9}
+   :d7  {:name "Diminished 7th" :semitones 9}
+   :m7  {:name "Minor 7th" :semitones 10}
+   :A6  {:name "Augmented 6th" :semitones 10}
+   :M7  {:name "Major 7th" :semitones 11}
+   :A7  {:name "Augmented 7th" :semitones 12}
+   :P8  {:name "Octave" :semitones 12}
+   :A8  {:name "Augmented 8th" :semitones 13}
+   :m9  {:name "Minor 9th" :semitones 13}
+   :M9  {:name "Major 9th" :semitones 14}
+   :m10 {:name "Minor 10th" :semitones 15}
+   :A9  {:name "Augmented 9th" :semitones 15}
+   :M10 {:name "Major 10th" :semitones 16}
+   :d11 {:name "Diminished 11th" :semitones 16}
+   :P11 {:name "Perfect 11th" :semitones 17}
+   :A11 {:name "Augmented 11th" :semitones 18}
+   :P12 {:name "Perfect 12th" :semitones 19}
+   :m13 {:name "Minor 13th" :semitones 20}
+   :M13 {:name "Major 13th" :semitones 21}})
 (s/def ::interval (set (keys intervals)))
 (defn interval? [interval] (s/valid? ::interval interval))
 (s/def ::intervals (s/coll-of ::intervals))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
-(def intervals-by-semitone
-  (reduce-kv (fn [m interval {:keys [:semitone]}] (update m semitone conj interval)) {} intervals))
+(def semitones->intervals
+  (reduce-kv (fn [m interval {:keys [semitones]}] (update m semitones conj interval)) {} intervals))
 
 ;; Chord and scales are composition of pitch, name, intervals
 ;;  e.g. a pitch with intervals is a chord or a scale (think ECS)
@@ -234,7 +234,7 @@
    :q          {:intervals [:P1 :P4 :m7 :m10]               :aliases ["quartal"]}
    :11b9       {:intervals [:P1 :P5 :m7 :m9 :P11]}))
 
-(def chords-by-intervals
+(def intervals->chords
   (reduce-kv (fn [m chord {:keys [:intervals]}] (assoc m (set intervals) chord)) {} chords))
 
 ;; Derived
@@ -357,7 +357,7 @@
    ; :chromatic {:intervals [:P1 :m2 :M2 :m3 :M3 :P4 :d5 :P5 :m6 :M6 :m7 :M7] :degrees [:1 :b2 :2 :b3 :3 :4 :b5 :5 :b6 :6 :b7 :7]}
    ))
 
-(def scales-by-intervals
+(def intervals->scales
   (reduce-kv (fn [m scale-name {:keys [:intervals]}] (assoc m intervals scale-name)) {} scales))
 
 ;; Derived: (scale) degree(s), inversions (based on notes and chord intervals)
