@@ -260,12 +260,14 @@
             :C4 :P11 :F5
             :D#4 :M6 :B#4
             :Db4 :m7 :Cb5  ; If going up to boundary pitch, increment octave
-            :F#4 :A5 :C##5))
+            :F#4 :A5 :C##5
+            :B#4 :M3 :D##5))
         (testing "subtracting"
           (are+ [n interval want] (= want (algo/+interval n interval -1))
             :C4 :P1  :C4
             :C4 :P8  :C3
-            :C4 :P11 :G3))))
+            :C4 :P11 :G2
+            :D##5 :M3 :B#4))))
     (testing "with clamp-pitch"
       (are+ [p want] (= want (algo/clamp-pitch p))
         :C      :C

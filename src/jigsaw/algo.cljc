@@ -68,13 +68,21 @@
                      :else octave)]
     (+ chroma (* 12 (inc new-octave)))))
 
-(defn midi->note [midi _key]
+(defn midi->note
+  "Convert midi integer to note, optionally specifying the target pitch (otherwise uses default flats/sharps)"
+  [midi & [pitch]]
   {:pre [(specs/midi? midi)]
    :post [(specs/note? %)]}
-  (let [octave (dec (int (/ midi 12)))
+  (let [octave (dec (quot midi 12))
         chroma (mod midi 12)
-        p (get specs/chroma->default-pitch chroma)]
-    (keyword (str (name p) octave))))
+        p (or pitch (get specs/chroma->default-pitch chroma))
+        {:keys [letter]} (parts p)
+        base-chroma (specs/letters->chroma letter)  ; Chroma without accidentals
+        new-octave (cond  ; Adjust for crossing octave boundary
+                     (and (< chroma base-chroma) (not (string/includes? (name p) "b"))) (dec octave)  ; E.g. B#4 (0 < 11), only for sharps
+                     (and (> chroma base-chroma) (not (string/includes? (name p) "#"))) (inc octave)  ; E.g. Cb (11 > 0), only for flats
+                     :else octave)]
+    (keyword (str (name p) new-octave))))
 
 (defn fold-notes
   "Fold notes into a 21 semitone range so the highest interval is a 13th (by default)"
@@ -165,8 +173,6 @@
 
 (defn- pitch+interval
   [p interval & [multiplier]]
-  {:pre [(specs/pitch? p) (specs/interval? interval)]
-   :post [(specs/pitch? %)]}
   (if (some? (#{:P1 :P8} interval))
     p
     (let [{:keys [letter]} (parts p)
@@ -190,24 +196,13 @@
 
 (defn- note+interval
   [n interval & [multiplier]]
-  {:pre [(specs/note? n) (specs/interval? interval)]
-   :post [(specs/note? %)]}
-  (let [{:keys [pitch octave]} (parts n)
-        chroma (specs/pitches pitch)
+  (let [{:keys [pitch]} (parts n)
         interval-semitones (get-in specs/intervals [interval :semitones])
-        new-pitch (pitch+interval pitch interval multiplier)
-        new-pitch-str (name new-pitch)
-        crossing-octaves? (if (= 1 (or multiplier 1))
-                            (= :Cb new-pitch)
-                            (= :B# new-pitch)) ; If crossing octaves, force octave change
-        keep-octave? (if (= 1 (or multiplier 1))
-                       (= :B# new-pitch)
-                       (= :Cb new-pitch)) ; If going up an interval to boundary pitch but not crossing boundary, keep octave
-        octave-offset (* (or multiplier 1)
-                         (if crossing-octaves? 1
-                             (math/floor-div (+ chroma interval-semitones) 12)))
-        new-octave (if keep-octave? octave (+ octave octave-offset))]
-    (keyword (str new-pitch-str new-octave))))
+        new-pitch (pitch+interval pitch interval multiplier)]
+    (-> n
+        (note->midi)
+        (+ (* (or multiplier 1) interval-semitones))
+        (midi->note new-pitch))))
 
 (defn +interval
   "Add/subtract interval to/from pitch or note"
@@ -280,10 +275,6 @@
      (if (neg? matching-idx)
        (str (if (lesser? (name interval)) "b" "#") (last (name interval)))
        (str (inc matching-idx))))))
-
-(defn intervals->semitones
-  [intervals]
-  (map #(get-in specs/intervals [% :semitones]) intervals))
 
 ;; Used for generating initial scale degrees
 ; (defn- scales-with-degrees []
