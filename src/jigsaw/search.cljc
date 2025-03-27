@@ -21,16 +21,6 @@
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
 
-; Based on just semitones
-(defn- resolve-all-shapes2 [shape-type]
-  (for [[shape-name shape] (if (= shape-type :chord) specs/chords specs/scales)]
-    (let [semitones (algo/intervals->semitones (:intervals shape))]
-      {:name shape-name
-       :semitones semitones})))
-
-(def all-chords2 (resolve-all-shapes2 :chord))
-(def all-scales2 (resolve-all-shapes2 :scale))
-
 (defn- jaccard-index [set1 set2]
   (let [intersection (count (set/intersection set1 set2))
         union (count (set/union set1 set2))]
@@ -63,7 +53,13 @@
      :overlap (heuristic->float (jaccard-index input-set candidate-set))
      :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
 
-; Fuzzy-find any shape from notes (really semitones)
+; Fuzzy-find any shape from notes and their chromas
+; Match on chroma instead of:
+;  - pitches to capture enharmonic equivalents
+;     - Best for input notes, not input chord/scales
+;  - intervals to account for missing notes better
+;     - Intervals would have to account for all possible intervals
+;       - i.e. is it really :P1?
 
 (defn notes->shapes
   [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
@@ -74,35 +70,10 @@
         shapes (if (= shape-type :chord) all-chords all-scales)]
     (->> shapes
          (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
-         ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
-         ; TODO: check if enharmonics are the same for intersecting semitones
          (map (fn [shape]
                 (-> shape
                     (assoc :heuristics (calculate-heuristics chromas (:chromas shape)))
                     (dissoc :chromas))))
-         (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
-         (sort-by (juxt (comp - :shares-root? :heuristics)
-                        (comp - heuristic :heuristics)))
-         (take max-shapes))))
-
-(defn notes->shapes2
-  [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
-                       :or {heuristic :overlap
-                            max-shapes 10
-                            selected-pitch nil}}]
-  (let [semitones (algo/intervals->semitones (algo/->intervals notes))
-        shapes (if (= shape-type :chord) all-chords2 all-scales2)]
-    (->> shapes
-         ; (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
-         ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
-         ; TODO: check if enharmonics are the same for intersecting semitones
-         (map (fn [shape]
-                (-> shape
-                    (assoc :heuristics (calculate-heuristics semitones (:semitones shape))
-                           ; TODO: wrong
-                           :pitch (:pitch (algo/parts (first notes))))
-                    ; (merge (algo/resolve-shape (first notes) shape-type (:name shape)))
-                    (dissoc :semitones))))
          (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
          (sort-by (juxt (comp - :shares-root? :heuristics)
                         (comp - heuristic :heuristics)))
