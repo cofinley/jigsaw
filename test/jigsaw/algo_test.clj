@@ -49,11 +49,9 @@
           :C4 :B#4 12 ; B#4 is enharmonically equivalent to C5
           :C4 :C5 12
           :C4 :E5 16
-          :C4 :E6 16
-          ; 21 ceiling reached (13th)
+          :C4 :E6 28
           :C4 :A5 21
-          ; 22 folded down octave/12 semitones
-          :C4 :A#5 10)))
+          :C4 :A#5 22)))
     (testing "with flat?"
       (are+ [p want] (= want (algo/flat? p))
         :C  false
@@ -129,9 +127,9 @@
           :C4 :B#4 :A7
           :C4 :C5 :P8
           :C4 :E5 :M10
-          ; 21 semitone ceiling reached
+          ; 21 semitones (13th) ceiling reached
           :C4 :A5 :M13
-          ; 22 semitones, fold down octave
+          ; 22 semitones; ceiling surpassed; fold down octave
           :C4 :A#5 :A6
           ; First note higher than second, bump second note's octave up
           :D4 :C4 :m7)))

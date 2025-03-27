@@ -96,15 +96,15 @@
   (inc (mod (dec (- (specs/pitches p2) (specs/pitches p1))) 12)))
 
 (defn- note-semitone-distance
-  [n1 n2]
+  [n1 n2 & {:keys [fold?] :or {fold? false}}]
   {:pre [(every? specs/note? [n1 n2])]}
-  (abs (apply - (map note->midi (fold-notes [n1 n2])))))
+  (abs (apply - (map note->midi (if fold? (fold-notes [n1 n2]) [n1 n2])))))
 
 (defn semitone-distance
-  [x1 x2]
+  [x1 x2 & {:keys [fold?] :or {fold? false}}]
   (if (specs/pitch? x1)
     (pitch-semitone-distance x1 x2)
-    (note-semitone-distance x1 x2)))
+    (note-semitone-distance x1 x2 :fold? fold?)))
 
 (defn ->interval
   "Find interval between two pitches/notes
@@ -115,7 +115,7 @@
   (if (and (specs/note? x1) (< (note->midi x2) (note->midi x1)))
     (let [{:keys [pitch octave]} (parts x2)]
       (->interval x1 (pitch->note pitch (inc octave))))
-    (let [semitone-distance (semitone-distance x1 x2)
+    (let [semitone-distance (semitone-distance x1 x2 :fold? true)
           matching-intervals (specs/intervals-by-semitone semitone-distance)]
       (if (= (count matching-intervals) 1)
         (first matching-intervals)
