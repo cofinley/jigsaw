@@ -276,6 +276,10 @@
        (str (if (lesser? (name interval)) "b" "#") (last (name interval)))
        (str (inc matching-idx))))))
 
+(defn intervals->semitones
+  [intervals]
+  (map #(get-in specs/intervals [% :semitone]) intervals))
+
 ;; Used for generating initial scale degrees
 ; (defn- scales-with-degrees []
 ;   (let [major-intervals (get-in specs/scales [:major :intervals])]

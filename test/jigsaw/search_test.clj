@@ -9,41 +9,48 @@
   (testing "Search"
     (testing "heuristics"
       (are+ [set1 set2 m] (= m (search/calculate-heuristics set1 set2))
-        #{} #{} {:contained-in? 1
+        [] [] {:contained-in? 1
+               :fully-contained-in? 0
+               :contains? 1
+               :fully-contains? 0
+               :overlap 0.0
+               :shares-root? 0}
+        [:C] [] {:contained-in? 0
                  :fully-contained-in? 0
                  :contains? 1
+                 :fully-contains? 1
+                 :overlap 0.0
+                 :shares-root? 0}
+        [] [:C] {:contained-in? 1
+                 :fully-contained-in? 1
+                 :contains? 0
                  :fully-contains? 0
-                 :overlap 0}
-        #{:C} #{} {:contained-in? 0
+                 :overlap 0.0
+                 :shares-root? 0}
+        [:C] [:C] {:contained-in? 1
                    :fully-contained-in? 0
                    :contains? 1
-                   :fully-contains? 1
-                   :overlap 0.0}
-        #{} #{:C} {:contained-in? 1
-                   :fully-contained-in? 1
-                   :contains? 0
                    :fully-contains? 0
-                   :overlap 0.0}
-        #{:C} #{:C} {:contained-in? 1
-                     :fully-contained-in? 0
-                     :contains? 1
-                     :fully-contains? 0
-                     :overlap 1.0}
-        #{:C} #{:C :D} {:contained-in? 1
-                        :fully-contained-in? 1
-                        :contains? 0
-                        :fully-contains? 0
-                        :overlap 0.5}
-        #{:C :D} #{:C} {:contained-in? 0
-                        :fully-contained-in? 0
-                        :contains? 1
-                        :fully-contains? 1
-                        :overlap 0.5}
-        #{:C :D :E} #{:C} {:contained-in? 0
-                           :fully-contained-in? 0
-                           :contains? 1
-                           :fully-contains? 1
-                           :overlap (float (/ 1 3))}))
+                   :overlap 1.0
+                   :shares-root? 1}
+        [:C] [:C :D] {:contained-in? 1
+                      :fully-contained-in? 1
+                      :contains? 0
+                      :fully-contains? 0
+                      :overlap 0.5
+                      :shares-root? 1}
+        [:C :D] [:C] {:contained-in? 0
+                      :fully-contained-in? 0
+                      :contains? 1
+                      :fully-contains? 1
+                      :overlap 0.5
+                      :shares-root? 1}
+        [:C :D :E] [:C] {:contained-in? 0
+                         :fully-contained-in? 0
+                         :contains? 1
+                         :fully-contains? 1
+                         :overlap (float (/ 1 3))
+                         :shares-root? 1}))
     (testing "scale->chords"
       (testing "with default num-thirds"
         (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name)))

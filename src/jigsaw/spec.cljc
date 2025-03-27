@@ -112,6 +112,7 @@
 (s/def ::midi (s/and int? #(<= 0 % 127)))
 (defn midi? [x] (s/valid? ::midi x))
 
+; TODO: namespace with chord/
 (def chords
   (array-map
    ;; Major
@@ -245,6 +246,7 @@
 ;;   Tonic (1) is the key
 ;;   Chords can be derived from a scale
 
+; TODO: namespace with scale/
 (def scales
   (array-map
    ;; Basic

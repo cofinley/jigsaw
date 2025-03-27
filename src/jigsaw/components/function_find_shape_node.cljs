@@ -40,7 +40,7 @@
                                                  :heuristic (keyword heuristic)
                                                  :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
                ; Resolve shapes at last mile
-               resolved-shapes (map #(algo/resolve-shape (algo/pitch->note (:pitch %)) selected-shape-type (:name %)) shapes)]
+               resolved-shapes (map #(merge % (algo/resolve-shape (algo/pitch->note (:pitch %)) selected-shape-type (:name %))) shapes)]
            [:div {:class "flex flex-col space-y-2 items-start text-xl"}
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Find"]

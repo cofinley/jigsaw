@@ -1,4 +1,4 @@
-"Functions to find and test compatibility between shapes (really intervals) in the entire search space"
+"Functions to find and test compatibility between shapes (intervals) in the entire search space"
 
 (ns jigsaw.search
   (:require
@@ -8,6 +8,7 @@
    [jigsaw.spec :as specs]
    [jigsaw.utils :as utils]))
 
+; Based on pitch-index (i.e. :C => 0) semitones
 (defn- resolve-all-shapes [shape-type]
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
@@ -20,20 +21,22 @@
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
 
+; Based on just semitones
+(defn- resolve-all-shapes2 [shape-type]
+  (for [[shape-name shape] (if (= shape-type :chord) specs/chords specs/scales)]
+    (let [semitones (algo/intervals->semitones (:intervals shape))]
+      {:name shape-name
+       :semitones semitones})))
+
+(def all-chords2 (resolve-all-shapes2 :chord))
+(def all-scales2 (resolve-all-shapes2 :scale))
+
 (defn- jaccard-index [set1 set2]
   (let [intersection (count (set/intersection set1 set2))
         union (count (set/union set1 set2))]
     (if (zero? union)
-      0
+      0.0
       (float (/ intersection union)))))
-
-(def heuristics
-  ; Read as "<input> <heurstic> <possible shape>"
-  {:contains? set/superset?
-   :fully-contains? #(and (set/superset? %1 %2) (not= %1 %2))
-   :contained-in? set/subset?
-   :fully-contained-in? #(and (set/subset? %1 %2) (not= %1 %2))
-   :overlap jaccard-index})
 
 (def heuristic-labels
   {:contains? "partially contains"
@@ -49,9 +52,16 @@
     x))
 
 (defn calculate-heuristics
-  [input-coll dest-coll]
-  (reduce-kv (fn [m heuristic heuristic-fn]
-               (assoc m heuristic (heuristic->float (heuristic-fn input-coll dest-coll)))) {} heuristics))
+  "Read as '<input> <heurstic> <possible shape>'"
+  [input candidate]
+  (let [input-set (set input)
+        candidate-set (set candidate)]
+    {:contains? (heuristic->float (set/superset? input-set candidate-set))
+     :fully-contains? (heuristic->float (and (set/superset? input-set candidate-set) (not= input-set candidate-set)))
+     :contained-in? (heuristic->float (set/subset? input-set candidate-set))
+     :fully-contained-in? (heuristic->float (and (set/subset? input-set candidate-set) (not= input-set candidate-set)))
+     :overlap (heuristic->float (jaccard-index input-set candidate-set))
+     :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
 
 ; Fuzzy-find any shape from notes (really semitones)
 
@@ -61,27 +71,41 @@
                             max-shapes 10
                             selected-pitch nil}}]
   (let [semitones (map #(-> % algo/parts :pitch specs/pitches) notes)
-        ; midis (map algo/note->midi notes)
-        ; midi->note (zipmap midis notes)
-        ; lowest-pitch (:pitch (algo/parts (get midi->note (first (sort midis)))))
-        ; lowest-semitone (get specs/pitches lowest-pitch)
         shapes (if (= shape-type :chord) all-chords all-scales)]
     (->> shapes
          (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
          ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
-         (map (fn [shape] (dissoc (assoc shape :heuristics (calculate-heuristics (set semitones) (set (:semitones shape))))
-                                  :semitones))
-                                      ; (assoc shape :heuristics (merge (calculate-heuristics (set semitones) (set (:semitones shape)))
-                                                                      ; {:root-in-input? (heuristic->float (contains? (set semitones) (get specs/pitches (:pitch shape))))
-                                                                      ;  :lowest-input-root? (heuristic->float (= lowest-semitone (get specs/pitches (:pitch shape))))
-                                                                      ;  :root-pitches-match? (heuristic->float (= lowest-pitch (:pitch shape)))}))
-              )
          ; TODO: check if enharmonics are the same for intersecting semitones
+         (map (fn [shape]
+                (-> shape
+                    (assoc :heuristics (calculate-heuristics semitones (:semitones shape)))
+                    (dissoc :semitones))))
          (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
-         (sort-by (juxt ;(comp - :root-in-input? :heuristics)
-                        ;(comp - :lowest-input-root? :heuristics)
-                        ;(comp - :root-pitches-match? :heuristics)
-                   (comp - heuristic :heuristics)))
+         (sort-by (juxt (comp - :shares-root? :heuristics)
+                        (comp - heuristic :heuristics)))
+         (take max-shapes))))
+
+(defn notes->shapes2
+  [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
+                       :or {heuristic :overlap
+                            max-shapes 10
+                            selected-pitch nil}}]
+  (let [semitones (algo/intervals->semitones (algo/->intervals notes))
+        shapes (if (= shape-type :chord) all-chords2 all-scales2)]
+    (->> shapes
+         ; (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
+         ; Match on semitones instead of pitches to capture enharmonic equivalents (best for input notes, not input chord/scales)
+         ; TODO: check if enharmonics are the same for intersecting semitones
+         (map (fn [shape]
+                (-> shape
+                    (assoc :heuristics (calculate-heuristics semitones (:semitones shape))
+                           ; TODO: wrong
+                           :pitch (:pitch (algo/parts (first notes))))
+                    ; (merge (algo/resolve-shape (first notes) shape-type (:name shape)))
+                    (dissoc :semitones))))
+         (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
+         (sort-by (juxt (comp - :shares-root? :heuristics)
+                        (comp - heuristic :heuristics)))
          (take max-shapes))))
 
 (def notes->shapes-memo (memoize notes->shapes))
@@ -98,7 +122,7 @@
     (let [interval-set (set intervals)]
       (->> specs/chords-by-intervals
            (filter (fn [[chord-interval-set _]] (clojure.set/subset? interval-set chord-interval-set)))
-           (map val)))
+           vals))
     []))
 
 (defn scale->chords
@@ -161,15 +185,13 @@
 
 (comment
   ; TODO:
-  ; contextualize (chord/scale + shape name => how does it fit?)
   ; connect (chord/scale + chord/scale => what is the path between them?)
-  (let [scale (algo/resolve-shape :E :scale :harmonic-minor)
-        {pitches :pitches chord-lists :chords} (assoc scale :chords (scale->chords scale :num-thirds 4))
-        chords (map first chord-lists)])
+  ; contextualize (chord/scale + shape name => how does it fit? does connect provide this?)
+  (let [scale (algo/resolve-shape :E :scale :harmonic-minor)]
+    (scale->chords scale :num-thirds 4))
   (algo/resolve-shape :Gb4 :scale :major-pentatonic)
-  (:pitches (algo/resolve-shape :C4 :chord :maj))
   (intervals->chords [:P1 :M3 :P5 :M6])
   (intervals->scales [:P1 :M3 :P5 :M6])
-  (notes->shapes [:Eb4 :Gb4 :Ab4] :scale)
+  (notes->shapes (:notes (algo/resolve-shape :C4 :chord :maj)) :scale)
   (scale->chords (algo/resolve-shape :G :scale :lydian))
   (chord->scales (algo/resolve-shape :C :chord :13sus4)))
