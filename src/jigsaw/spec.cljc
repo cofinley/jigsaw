@@ -12,14 +12,14 @@
 ;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
 (def pitches
   (reduce-kv
-   (fn [m letter semitone]
+   (fn [m letter chroma]
      (assoc
       m
-      (keyword (str letter "bb")) (mod (- semitone 2) 12)   ; Double-flat
-      (keyword (str letter "b")) (mod (- semitone 1) 12)    ; Flat
-      (keyword (str letter)) semitone                       ; Natural
-      (keyword (str letter "#")) (mod (+ semitone 1) 12)    ; Sharp
-      (keyword (str letter "##")) (mod (+ semitone 2) 12))) ; Double-sharp
+      (keyword (str letter "bb")) (mod (- chroma 2) 12)   ; Double-flat
+      (keyword (str letter "b")) (mod (- chroma 1) 12)    ; Flat
+      (keyword (str letter)) chroma                       ; Natural
+      (keyword (str letter "#")) (mod (+ chroma 1) 12)    ; Sharp
+      (keyword (str letter "##")) (mod (+ chroma 2) 12))) ; Double-sharp
    {}
    letters->chroma))
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")

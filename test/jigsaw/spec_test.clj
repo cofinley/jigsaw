@@ -6,7 +6,7 @@
 
 (deftest spec-test
   (testing "Specs"
-    (testing "with semitone"
+    (testing "with semitones"
       (are [value valid] (= valid (s/valid? ::specs/semitones value))
         -1 false
         0 true
