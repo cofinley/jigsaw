@@ -28,7 +28,7 @@
         [:C4 :C5 :C6 :C7] [:C4 :C5]
         ; 21 semitones, don't fold
         [:C4 :A5] [:C4 :A5]
-        ; 22, fold back into last octave
+        ; 22, max-semitones surpassed; fold back into last octave
         [:C4 :Bb5] [:C4 :Bb4]))
     (testing "with semitone-distance"
       (testing "with pitches"

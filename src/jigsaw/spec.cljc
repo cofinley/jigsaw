@@ -7,28 +7,28 @@
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
 (s/def ::semitone (s/and int? #(<= 0 % 21)))
 
+(def letters->chroma {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11})
 ;; Pitch (class): C, C#, Db, etc.
 ;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
 (def pitches
-  (let [letters->chroma {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}]
-    (reduce-kv
-     (fn [m letter semitone]
-       (assoc
-        m
-        (keyword (str letter "bb")) (- semitone 2)   ; Double-flat
-        (keyword (str letter "b")) (- semitone 1)    ; Flat
-        (keyword (str letter)) semitone              ; Natural
-        (keyword (str letter "#")) (+ semitone 1)    ; Sharp
-        (keyword (str letter "##")) (+ semitone 2))) ; Double-sharp
-     {}
-     letters->chroma)))
+  (reduce-kv
+   (fn [m letter semitone]
+     (assoc
+      m
+      (keyword (str letter "bb")) (mod (- semitone 2) 12)   ; Double-flat
+      (keyword (str letter "b")) (mod (- semitone 1) 12)    ; Flat
+      (keyword (str letter)) semitone                       ; Natural
+      (keyword (str letter "#")) (mod (+ semitone 1) 12)    ; Sharp
+      (keyword (str letter "##")) (mod (+ semitone 2) 12))) ; Double-sharp
+   {}
+   letters->chroma))
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
 (defn pitch? [p] (s/valid? ::pitch p))
 
 (def pitches-by-chroma
-  (reduce-kv (fn [m p i] (update m (mod i 12) conj p)) {} pitches))
+  (reduce-kv (fn [m pitch chroma] (update m chroma conj pitch)) {} pitches))
 
 (def default-pitch-by-chroma
   {0 :C

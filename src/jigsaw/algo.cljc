@@ -43,7 +43,7 @@
 (defn enharmonic
   [p notation]
   {:post [(specs/pitch? %)]}
-  (let [chroma (mod (specs/pitches p) 12)
+  (let [chroma (specs/pitches p)
         equivalent-pitches (specs/pitches-by-chroma chroma)]
     (when (pos? (count equivalent-pitches))
       (if (= 1 (count equivalent-pitches))
@@ -59,9 +59,14 @@
 (defn note->midi [note]
   {:pre [(specs/note? note)]
    :post [(specs/midi? %)]}
-  (let [{:keys [pitch octave]} (parts note)
-        chroma (get specs/pitches pitch)]
-    (+ chroma (* 12 (inc octave)))))
+  (let [{:keys [pitch octave letter]} (parts note)
+        chroma (get specs/pitches pitch)
+        base-chroma (specs/letters->chroma letter)  ; Chroma without accidentals
+        new-octave (cond  ; Adjust for crossing octave boundary
+                     (and (< chroma base-chroma) (not (string/includes? (name pitch) "b"))) (inc octave)  ; E.g. B#4 (0 < 11), only for sharps
+                     (and (> chroma base-chroma) (not (string/includes? (name pitch) "#"))) (dec octave)  ; E.g. Cb (11 > 0), only for flats
+                     :else octave)]
+    (+ chroma (* 12 (inc new-octave)))))
 
 (defn midi->note [midi _key]
   {:pre [(specs/midi? midi)]
@@ -73,12 +78,12 @@
 
 (defn fold-notes
   "Fold notes into a 21 semitone range so the highest interval is a 13th (by default)"
-  [notes & {:keys [max-semitone] :or {max-semitone 21}}]
+  [notes & {:keys [max-semitones] :or {max-semitones 21}}]
   {:pre [(every? specs/note? notes)]}
   (let [notes->midis (zipmap notes (map note->midi notes))
         [_ low-midi] (apply min-key val notes->midis)
         [high-note high-midi] (apply max-key val notes->midis)]
-    (if (<= (- high-midi low-midi) max-semitone)
+    (if (<= (- high-midi low-midi) max-semitones)
       notes
       (let [{:keys [pitch octave]} (parts high-note)
             new-note (keyword (str (name pitch) (dec octave)))]
