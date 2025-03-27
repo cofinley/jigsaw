@@ -43,8 +43,8 @@
 (defn enharmonic
   [p notation]
   {:post [(specs/pitch? %)]}
-  (let [index (mod (specs/pitches p) 12)
-        equivalent-pitches (specs/pitches-by-index index)]
+  (let [chroma (mod (specs/pitches p) 12)
+        equivalent-pitches (specs/pitches-by-chroma chroma)]
     (when (pos? (count equivalent-pitches))
       (if (= 1 (count equivalent-pitches))
         p
@@ -60,15 +60,15 @@
   {:pre [(specs/note? note)]
    :post [(specs/midi? %)]}
   (let [{:keys [pitch octave]} (parts note)
-        index (get specs/pitches pitch)]
-    (+ index (* 12 (inc octave)))))
+        chroma (get specs/pitches pitch)]
+    (+ chroma (* 12 (inc octave)))))
 
 (defn midi->note [midi _key]
   {:pre [(specs/midi? midi)]
    :post [(specs/note? %)]}
   (let [octave (dec (int (/ midi 12)))
-        index (mod midi 12)
-        p (get specs/default-pitch-by-index index)]
+        chroma (mod midi 12)
+        p (get specs/default-pitch-by-chroma chroma)]
     (keyword (str (name p) octave))))
 
 (defn fold-notes
@@ -168,8 +168,8 @@
           interval-staff-distance (utils/parse-int interval)
           new-letter (letter+ letter interval-staff-distance multiplier)
           interval-semitone (get-in specs/intervals [interval :semitone])
-          semitone (specs/pitches p)
-          new-semitone ((if (= multiplier -1) - +) semitone interval-semitone)
+          chroma (specs/pitches p)
+          new-semitone ((if (= multiplier -1) - +) chroma interval-semitone)
           difference (* (or multiplier 1)
                         (mod (- new-semitone (specs/pitches (keyword (str new-letter)))) 12))
           new-difference (cond
@@ -188,7 +188,7 @@
   {:pre [(specs/note? n) (specs/interval? interval)]
    :post [(specs/note? %)]}
   (let [{:keys [pitch octave]} (parts n)
-        semitone (specs/pitches pitch)
+        chroma (specs/pitches pitch)
         interval-semitone (get-in specs/intervals [interval :semitone])
         new-pitch (pitch+interval pitch interval multiplier)
         new-pitch-str (name new-pitch)
@@ -200,7 +200,7 @@
                        (= :Cb new-pitch)) ; If going up an interval to boundary pitch but not crossing boundary, keep octave
         octave-offset (* (or multiplier 1)
                          (if crossing-octaves? 1
-                             (math/floor-div (+ semitone interval-semitone) 12)))
+                             (math/floor-div (+ chroma interval-semitone) 12)))
         new-octave (if keep-octave? octave (+ octave octave-offset))]
     (keyword (str new-pitch-str new-octave))))
 

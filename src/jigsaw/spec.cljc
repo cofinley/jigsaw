@@ -1,13 +1,16 @@
 (ns jigsaw.spec
   (:require [clojure.spec.alpha :as s]))
 
+;; Chroma: semitones cycling in one octave, where :C is 0, :C# is 1, :Db is 1, :B is 11, and B# is 0
+(s/def ::chroma (s/and int? #(<= 0 % 11)))
+
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
 (s/def ::semitone (s/and int? #(<= 0 % 21)))
 
 ;; Pitch (class): C, C#, Db, etc.
 ;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
 (def pitches
-  (let [letters->semitones {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}]
+  (let [letters->chroma {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}]
     (reduce-kv
      (fn [m letter semitone]
        (assoc
@@ -18,16 +21,16 @@
         (keyword (str letter "#")) (+ semitone 1)    ; Sharp
         (keyword (str letter "##")) (+ semitone 2))) ; Double-sharp
      {}
-     letters->semitones)))
+     letters->chroma)))
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
 (defn pitch? [p] (s/valid? ::pitch p))
 
-(def pitches-by-index
+(def pitches-by-chroma
   (reduce-kv (fn [m p i] (update m (mod i 12) conj p)) {} pitches))
 
-(def default-pitch-by-index
+(def default-pitch-by-chroma
   {0 :C
    1 :C#
    2 :D
@@ -376,5 +379,3 @@
     :b10 :10 :#10
     :b11 :11 :#11
     :b12 :12 :#12})
-(s/def ::degree degrees)
-(s/def ::degree-base-scale (s/and keyword? #(contains? scales %)))

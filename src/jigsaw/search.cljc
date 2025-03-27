@@ -8,15 +8,15 @@
    [jigsaw.spec :as specs]
    [jigsaw.utils :as utils]))
 
-; Based on pitch-index (i.e. :C => 0) semitones
+; Based on chroma
 (defn- resolve-all-shapes [shape-type]
   (for [pitch (keys specs/pitches)
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))
         :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
     (let [shape (algo/resolve-shape (algo/pitch->note pitch) shape-type shape-name)
-          semitones (map specs/pitches (:pitches shape))]
+          chromas (map specs/pitches (:pitches shape))]
       (assoc (select-keys shape [:pitch :name])
-             :semitones semitones))))
+             :chromas chromas))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -70,7 +70,7 @@
                        :or {heuristic :overlap
                             max-shapes 10
                             selected-pitch nil}}]
-  (let [semitones (map #(-> % algo/parts :pitch specs/pitches) notes)
+  (let [chromas (map #(-> % algo/parts :pitch specs/pitches) notes)
         shapes (if (= shape-type :chord) all-chords all-scales)]
     (->> shapes
          (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
@@ -78,8 +78,8 @@
          ; TODO: check if enharmonics are the same for intersecting semitones
          (map (fn [shape]
                 (-> shape
-                    (assoc :heuristics (calculate-heuristics semitones (:semitones shape)))
-                    (dissoc :semitones))))
+                    (assoc :heuristics (calculate-heuristics chromas (:chromas shape)))
+                    (dissoc :chromas))))
          (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
          (sort-by (juxt (comp - :shares-root? :heuristics)
                         (comp - heuristic :heuristics)))
