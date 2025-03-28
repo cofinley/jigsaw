@@ -97,13 +97,15 @@
     []))
 
 (defn scale->chords
-  "Harmonize; generate diatonic chords based on thirds; lines up with indexes of :pitches, :degrees, and :notes"
-  [{pitches :pitches} & {:keys [num-thirds] :or {num-thirds 3}}]
-  (for [rotation (range (count pitches))]
-    (let [pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
-          intervals (algo/->intervals pitches)
-          chord-name (specs/intervals->chords (set intervals))]
-      {:pitch (first pitches) :name chord-name})))
+  "Get diatonic chords based on thirds; lines up with indexes of :pitches, :degrees, and :notes"
+  [scale-name & {:keys [num-thirds] :or {num-thirds 3}}]
+  (let [scale (specs/scales scale-name)
+        pitches (map #(algo/+interval :C %) (:intervals scale))]
+    (for [rotation (range (count (:intervals scale)))]
+      (let [rotated-pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
+            intervals (algo/->intervals rotated-pitches)
+            chord-name (specs/intervals->chords (set intervals))]
+        chord-name))))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
