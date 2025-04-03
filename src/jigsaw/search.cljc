@@ -75,8 +75,8 @@
                     (assoc :heuristics (calculate-heuristics chromas (:chromas shape)))
                     (dissoc :chromas))))
          (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
-         (sort-by (juxt (comp - :shares-root? :heuristics)
-                        (comp - heuristic :heuristics)))
+         (sort-by (juxt ;(comp - :shares-root? :heuristics)
+                   (comp - heuristic :heuristics)))
          (take max-shapes))))
 
 (def notes->shapes-memo (memoize notes->shapes))

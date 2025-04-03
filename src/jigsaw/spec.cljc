@@ -9,7 +9,8 @@
 
 (def letters->chroma {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11})
 ;; Pitch (class): C, C#, Db, etc.
-;;   Has different representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
+;;   Has different enharmonic representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
+;;   Maps to absolute-do (AKA abdo, i.e. starting at C or "do" in solfege) integer 
 (def pitches
   (reduce-kv
    (fn [m letter chroma]

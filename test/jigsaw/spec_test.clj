@@ -23,6 +23,11 @@
         :C## true
         :Db true
         :Dbb true))
+    (testing "with chroma"
+      (are [p1 p2] (= (::specs/pitches p1) (::specs/pitches p2))
+        :C :C
+        :C :Dbb
+        :C :B#))
     (testing "with interval"
       (are [value valid] (= valid (s/valid? ::specs/interval value))
         :P1 true

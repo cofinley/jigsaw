@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as string]
    [clojure.set]
-   [clojure.math :as math]
    [jigsaw.utils :as utils]
    [jigsaw.spec :as specs]))
 

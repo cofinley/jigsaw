@@ -1,7 +1,6 @@
 (ns jigsaw.utils
   (:require
    [clojure.string :as s]
-   [clojure.pprint :as pp]
    [clojure.set :as set]
    [clojure.walk :as walk]))
 

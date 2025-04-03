@@ -71,7 +71,7 @@ dist: build-uberjar ## Build and package Clojure service
 # `-` before the command ignores any errors returned
 clean:  ## Clean build temporary files
 	$(info --------- Clean Clojure classpath cache ---------)
-	- rm -rf ./.cpcache ./.clj-kondo ./.lsp
+	- rm -rf ./.cpcache ./.clj-kondo
 # ------------------------------------ #
 
 # ------- Testing -------------------- #
