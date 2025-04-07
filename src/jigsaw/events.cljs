@@ -45,6 +45,16 @@
  (fn [db [_ node-type & [parent-id]]]
    (create-node db node-type parent-id)))
 
+(defn delete-node [db id]
+  (-> db
+      (assoc :nodes (.filter (:nodes db) #(not= id (.-id %))))
+      (update :node-data dissoc id)))
+
+(re-frame/reg-event-db
+ ::delete-node
+ (fn [db [_ id]]
+   (delete-node db id)))
+
 (re-frame/reg-event-db
  ::toggle-note
  (fn [db [_ id midi]]

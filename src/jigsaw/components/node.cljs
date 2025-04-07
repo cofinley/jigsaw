@@ -32,12 +32,18 @@
     (fn [{:keys [title id data parent-data handles class]} & body]
       (r/as-element
        [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
-        [:div {:class "border-b border-gray-400 mb-4"}
-         [:div {:class "w-max flex cursor-pointer space-x-1"
+        [:div {:class "flex border-b border-gray-400 mb-4"}
+         [:div {:class "w-max flex cursor-pointer space-x-1 grow"
                 :on-click #(reset! open? (not @open?))}
           [:span {:class "text-lg cursor-pointer"}
            (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
-          [:h4 {:class "w-max font-semibold text-2xl"} title]]]
+          [:h4 {:class "w-max font-semibold text-2xl"} title]]
+         [:button {:class "text-gray-400 cursor-pointer bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                   :on-click #(when (js/confirm "Delete?")
+                                (.stopPropagation %)
+                                (re-frame/dispatch [::events/delete-node id]))}
+          [:svg {:class "w-3 h-3" :xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 14 14"}
+           [:path {:stroke "currentColor" :stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"}]]]]
 
         (for [i (range (count handles))
               :let [h (nth handles i)
