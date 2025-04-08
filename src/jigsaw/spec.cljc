@@ -1,5 +1,6 @@
 (ns jigsaw.spec
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [clojure.string :as string]))
 
 ;; Chroma: semitones cycling in one octave, where :C is 0, :C# is 1, :Db is 1, :B is 11, and B# is 0
 (s/def ::chroma (s/and int? #(<= 0 % 11)))
@@ -27,6 +28,11 @@
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
 (defn pitch? [p] (s/valid? ::pitch p))
+
+(def simple-pitch-keys
+  (filter #(and (not (string/includes? (name %) "bb"))
+                (not (string/includes? (name %) "##")))
+          (keys (sort-by val < pitches))))
 
 (def chroma->pitches
   (reduce-kv (fn [m pitch chroma] (update m chroma conj pitch)) {} pitches))
@@ -380,3 +386,13 @@
     :b10 :10 :#10
     :b11 :11 :#11
     :b12 :12 :#12})
+
+(s/def ::relative-shape (s/keys :req-un [::name ::intervals]
+                                :opt-un [::aliases ::degrees]))
+(s/def ::absolute-shape (s/merge ::relative-shape
+                                 (s/keys :req-un [::pitches]
+                                         :opt-un [::notes])))  ; i.e. resolved
+(s/def ::relative-shape-ref (s/keys :req-un [::name]))  ; Enough to look up info but not enough to resolve pitches
+(s/def ::absolute-shape-ref (s/merge ::relative-shape-ref
+                                     (s/keys :req-un [::pitch]
+                                             :opt-un [::note])))  ; i.e. resolved; enough to get whole shape, including pitches

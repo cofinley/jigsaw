@@ -39,8 +39,7 @@
                   :placeholder "Pitch"}
           (cons
            [:option {:disabled true :value ""} "Pitch"]
-           (for [pitch (keys (sort-by val < specs/pitches))
-                 :when (and (not (s/includes? (name pitch) "bb")) (not (s/includes? (name pitch) "##")))]
+           (for [pitch specs/simple-pitch-keys]
              [:option {:value pitch} (name pitch)]))]]
         [:label {:class "space-x-4"}
          [:span {:class "font-semibold"} "Search"]
