@@ -23,14 +23,12 @@
      (if @parent-data
        (if (contains? @parent-data :degrees)
          (let [num-thirds (or (:num-thirds @data) 3)
-               chord-names (search/scale->chords (:name @parent-data) :num-thirds num-thirds)
+               shape-refs (search/scale->chords @parent-data :num-thirds num-thirds)
                pitches (:pitches @parent-data)
-               pitch->chord-names (zipmap pitches chord-names)
-               chord-shapes (map (fn [[pitch chord-name]]
-                                   {:pitch pitch
-                                    :name chord-name
-                                    :aliases (:aliases (specs/chords chord-name))})
-                                 pitch->chord-names)
+               chord-shapes (map (fn [shape]
+                                   (assoc shape
+                                          :aliases (:aliases (specs/chords (:name shape)))))
+                                 shape-refs)
                pitch->degrees (zipmap pitches (:degrees @parent-data))]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}

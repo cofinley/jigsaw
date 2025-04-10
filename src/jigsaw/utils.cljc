@@ -47,3 +47,25 @@
 
 (defmacro prm [& more]
   `(prn ~(reduce #(assoc %1 (keyword (str %2)) %2) {} more)))
+
+(defn distinct-by [f coll]
+  (let [groups (group-by f coll)]
+    (map #(first (groups %)) (distinct (map f coll)))))
+
+(defn find-by-keys [mks coll]
+  (some #(when (= (select-keys % (keys mks)) mks) %) coll))
+
+(defn invert-map-of-sets
+  "From
+   {1 #{:a :b :c} 2 #{:b :c :d}}
+   To
+   {:c #{1 2}, :b #{1 2}, :a #{1}, :d #{2}}
+  "
+  [m]
+  (reduce (fn [a [k v]]
+            (assoc a k (conj (get a k #{}) v)))
+          {}
+          (for [[k s] m
+                v s]
+            [v k])))
+

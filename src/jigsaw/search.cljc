@@ -162,20 +162,66 @@
              :degree chord-degree}))
          (sort-by (comp utils/parse-int name :degree)))))
 
+; Find more deeply linked shapes
+
+(defn contextualize
+  "If input-shape is a chord, find degree in candidate-shape (scale)
+   If input-shape is a scale, find the candidate-shape's (chord) degree"
+  [input-shape candidate-shape]
+  (let [base-scale (if (contains? input-shape :degree) input-shape candidate-shape)
+        base-chord (if (= base-scale input-shape) candidate-shape input-shape)
+        scale (algo/resolve-shape (:pitch base-scale) :scale (:name base-scale))
+        chord (algo/resolve-shape (:pitch base-chord) :chord (:name base-chord))
+        degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
+    (algo/degree-chord->roman-numeral degree (:name chord))))
+
+(defn connect
+  "Given some note sets, find connective shapes
+  1. note-sets -> proper shapes
+  2. shapes -> complementary shapes (i.e. chord -> scale and vice versa)
+  3. Show how the complementary shapes connect all the note sets and their proper shapes"
+  [note-seqs input-shape-type & {:keys [max-shapes] :or {max-shapes 1}}]
+  (let [note-seq-sets (set note-seqs)
+        note-seq->shapes (reduce (fn [m note-seq]
+                                   (assoc m note-seq
+                                          (set (map #(select-keys % [:pitch :name])
+                                                    (notes->shapes note-seq input-shape-type :max-shapes max-shapes)))))
+                                 {}
+                                 note-seqs)
+        shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
+        shape->comp-shapes (reduce (fn [m shape]
+                                     (assoc m shape
+                                            (set (map #(select-keys % [:pitch :name])
+                                                      ((if (= input-shape-type :chord)
+                                                         chord->scales
+                                                         scale->chords)
+                                                       (algo/resolve-shape (:pitch shape) input-shape-type (:name shape)))))))
+                                   {} (keys shape->note-seqs))
+        comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
+    (for [[comp-shape shapes] comp-shape->shapes
+          ; See if complementary shape can account for all note-seqs
+          :let [note-seqs-for-comp-shape (->> shapes
+                                              (mapcat #(get shape->note-seqs %))
+                                              set)]
+          :when (= note-seq-sets note-seqs-for-comp-shape)]
+      {comp-shape (map (fn [shape]
+                         {:input (shape->note-seqs shape)
+                          :found shape
+                          :context (contextualize shape comp-shape)})
+                       shapes)})))
+
 (comment
-  ; TODO:
-  ; connect (chord/scale + chord/scale => what is the path between them?)
-  ; contextualize (chord/scale + shape name => how does it fit? does connect provide this?)
   (let [scale (algo/resolve-shape :E :scale :harmonic-minor)]
     (scale->chords scale :num-thirds 4))
-  (algo/resolve-shape :C :scale :mixolydian)
-  (pitches->interval-seqs [:C :E :G])
+  (notes->shapes (:notes (algo/resolve-shape :C4 :chord :maj)) :scale)
   (intervals->chords [:P1 :M3 :P5 :M6])
-  (intervals->scales [:P1 :M3 :P5 :M6])
-  (algo/resolve-shape :C :chord :maj)
   (scale->chords (algo/resolve-shape :C :scale :major))
   (scale->chords (algo/resolve-shape :Db :scale :diminished))
   (scale->chords (algo/resolve-shape :C# :scale :diminished))
-  (notes->shapes (:notes (algo/resolve-shape :C4 :chord :maj)) :scale)
-  (scale->chords (algo/resolve-shape :G :scale :lydian))
-  (chord->scales (algo/resolve-shape :C :chord :13sus4)))
+  (scale->chords (algo/resolve-shape :G :scale :diminished))
+  (intervals->scales [:P1 :M3 :P5 :M6])
+  (pitches->interval-seqs [:C :E :G])
+  (chord->scales (algo/resolve-shape :C :chord :13sus4))
+  (contextualize (algo/resolve-shape :B :chord :maj) (algo/resolve-shape :C :scale :major))
+  (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
+  (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord))

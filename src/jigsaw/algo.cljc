@@ -302,6 +302,7 @@
       (cond
         (utils/in? intervals :A5) "+"
         (utils/in? intervals :d5) "°"
+        (= :7 chord-name) "7"
         :else "")))))
 
 ;; TODO
