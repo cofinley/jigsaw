@@ -99,18 +99,21 @@
   [scale-name & {:keys [num-thirds] :or {num-thirds 3}}]
   (let [scale (specs/scales scale-name)
         pitches (map #(algo/+interval :C %) (:intervals scale))]
-    (for [rotation (range (count (:intervals scale)))]
-      (let [rotated-pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
-            intervals (algo/->intervals rotated-pitches)
-            chord-name (specs/intervals->chords (set intervals))]
-        chord-name))))
+    (remove nil?
+            (for [rotation (range (count (:intervals scale)))]
+              (let [rotated-pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
+                    intervals (algo/->intervals rotated-pitches)
+                    chord-name (specs/intervals->chords (set intervals))]
+                chord-name)))))
 
 (defn scale->chords
   [{:keys [name pitches]} & {:keys [num-thirds] :or {num-thirds 3}}]
   (let [chord-names (scale-name->chords name :num-thirds num-thirds)]
-    (map-indexed (fn [idx pitch]
-                   {:pitch pitch :name (nth chord-names idx)})
-                 pitches)))
+    (if (= (count pitches) (count chord-names))
+      (map-indexed (fn [idx pitch]
+                     {:pitch pitch :name (nth chord-names idx)})
+                   pitches)
+      '())))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
@@ -168,7 +171,7 @@
   "If input-shape is a chord, find degree in candidate-shape (scale)
    If input-shape is a scale, find the candidate-shape's (chord) degree"
   [input-shape candidate-shape]
-  (let [base-scale (if (contains? input-shape :degree) input-shape candidate-shape)
+  (let [base-scale (if (or (contains? input-shape :degrees) (contains? input-shape :degree)) input-shape candidate-shape)
         base-chord (if (= base-scale input-shape) candidate-shape input-shape)
         scale (algo/resolve-shape (:pitch base-scale) :scale (:name base-scale))
         chord (algo/resolve-shape (:pitch base-chord) :chord (:name base-chord))
@@ -178,7 +181,7 @@
 (defn connect
   "Given some note sets, find connective shapes
   1. note-sets -> proper shapes
-  2. shapes -> complementary shapes (i.e. chord -> scale and vice versa)
+  2. shapes -> complementary shapes (i.e. chord -> scales and vice versa)
   3. Show how the complementary shapes connect all the note sets and their proper shapes"
   [note-seqs input-shape-type & {:keys [max-shapes] :or {max-shapes 1}}]
   (let [note-seq-sets (set note-seqs)
@@ -207,7 +210,8 @@
       {comp-shape (map (fn [shape]
                          {:input (shape->note-seqs shape)
                           :found shape
-                          :context (contextualize shape comp-shape)})
+                          :context (contextualize (algo/resolve-shape (:pitch shape) input-shape-type (:name shape))
+                                                  (algo/resolve-shape (:pitch comp-shape) (if (= input-shape-type :chord) :scale :chord) (:name comp-shape)))})
                        shapes)})))
 
 (comment
@@ -219,9 +223,12 @@
   (scale->chords (algo/resolve-shape :Db :scale :diminished))
   (scale->chords (algo/resolve-shape :C# :scale :diminished))
   (scale->chords (algo/resolve-shape :G :scale :diminished))
+  (scale-name->chords :ionian-pentatonic :num-thirds 3)
+  (scale->chords (algo/resolve-shape :C :scale :ionian-pentatonic))
   (intervals->scales [:P1 :M3 :P5 :M6])
   (pitches->interval-seqs [:C :E :G])
   (chord->scales (algo/resolve-shape :C :chord :13sus4))
   (contextualize (algo/resolve-shape :B :chord :maj) (algo/resolve-shape :C :scale :major))
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord))
+  (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
+  (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30))
