@@ -54,13 +54,15 @@
     (testing "scale-name->chords"
       (testing "with default num-thirds"
         (are+ [scale-name expected] (= expected (search/scale-name->chords scale-name))
-          :major   [:maj :m :m :maj :maj :m :dim]
-          :dorian  [:m :m :maj :maj :m :dim :maj]
-          :minor   [:m :dim :maj :m :m :maj :maj]))
+          :major      [:maj :m :m :maj :maj :m :dim]
+          :dorian     [:m :m :maj :maj :m :dim :maj]
+          :diminished [:dim :dim nil nil nil nil :dim :dim]
+          :minor      [:m :dim :maj :m :m :maj :maj]))
       (testing "with 4 num-thirds"
         (are+ [scale-name expected] (= expected (search/scale-name->chords scale-name :num-thirds 4))
           :major   [:maj7 :m7 :m7 :maj7 :7 :m7 :m7b5]
           :dorian  [:m7 :m7 :maj7 :7 :m7 :m7b5 :maj7]
+          :diminished [nil nil nil nil nil nil :dim7 :dim7]
           :minor   [:m7 :m7b5 :maj7 :m7 :m7 :maj7 :7])))
     (testing "scale->chords"
       (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name)))
@@ -70,7 +72,15 @@
                     {:pitch :F, :name :maj}
                     {:pitch :G, :name :maj}
                     {:pitch :A, :name :m}
-                    {:pitch :B, :name :dim})))
+                    {:pitch :B, :name :dim})
+        :C :diminished '({:pitch :C, :name :dim}
+                         {:pitch :D, :name :dim}
+                         {:pitch :Eb, :name nil}
+                         {:pitch :F, :name nil}
+                         {:pitch :Gb, :name nil}
+                         {:pitch :Ab, :name nil}
+                         {:pitch :A, :name :dim}
+                         {:pitch :B, :name :dim})))
     (testing "chord->scales"
       (are+ [pitch chord-name expected] (= (set expected) (set (search/chord->scales (algo/resolve-shape pitch :chord chord-name))))
         :C :maj [{:pitch :C, :degree :1, :name :lydian-dominant-pentatonic}

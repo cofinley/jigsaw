@@ -99,21 +99,18 @@
   [scale-name & {:keys [num-thirds] :or {num-thirds 3}}]
   (let [scale (specs/scales scale-name)
         pitches (map #(algo/+interval :C %) (:intervals scale))]
-    (remove nil?
-            (for [rotation (range (count (:intervals scale)))]
-              (let [rotated-pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
-                    intervals (algo/->intervals rotated-pitches)
-                    chord-name (specs/intervals->chords (set intervals))]
-                chord-name)))))
+    (for [rotation (range (count (:intervals scale)))]
+      (let [rotated-pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
+            intervals (algo/->intervals rotated-pitches)
+            chord-name (specs/intervals->chords (set intervals))]
+        chord-name))))
 
 (defn scale->chords
   [{:keys [name pitches]} & {:keys [num-thirds] :or {num-thirds 3}}]
   (let [chord-names (scale-name->chords name :num-thirds num-thirds)]
-    (if (= (count pitches) (count chord-names))
-      (map-indexed (fn [idx pitch]
-                     {:pitch pitch :name (nth chord-names idx)})
-                   pitches)
-      '())))
+    (map-indexed (fn [idx pitch]
+                   {:pitch pitch :name (nth chord-names idx)})
+                 pitches)))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
@@ -194,11 +191,11 @@
         shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
         shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
-                                            (set (map #(select-keys % [:pitch :name])
-                                                      ((if (= input-shape-type :chord)
-                                                         chord->scales
-                                                         scale->chords)
-                                                       (algo/resolve-shape (:pitch shape) input-shape-type (:name shape)))))))
+                                            (set (remove #(nil? (:name %)) (map #(select-keys % [:pitch :name])
+                                                                                ((if (= input-shape-type :chord)
+                                                                                   chord->scales
+                                                                                   scale->chords)
+                                                                                 (algo/resolve-shape (:pitch shape) input-shape-type (:name shape))))))))
                                    {} (keys shape->note-seqs))
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (for [[comp-shape shapes] comp-shape->shapes
