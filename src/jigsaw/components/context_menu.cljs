@@ -19,7 +19,7 @@
 
 (defn add-node-menu-item [context-menu-props node-type label]
   [menu-item {:on-click (fn []
-                          (re-frame/dispatch [::events/add-node node-type (:id context-menu-props)])
+                          (re-frame/dispatch [::events/add-node {:type node-type} (:id context-menu-props)])
                           ((:on-click context-menu-props)))}
    label])
 

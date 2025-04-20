@@ -1,6 +1,5 @@
 (ns jigsaw.components.function-find-shape-node
   (:require
-   [clojure.string :as s]
    [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
    [jigsaw.components.output-piano-node :refer [piano-preview]]

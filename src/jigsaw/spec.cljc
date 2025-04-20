@@ -392,6 +392,7 @@
 (s/def ::absolute-shape (s/merge ::relative-shape
                                  (s/keys :req-un [::pitches]
                                          :opt-un [::notes])))  ; i.e. resolved
+;; TODO: probably need to include (shape) type, i.e. everything needed to recreate via resolve-shape
 (s/def ::relative-shape-ref (s/keys :req-un [::name]))  ; Enough to look up info but not enough to resolve pitches
 (s/def ::absolute-shape-ref (s/merge ::relative-shape-ref
                                      (s/keys :req-un [::pitch]

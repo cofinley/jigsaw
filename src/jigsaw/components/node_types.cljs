@@ -3,6 +3,7 @@
    [jigsaw.components.function-find-chords-node :refer [function-find-chords-node]]
    [jigsaw.components.function-find-scales-node :refer [function-find-scales-node]]
    [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
+   [jigsaw.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.components.input-shape-node :refer [input-shape-node]]))
 
@@ -34,4 +35,8 @@
    {:type :function-find-shape
     :category :function
     :label "Find Compatible Shapes"
-    :component function-find-shape-node}])
+    :component function-find-shape-node}
+   {:type :function-connect-shapes
+    :category :function
+    :label "Connect Shapes"
+    :component function-connect-shapes-node}])

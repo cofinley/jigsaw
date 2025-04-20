@@ -9,7 +9,13 @@
  ::initialize-db
  (fn [_ _]
    {:db db/default-db
-    :fx [[:dispatch [::add-node :input-chord]]]}))
+    :fx [[:dispatch [::add-node {:id "a" :type :input-piano :position {:x 0 :y 0} :data {:notes #{:Gb4 :A4 :C5 :E5}}}]]
+         [:dispatch [::add-node {:id "b" :type :input-piano :position {:x 0 :y 400} :data {:notes #{:Gb4 :A4 :B4 :Eb5}}}]]
+         [:dispatch [::add-node {:id "c" :type :input-piano :position {:x 0 :y 800} :data {:notes #{:E4 :G4 :B4}}}]]
+         [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 500 :y 400}}]]
+         [:dispatch [::add-edge {:source "a" :target "d"}]]
+         [:dispatch [::add-edge {:source "b" :target "d"}]]
+         [:dispatch [::add-edge {:source "c" :target "d"}]]]}))
 
 (re-frame/reg-event-db
  ::set-nodes
@@ -22,28 +28,31 @@
    (assoc db :edges edges)))
 
 (defn add-edge [db edge]
-  (assoc db :edges (.concat (:edges db) edge)))
+  (assoc db :edges (.concat (:edges db) (clj->js edge))))
 
 (re-frame/reg-event-db
  ::add-edge
  (fn [db [_ edge]]
    (add-edge db edge)))
 
-(defn create-node [db node-type & [parent-id]]
-  (let [parent-node (when parent-id
+(defn create-node [db _node-props & [parent-id]]
+  (let [node-type (keyword (:type _node-props))
+        node-props (merge _node-props {:type node-type})
+        parent-node (when parent-id
                       (assoc (js->clj (first (filter #(= parent-id (.-id %)) (:nodes db))) :keywordize-keys true)
                              :data (get-in db [:node-data parent-id])))
-        node (db/->node {:type (keyword node-type)} parent-node)
+        node (db/->node (dissoc node-props :data) parent-node)
+        node-data (assoc (:data node-props) :type node-type)
         id (:id node)]
     (cond-> db
       true (assoc :nodes (.concat (:nodes db) (clj->js node)))
-      true (assoc-in [:node-data id] {:type (keyword node-type)})
+      true (assoc-in [:node-data id] node-data)
       (some? parent-id) (add-edge #js {:source parent-id :target id}))))
 
 (re-frame/reg-event-db
  ::add-node
- (fn [db [_ node-type & [parent-id]]]
-   (create-node db node-type parent-id)))
+ (fn [db [_ node-props & [parent-id]]]
+   (create-node db node-props parent-id)))
 
 (defn delete-node [db id]
   (-> db

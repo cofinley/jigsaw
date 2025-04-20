@@ -28,6 +28,13 @@
    (get-in db [:node-data (get-parent-id db id)])))
 
 (re-frame/reg-sub
+ ::multi-parent-data
+ (fn [db [_ id]]
+   (let [sources (filter #(= (.-target %) id) (:edges db))
+         source-ids (map #(.-source %) sources)]
+     (map #(get-in db [:node-data %]) source-ids))))
+
+(re-frame/reg-sub
  ::outgoing
  (fn [db [_ id]]
    (let [edges (vals (:edges db))]

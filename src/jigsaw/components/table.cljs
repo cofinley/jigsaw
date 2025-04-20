@@ -8,6 +8,7 @@
                      on-row-hover
                      on-row-click
                      row-title-render
+                     key-fn
                      row-filter]}]
   [:div {:class "max-h-96 w-full overflow-scroll nowheel nodrag flex flex-col"}
    [:table
@@ -23,7 +24,7 @@
                     (row-filter m)
                     true)]
         (let [selected? (and (some? row-selected?) (row-selected? m))]
-          ^{:key m}
+          ^{:key (or (and (some? key-fn) (key-fn m)) m)}
           [:tr {:class (s/join
                         " "
                         [(if selected?

@@ -71,7 +71,7 @@
                     :fitView true
                     :colorMode "dark"}
       [:> Panel {:position "top-right"}
-       [select {:on-change #(re-frame/dispatch [::events/add-node (-> % .-target .-value)])
+       [select {:on-change #(re-frame/dispatch [::events/add-node {:type (-> % .-target .-value)}])
                 :value ""}
         (cons
          [:option {:disabled true :value ""} "(Add Node)"]
