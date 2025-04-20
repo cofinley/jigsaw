@@ -12,7 +12,7 @@
 
 (defn matched-shape [node-id shape]
   [:div
-   {:class "flex gap-2 space-around items-center"
+   {:class "flex gap-2 justify-between items-center"
     ;:onMouseOver #(re-frame/dispatch [::events/update-node-data node-id {:hovered-shape shape}])
     }
    [:p (str (name (get-in shape [:found :pitch]))
@@ -52,6 +52,10 @@
                      :key-fn (fn [m] ((juxt (comp :pitch first) (comp :name first)) m))
                      :row-render {"Pitch" (comp :pitch first)
                                   "Shape" (comp :name first)
+                                  "Piano" (fn [[comp-shape _]]
+                                            (when (:name comp-shape)
+                                              [piano-preview
+                                               (:notes (algo/resolve-shape (algo/pitch->note (:pitch comp-shape)) (:type comp-shape) (:name comp-shape)))]))
                                   "Inputs" #(->> %
                                                  second
                                                  (map (partial matched-shape id)))}

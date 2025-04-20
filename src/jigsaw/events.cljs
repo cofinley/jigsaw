@@ -12,7 +12,7 @@
     :fx [[:dispatch [::add-node {:id "a" :type :input-piano :position {:x 0 :y 0} :data {:notes #{:Gb4 :A4 :C5 :E5}}}]]
          [:dispatch [::add-node {:id "b" :type :input-piano :position {:x 0 :y 400} :data {:notes #{:Gb4 :A4 :B4 :Eb5}}}]]
          [:dispatch [::add-node {:id "c" :type :input-piano :position {:x 0 :y 800} :data {:notes #{:E4 :G4 :B4}}}]]
-         [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 500 :y 400}}]]
+         [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 900 :y 200} :data {:view-type :output-piano}}]]
          [:dispatch [::add-edge {:source "a" :target "d"}]]
          [:dispatch [::add-edge {:source "b" :target "d"}]]
          [:dispatch [::add-edge {:source "c" :target "d"}]]]}))
