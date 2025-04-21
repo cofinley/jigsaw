@@ -217,17 +217,21 @@
 
 (defn resolve-shape
   "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
-  [x shape-type shape-name]
-  {:pre [(specs/pitch-or-note? x)]}
-  (let [{:keys [pitch note]} (parts x)
-        shape (get (if (= shape-type :chord) specs/chords specs/scales) shape-name)
-        intervals (:intervals shape)
-        pitches (mapv (partial +interval pitch) intervals)]
-    (cond-> shape
-      true (merge {:pitch pitch
-                   :name shape-name
-                   :pitches pitches})
-      (specs/note? x) (assoc :notes (mapv (partial +interval note) intervals)))))
+  ([m]
+   (if (or (contains? m :pitches) (contains? m :notes))
+     m
+     (resolve-shape (or (:note m) (:pitch m)) (:type m) (:name m))))
+  ([x shape-type shape-name]
+   {:pre [(specs/pitch-or-note? x)]}
+   (let [{:keys [pitch note]} (parts x)
+         shape (get (if (= shape-type :chord) specs/chords specs/scales) shape-name)
+         intervals (:intervals shape)
+         pitches (mapv (partial +interval pitch) intervals)]
+     (cond-> shape
+       true (merge {:pitch pitch
+                    :name shape-name
+                    :pitches pitches})
+       (specs/note? x) (assoc :notes (mapv (partial +interval note) intervals))))))
 
 (defn pitches->notes
   "Convert one or more pitches to notes, incrementing octaves as needed"
@@ -286,6 +290,23 @@
 (defn roman-numeral
   [n]
   (nth ["I" "II" "III" "IV" "V" "VI" "VII"] (dec n)))
+
+(defn roman-numeral->int
+  [numeral-string]
+  (let [m (into {}
+                (map-indexed (fn [idx numeral]
+                               [numeral (inc idx)])
+                             ["I" "II" "III" "IV" "V" "VI" "VII"]))]
+    (cond-> (second (first (filter
+                            #(= (string/upper-case
+                                 (-> numeral-string
+                                     (string/replace  "b" "")
+                                     (string/replace  "#" "")
+                                     (string/replace  "°" "")
+                                     (string/replace  "+" "")
+                                     (string/replace  "7" ""))) (first %)) m)))
+      (string/starts-with? numeral-string "b") dec
+      (string/starts-with? numeral-string "#") inc)))
 
 (defn degree-chord->roman-numeral
   [degree chord-name]

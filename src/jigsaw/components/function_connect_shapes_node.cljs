@@ -7,24 +7,37 @@
    [jigsaw.events :as events]
    [jigsaw.search :as search]
    [jigsaw.subs :as subs]
+   [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]
    [reagent.core :as r]))
 
-(defn matched-shape [node-id shape]
+(defn matched-shape [parent-data id {:keys [input found context]}]
   [:div
-   {:class "flex gap-2 justify-between items-center"
-    ;:onMouseOver #(re-frame/dispatch [::events/update-node-data node-id {:hovered-shape shape}])
-    }
-   [:p (str (name (get-in shape [:found :pitch]))
-            (name (get-in shape [:found :name]))
+   {:class "flex gap-2 justify-between items-center py-2 pl-2"
+    :onMouseOver (fn []
+                   (let [inputs (map set input)
+                         matching-incoming-node-ids (if (seq inputs)
+                                                      (map :id (filter
+                                                                (fn [parent-node-data]
+                                                                  (utils/in? inputs (set (:notes parent-node-data))))
+                                                                parent-data))
+                                                      [(:id found)])
+                         edge-ids (map #(str % "->" id) matching-incoming-node-ids)]
+                     (doall (for [edge-id (map #(str % "->" id) (map :id parent-data))]
+                              (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {}}])))
+                     (doall (for [edge-id edge-ids]
+                              (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {:highlighted? true}}])))))}
+   [:p (str (name (:pitch found))
+            (name (:name found))
             " ("
-            (name (:context shape))
-            ", "
-            (int (* 100 (get-in shape [:found :heuristics :overlap])))
-            "%"
+            (name context)
+            (when-let [overlap (get-in found [:heuristics :overlap])]
+              (str ", "
+                   (int (* 100 overlap))
+                   "%"))
             ")")]
    [piano-preview
-    (:notes (algo/resolve-shape (algo/pitch->note (:pitch (:found shape))) :chord (:name (:found shape))))]])
+    (:notes (algo/resolve-shape (algo/pitch->note (:pitch found)) :chord (:name found)))]])
 
 (defn function-connect-shapes-node [{:keys [id]}]
   (let [max-shapes (r/atom 2)]
@@ -58,7 +71,7 @@
                                                (:notes (algo/resolve-shape (algo/pitch->note (:pitch comp-shape)) (:type comp-shape) (:name comp-shape)))]))
                                   "Inputs" #(->> %
                                                  second
-                                                 (map (partial matched-shape id)))}
+                                                 (map (partial matched-shape @parent-data id)))}
                      :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (algo/resolve-shape (algo/pitch->note (:pitch comp-shape)) (:type comp-shape) (:name comp-shape))]))
                      :row-selected? (fn [[comp-shape _]] (and (= (:pitch @data) (:pitch comp-shape))
                                                               (= (:name @data) (:name comp-shape))))}])

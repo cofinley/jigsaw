@@ -13,9 +13,11 @@
          [:dispatch [::add-node {:id "b" :type :input-piano :position {:x 0 :y 400} :data {:notes #{:Gb4 :A4 :B4 :Eb5}}}]]
          [:dispatch [::add-node {:id "c" :type :input-piano :position {:x 0 :y 800} :data {:notes #{:E4 :G4 :B4}}}]]
          [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 900 :y 200} :data {:view-type :output-piano}}]]
-         [:dispatch [::add-edge {:source "a" :target "d"}]]
-         [:dispatch [::add-edge {:source "b" :target "d"}]]
-         [:dispatch [::add-edge {:source "c" :target "d"}]]]}))
+         [:dispatch [::add-edge {:id "a->d" :source "a" :target "d"}]]
+         [:dispatch [::add-edge {:id "b->d" :source "b" :target "d"}]]
+         [:dispatch [::add-edge {:id "c->d" :source "c" :target "d"}]]
+         ;[:dispatch [::update-edge-props "c->d" {:data {:highlighted? true}}]]
+         ]}))
 
 (re-frame/reg-event-db
  ::set-nodes
@@ -28,12 +30,25 @@
    (assoc db :edges edges)))
 
 (defn add-edge [db edge]
-  (assoc db :edges (.concat (:edges db) (clj->js edge))))
+  (assoc db :edges (.concat (:edges db) (clj->js (assoc edge :type :custom-edge)))))
 
 (re-frame/reg-event-db
  ::add-edge
  (fn [db [_ edge]]
    (add-edge db edge)))
+
+(re-frame/reg-event-db
+ ::update-edge-props
+ (fn [db [_ id props]]
+   (let [edges (:edges db)
+         edge (first (.filter edges #(= id (.-id %))))
+         new-edge (clj->js (merge (js->clj edge :keywordize-keys true) props))]
+     (-> db
+         (assoc :edges (.map (:edges db)
+                             (fn [js-edge]
+                               (if (= id (.-id js-edge))
+                                 new-edge
+                                 js-edge))))))))
 
 (defn create-node [db _node-props & [parent-id]]
   (let [node-type (keyword (:type _node-props))
@@ -47,7 +62,7 @@
     (cond-> db
       true (assoc :nodes (.concat (:nodes db) (clj->js node)))
       true (assoc-in [:node-data id] node-data)
-      (some? parent-id) (add-edge #js {:source parent-id :target id}))))
+      (some? parent-id) (add-edge #js {:source parent-id :target id :type :custom-edge}))))
 
 (re-frame/reg-event-db
  ::add-node

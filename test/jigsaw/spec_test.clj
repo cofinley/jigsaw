@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest testing are]]
    [clojure.spec.alpha :as s]
-   [jigsaw.spec :as specs]))
+   [jigsaw.spec :as specs]
+   [jigsaw.test-utils :refer [are+]]))
 
 (deftest spec-test
   (testing "Specs"
@@ -42,4 +43,21 @@
         :C##2 true
         :Db2 true
         :D11 false
-        :T2 false))))
+        :T2 false))
+    (testing "with shape-ref"
+      (are+ [m valid] (= valid (s/valid? ::specs/shape-ref m))
+        {:pitch :C :type :chord :name :maj} true
+        {:pitch :C :type :scale :name :major} true
+        {:note :C4 :type :scale :name :major} true
+        {:type :scale :name :major} false
+        {:pitch :C :type :chord} false
+        {:pitch :C :name :maj} false))
+    (testing "with shape-blueprint"
+      (are+ [m valid] (= valid (s/valid? ::specs/shape-blueprint m))
+        {:name :maj :intervals [:P1 :M3 :P5]} true
+        {:name :maj} false))
+    (testing "with shape"
+      (are+ [m valid] (= valid (s/valid? ::specs/shape m))
+        {:pitch :C :type :chord :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} true
+        {:note :C4 :type :chord :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C4 :E4 :G4]} true
+        {:name :maj} false))))

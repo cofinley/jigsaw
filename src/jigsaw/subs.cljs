@@ -25,14 +25,14 @@
 (re-frame/reg-sub
  ::parent-data
  (fn [db [_ id]]
-   (get-in db [:node-data (get-parent-id db id)])))
+   (assoc (get-in db [:node-data (get-parent-id db id)]) :id id)))
 
 (re-frame/reg-sub
  ::multi-parent-data
  (fn [db [_ id]]
    (let [sources (filter #(= (.-target %) id) (:edges db))
          source-ids (map #(.-source %) sources)]
-     (map #(get-in db [:node-data %]) source-ids))))
+     (map #(assoc (get-in db [:node-data %]) :id %) source-ids))))
 
 (re-frame/reg-sub
  ::outgoing

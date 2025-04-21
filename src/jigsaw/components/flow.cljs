@@ -10,6 +10,8 @@
    ["react" :refer [useMemo useState useRef useCallback]]
    ["@xyflow/react" :refer [ReactFlow
                             Background
+                            BaseEdge
+                            getBezierPath
                             Controls
                             applyNodeChanges
                             applyEdgeChanges
@@ -27,6 +29,19 @@
          {:id id :type type}]))
      #js [])))
 
+(defn custom-edge [props]
+  (let [{:keys [id sourceX sourceY targetX targetY data]} (js->clj props :keywordize-keys true)
+        edge-path (getBezierPath #js {:sourceX sourceX
+                                      :sourceY sourceY
+                                      :sourcePosition "right"
+                                      :targetPosition "left"
+                                      :targetX targetX
+                                      :targetY targetY})
+        edge [BaseEdge #js {:id id
+                            :className (if (:highlighted? data) "stroke-yellow-400 stroke-2" "")
+                            :path edge-path}]]
+    (r/as-element edge)))
+
 (defn flow []
   (let [nodes (re-frame/subscribe [::subs/nodes])
         edges (re-frame/subscribe [::subs/edges])
@@ -35,7 +50,9 @@
         on-edges-change (fn [changes]
                           (re-frame/dispatch [::events/set-edges (applyEdgeChanges changes @edges)]))
         on-connect (fn [params]
-                     (re-frame/dispatch [::events/set-edges (addEdge params @edges)]))
+                     (re-frame/dispatch [::events/set-edges (addEdge (clj->js (assoc (js->clj params)
+                                                                                     :id (str (.-source params) "->" (.-target params))
+                                                                                     :type :custom-edge)) @edges)]))
         ref (useRef nil)
         [node-menu set-node-menu] (useState nil)
         on-node-context-menu (useCallback
@@ -56,7 +73,8 @@
                            (reduce (fn [m node-type]
                                      (assoc m (:type node-type) memoized-node))
                                    {} node-types))
-                         #js [])]
+                         #js [])
+        edge-types (useMemo #(clj->js {:custom-edge custom-edge}) #js [])]
     [:div {:style {:height "100%"}}
      [:> ReactFlow {:ref ref
                     :nodes (or @nodes #js [])
@@ -68,6 +86,7 @@
                     :onPaneContextMenu on-node-context-menu
                     :onPaneClick on-pane-click
                     :nodeTypes flow-node-types
+                    :edgeTypes edge-types
                     :fitView true
                     :colorMode "dark"}
       [:> Panel {:position "top-right"}

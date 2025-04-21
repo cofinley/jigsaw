@@ -98,7 +98,7 @@
    :M13 {:name "Major 13th" :semitones 21}})
 (s/def ::interval (set (keys intervals)))
 (defn interval? [interval] (s/valid? ::interval interval))
-(s/def ::intervals (s/coll-of ::intervals))  ; Can be one (in isolation) or more (e.g. chords, scales)
+(s/def ::intervals (s/coll-of ::interval))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
 (def semitones->intervals
   (reduce-kv (fn [m interval {:keys [semitones]}] (update m semitones conj interval)) {} intervals))
@@ -387,13 +387,15 @@
     :b11 :11 :#11
     :b12 :12 :#12})
 
-(s/def ::relative-shape (s/keys :req-un [::name ::intervals]
-                                :opt-un [::aliases ::degrees]))
-(s/def ::absolute-shape (s/merge ::relative-shape
-                                 (s/keys :req-un [::pitches]
-                                         :opt-un [::notes])))  ; i.e. resolved
-;; TODO: probably need to include (shape) type, i.e. everything needed to recreate via resolve-shape
-(s/def ::relative-shape-ref (s/keys :req-un [::name]))  ; Enough to look up info but not enough to resolve pitches
-(s/def ::absolute-shape-ref (s/merge ::relative-shape-ref
-                                     (s/keys :req-un [::pitch]
-                                             :opt-un [::note])))  ; i.e. resolved; enough to get whole shape, including pitches
+; Base chord/scale shapes
+(s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
+                                 :opt-un [::aliases ::degrees]))
+; Lookup info, enough to resolve final pitches/notes
+(s/def ::shape-ref (s/keys :req-un [::name ::type (or ::pitch ::note)]))
+; Resolved, with intervals converted into pitches/notes
+(s/def ::shape (s/merge ::shape-blueprint
+                        (s/keys :req-un [::name
+                                         (or ::pitch ::note)
+                                         (or ::pitches ::notes)])))
+
+(defn shape? [x] (s/valid? ::shape x))
