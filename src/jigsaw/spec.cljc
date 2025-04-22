@@ -387,6 +387,8 @@
     :b11 :11 :#11
     :b12 :12 :#12})
 
+(s/def ::degree degrees)
+
 (s/def ::name (set (concat (keys chords) (keys scales))))
 (s/def ::type #{:chord :scale})
 
@@ -409,9 +411,10 @@
 (s/def ::scale (s/and ::shape
                       #(contains? scales (:name %))))
 
-; Shapes coming from other shapes; recursive
+; Shapes coming from other shapes; recursive; denotes chord degree relationship
 (s/def ::context (s/merge ::shape
-                          (s/keys :opt-un [::context])))
+                          (s/keys :req-un [::degree]
+                                  :opt-un [::context])))
 
 ; Chord coming from a scale context
 (s/def ::scale-chord (s/and ::chord

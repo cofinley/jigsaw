@@ -76,36 +76,45 @@
          :type :chord
          :name :maj
          :intervals [:P1 :M3 :P5]
-         :pitches [:C :E :G]} true
+         :pitches [:C :E :G]
+         ; Original shape not shown, degree of 1 is random here
+         :degree :1} true
         ; Context chain, two links; i.e. current shape came from this which came from another shape
         {:pitch :C
          :type :chord
          :name :maj
          :intervals [:P1 :M3 :P5]
          :pitches [:C :E :G]
-         :context {:pitch :C
-                   :type :scale
-                   :name :major
-                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                   :pitches [:C :D :E :F :G :A :B]
-                   :degrees [:1 :2 :3 :4 :5 :6 :7]}} true
-        ; Context chain, three links; i.e. current shape came from this which came from another shape
-        {:pitch :C
-         :type :chord
-         :name :maj
-         :intervals [:P1 :M3 :P5]
-         :pitches [:C :E :G]
+         :degree :1  ; Cmaj = first degree of the C major scale
          :context {:pitch :C
                    :type :scale
                    :name :major
                    :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                    :pitches [:C :D :E :F :G :A :B]
                    :degrees [:1 :2 :3 :4 :5 :6 :7]
-                   :context {:pitch :C
+                   ; Original shape not shown, degree of 2 is random here
+                   :degree :2}} true
+        ; Context chain, three links; i.e. current shape came from this which came from another shape
+        {:pitch :C
+         :type :chord
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :degree :1  ; Cmaj is the first degree of the C major scale
+         :context {:pitch :C
+                   :type :scale
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]
+                   :degree :2  ; Dm is the second degree of the C major scale (:degree is always the chord's degree, even if the current context is a scale)
+                   :context {:pitch :D
                              :type :chord
-                             :name :maj
-                             :intervals [:P1 :M3 :P5]
-                             :pitches [:C :E :G]}}} true))
+                             :name :m
+                             :intervals [:P1 :m3 :P5]
+                             :pitches [:D :F :A]
+                             ; Original shape not shown, degree of 3 is random here
+                             :degree :3}}} true))
     (testing "with scale-chord"
       (are+ [m valid] (= valid (s/valid? ::specs/scale-chord m))
         ; Single context; no scale origin
@@ -113,19 +122,24 @@
          :type :chord
          :name :maj
          :intervals [:P1 :M3 :P5]
-         :pitches [:C :E :G]} false
+         :pitches [:C :E :G]
+         ; Original shape not shown, degree of 1 is random here
+         :degree :1} false
         ; Context chain; chord with scale origin
         {:pitch :C
          :type :chord
          :name :maj
          :intervals [:P1 :M3 :P5]
          :pitches [:C :E :G]
+         :degree :1
          :context {:pitch :C
                    :type :scale
                    :name :major
                    :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                    :pitches [:C :D :E :F :G :A :B]
-                   :degrees [:1 :2 :3 :4 :5 :6 :7]}} true))
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]
+                   ; Original shape not shown, degree of 2 is random here
+                   :degree :2}} true))
     (testing "with chord-scale"
       (are+ [m valid] (= valid (s/valid? ::specs/chord-scale m))
         ; Single context; no scale origin
@@ -134,7 +148,9 @@
          :name :major
          :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
          :pitches [:C :D :E :F :G :A :B]
-         :degrees [:1 :2 :3 :4 :5 :6 :7]} false
+         :degrees [:1 :2 :3 :4 :5 :6 :7]
+         ; Random degree
+         :degree :1} false
         ; Context chain; scale with chord origin
         {:pitch :C
          :type :scale
@@ -142,8 +158,10 @@
          :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
          :pitches [:C :D :E :F :G :A :B]
          :degrees [:1 :2 :3 :4 :5 :6 :7]
+         :degree :1
          :context {:pitch :C
                    :type :chord
                    :name :maj
                    :intervals [:P1 :M3 :P5]
-                   :pitches [:C :E :G]}} true))))
+                   :pitches [:C :E :G]
+                   :degree :2}} true))))
