@@ -17,16 +17,19 @@
     :onMouseOver (fn []
                    (let [inputs (map set input)
                          matching-incoming-node-ids (if (seq inputs)
+                                                      ; Coming from input-piano
                                                       (map :id (filter
                                                                 (fn [parent-node-data]
                                                                   (utils/in? inputs (set (:notes parent-node-data))))
                                                                 parent-data))
-                                                      [(:id found)])
-                         edge-ids (map #(str % "->" id) matching-incoming-node-ids)]
-                     (doall (for [edge-id (map #(str % "->" id) (map :id parent-data))]
-                              (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {}}])))
-                     (doall (for [edge-id edge-ids]
-                              (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {:highlighted? true}}])))))}
+                                                      ; Coming from input-chord/scale
+                                                      [(:id found)])]
+                     ; Highlight matching nodes' edges
+                     (doall
+                      (for [incoming-node-id (map :id parent-data)
+                            :let [edge-id (str incoming-node-id "->" id)
+                                  highlighted? (utils/in? matching-incoming-node-ids incoming-node-id)]]
+                        (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {:highlighted? highlighted?}}])))))}
    [:p (str (name (:pitch found))
             (name (:name found))
             " ("
