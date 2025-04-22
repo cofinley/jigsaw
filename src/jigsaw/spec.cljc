@@ -387,6 +387,9 @@
     :b11 :11 :#11
     :b12 :12 :#12})
 
+(s/def ::name (set (concat (keys chords) (keys scales))))
+(s/def ::type #{:chord :scale})
+
 ; Base chord/scale shapes
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
@@ -399,3 +402,23 @@
                                          (or ::pitches ::notes)])))
 
 (defn shape? [x] (s/valid? ::shape x))
+
+(s/def ::chord (s/and ::shape
+                      #(contains? chords (:name %))))
+
+(s/def ::scale (s/and ::shape
+                      #(contains? scales (:name %))))
+
+; Shapes coming from other shapes; recursive
+(s/def ::context (s/merge ::shape
+                          (s/keys :opt-un [::context])))
+
+; Chord coming from a scale context
+(s/def ::scale-chord (s/and ::chord
+                            ::context
+                            #(s/valid? ::scale (:context %))))
+
+; Scale coming from a chord context
+(s/def ::chord-scale (s/and ::scale
+                            ::context
+                            #(s/valid? ::chord (:context %))))

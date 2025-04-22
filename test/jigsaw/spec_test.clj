@@ -60,4 +60,90 @@
       (are+ [m valid] (= valid (s/valid? ::specs/shape m))
         {:pitch :C :type :chord :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} true
         {:note :C4 :type :chord :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C4 :E4 :G4]} true
-        {:name :maj} false))))
+        {:name :maj} false))
+    (testing "with chord"
+      (are+ [m valid] (= valid (s/valid? ::specs/chord m))
+        {:pitch :C :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} true
+        {:pitch :C :name :major :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7] :pitches [:C :D :E :F :G :A :B]} false))
+    (testing "with scale"
+      (are+ [m valid] (= valid (s/valid? ::specs/scale m))
+        {:pitch :C :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} false
+        {:pitch :C :name :major :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7] :pitches [:C :D :E :F :G :A :B]} true))
+    (testing "with context"
+      (are+ [m valid] (= valid (s/valid? ::specs/context m))
+        ; Single context link; i.e. current shape (not shown) came from this
+        {:pitch :C
+         :type :chord
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]} true
+        ; Context chain, two links; i.e. current shape came from this which came from another shape
+        {:pitch :C
+         :type :chord
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :context {:pitch :C
+                   :type :scale
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]}} true
+        ; Context chain, three links; i.e. current shape came from this which came from another shape
+        {:pitch :C
+         :type :chord
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :context {:pitch :C
+                   :type :scale
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]
+                   :context {:pitch :C
+                             :type :chord
+                             :name :maj
+                             :intervals [:P1 :M3 :P5]
+                             :pitches [:C :E :G]}}} true))
+    (testing "with scale-chord"
+      (are+ [m valid] (= valid (s/valid? ::specs/scale-chord m))
+        ; Single context; no scale origin
+        {:pitch :C
+         :type :chord
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]} false
+        ; Context chain; chord with scale origin
+        {:pitch :C
+         :type :chord
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :context {:pitch :C
+                   :type :scale
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]}} true))
+    (testing "with chord-scale"
+      (are+ [m valid] (= valid (s/valid? ::specs/chord-scale m))
+        ; Single context; no scale origin
+        {:pitch :C
+         :type :scale
+         :name :major
+         :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+         :pitches [:C :D :E :F :G :A :B]
+         :degrees [:1 :2 :3 :4 :5 :6 :7]} false
+        ; Context chain; scale with chord origin
+        {:pitch :C
+         :type :scale
+         :name :major
+         :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+         :pitches [:C :D :E :F :G :A :B]
+         :degrees [:1 :2 :3 :4 :5 :6 :7]
+         :context {:pitch :C
+                   :type :chord
+                   :name :maj
+                   :intervals [:P1 :M3 :P5]
+                   :pitches [:C :E :G]}} true))))
