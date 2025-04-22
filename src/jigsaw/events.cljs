@@ -62,7 +62,7 @@
     (cond-> db
       true (assoc :nodes (.concat (:nodes db) (clj->js node)))
       true (assoc-in [:node-data id] node-data)
-      (some? parent-id) (add-edge #js {:source parent-id :target id :type :custom-edge}))))
+      (some? parent-id) (add-edge {:id (str parent-id "->" id) :source parent-id :target id}))))
 
 (re-frame/reg-event-db
  ::add-node
