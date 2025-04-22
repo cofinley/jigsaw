@@ -263,13 +263,6 @@
     (->intervals (pitches->notes xs))
     (map (partial ->interval (first xs)) xs)))
 
-(defn scale->mode
-  [scale n]
-  (let [pitches (utils/rotate (:pitches scale) (dec n))
-        intervals (into [:P1] (map #(->interval (first pitches) %)) (rest pitches))]
-    (when-let [new-scale-name (get specs/intervals->scales intervals)]
-      (resolve-shape (first pitches) :scale new-scale-name))))
-
 (defn interval->degree [interval]
   {:pre [(specs/interval? interval)]}
   (let [major-intervals (get-in specs/scales [:major :intervals])
@@ -333,6 +326,8 @@
 ;;  - Handle list views/multiplexing the node views
 ;;  - Circle of fifths view
 ;;  - Key signature, proper accidentals on music staff
+;;  - slash chords
+;;  - voicings/inversions/closest voicing
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap
@@ -351,5 +346,8 @@
 (comment
   (take 3 (cycle '(:G :A)))
   (utils/rotate [:G :A :C :F] 3)
-  (string/join "" (map name (take 7 (iterate (partial #(+interval % :P5)) :F))))
-  (take 7 (iterate (partial #(+interval % :P5)) :F)))
+  (->> :F
+       (iterate (partial #(+interval % :P5)))  ; Fifths
+       (take 7))
+  (circle-of-fifths :major)
+  (key-signature :B :minor))

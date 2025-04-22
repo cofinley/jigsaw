@@ -56,7 +56,7 @@
 ;  - pitches to capture enharmonic equivalents
 ;     - Best for input notes, not input chord/scales
 ;  - intervals to account for missing notes better
-;     - Intervals would have to account for all possible intervals
+;     - Intervals would have to account for all possible intervals just in case the root isn't played
 ;       - i.e. is it really :P1?
 
 (defn notes->shapes
@@ -70,11 +70,11 @@
          (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
          (map (fn [shape]
                 (-> shape
-                    (assoc :heuristics (calculate-heuristics chromas (:chromas shape)))
+                    (assoc :heuristics (calculate-heuristics chromas (:chromas shape))
+                           :type shape-type)
                     (dissoc :chromas))))
-         (remove #(and (not= :overlap heuristic) (not= 1 (get-in % [:heuristics heuristic]))))
-         (sort-by (juxt ;(comp - :shares-root? :heuristics)
-                   (comp - heuristic :heuristics)))
+         (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))
+         (sort-by (comp heuristic :heuristics) >)
          (take max-shapes))))
 
 (def notes->shapes-memo (memoize notes->shapes))
@@ -213,7 +213,7 @@
         shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
         shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
-                                            (set (remove #(nil? (:name %)) (map #(select-keys % [:pitch :name])
+                                            (set (remove #(nil? (:name %)) (map #(select-keys % [:pitch :type :name])
                                                                                 ((if (= input-shape-type :chord)
                                                                                    chord->scales
                                                                                    scale->chords)
@@ -240,17 +240,31 @@
 (def memoize-connect (memoize connect))
 (def memoize-connect-shapes (memoize connect-shapes))
 
+(defn scale->mode
+  [scale n]
+  {:pre [(specs/scale? scale)]
+   :post [(specs/shape-ref? %)]}
+  (let [pitches (utils/rotate (:pitches scale) (dec n))
+        intervals (into [:P1] (map #(algo/->interval (first pitches) %)) (rest pitches))]
+    (when-let [new-scale-name (get specs/intervals->scales intervals)]
+      {:pitch (first pitches)
+       :type :scale
+       :name new-scale-name})))
+
+(defn scale->modes
+  [scale]
+  {:pre [(specs/scale? scale)]
+   :post [(every? specs/shape-ref? %)]}
+  (for [n (take (count (:pitches scale)) (range))]
+    (scale->mode scale (inc n))))
+
 (comment
   (let [scale (algo/resolve-shape :E :scale :harmonic-minor)]
     (scale->chords scale :num-thirds 4))
   (notes->shapes (:notes (algo/resolve-shape :C4 :chord :maj)) :scale)
   (intervals->chords [:P1 :M3 :P5 :M6])
   (scale->chords (algo/resolve-shape :C :scale :major))
-  (scale->chords (algo/resolve-shape :Db :scale :diminished))
-  (scale->chords (algo/resolve-shape :C# :scale :diminished))
-  (scale->chords (algo/resolve-shape :G :scale :diminished))
   (scale-name->chords :ionian-pentatonic :num-thirds 3)
-  (scale->chords (algo/resolve-shape :C :scale :ionian-pentatonic))
   (intervals->scales [:P1 :M3 :P5 :M6])
   (pitches->interval-seqs [:C :E :G])
   (chord->scales (algo/resolve-shape :C :chord :13sus4))
@@ -261,4 +275,5 @@
   (connect [(:notes (algo/resolve-shape :C4 :chord :maj)) (:notes (algo/resolve-shape :D4 :chord :m))] :chord)
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
-  (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30))
+  (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
+  (scale->modes (algo/resolve-shape :C :scale :major)))

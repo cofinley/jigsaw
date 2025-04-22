@@ -299,4 +299,29 @@
     (testing "with intervals->chords"
       (are+ [intervals want] (= want (search/intervals->chords intervals))
         [] []
-        [:P1 :m3 :P5 :m7 :P11] [:m7add11 :m11]))))
+        [:P1 :m3 :P5 :m7 :P11] [:m7add11 :m11]))
+    (testing "with scale->mode"
+      (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (search/scale->mode (algo/resolve-shape :C :scale base-scale-name) mode-num)))
+        :major 1 :major
+        :major 2 :dorian
+        :major 3 :phrygian
+        :major 4 :lydian
+        :major 5 :mixolydian
+        :major 6 :minor
+        :major 7 :locrian
+        :major 8 :major
+        :melodic-minor 2 :dorian-b2
+        :melodic-minor 3 :lydian-augmented
+        :melodic-minor 4 :lydian-dominant
+        :melodic-minor 5 :mixolydian-b6
+        :melodic-minor 6 :locrian-#2
+        :melodic-minor 7 :altered))
+    (testing "with scale->modes"
+      (are+ [base-scale modes] (= modes (search/scale->modes base-scale))
+        (algo/resolve-shape :C :scale :major) '({:pitch :C, :type :scale, :name :major}
+                                                {:pitch :D, :type :scale, :name :dorian}
+                                                {:pitch :E, :type :scale, :name :phrygian}
+                                                {:pitch :F, :type :scale, :name :lydian}
+                                                {:pitch :G, :type :scale, :name :mixolydian}
+                                                {:pitch :A, :type :scale, :name :minor}
+                                                {:pitch :B, :type :scale, :name :locrian})))))

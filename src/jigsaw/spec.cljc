@@ -403,6 +403,7 @@
                                          (or ::pitch ::note)
                                          (or ::pitches ::notes)])))
 
+(defn shape-ref? [x] (s/valid? ::shape-ref x))
 (defn shape? [x] (s/valid? ::shape x))
 
 (s/def ::chord (s/and ::shape
@@ -410,6 +411,9 @@
 
 (s/def ::scale (s/and ::shape
                       #(contains? scales (:name %))))
+
+(defn chord? [x] (s/valid? ::chord x))
+(defn scale? [x] (s/valid? ::scale x))
 
 ; Shapes coming from other shapes; recursive; denotes chord degree relationship
 (s/def ::context (s/merge ::shape
