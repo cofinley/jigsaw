@@ -13,7 +13,7 @@
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))]
     (let [shape (algo/resolve-shape {:note (algo/pitch->note pitch) :type shape-type :name shape-name})
           chromas (map specs/pitches (:pitches shape))]
-      (assoc (select-keys shape [:pitch :name])
+      (assoc (select-keys shape [:pitch :type :name])
              :chromas chromas))))
 
 (def all-chords (resolve-all-shapes :chord))
@@ -51,15 +51,14 @@
      :overlap (heuristic->float (jaccard-index input-set candidate-set))
      :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
 
-; Fuzzy-find any shape from notes and their chromas
-; Match on chroma instead of:
-;  - pitches to capture enharmonic equivalents
-;     - Best for input notes, not input chord/scales
-;  - intervals to account for missing notes better
-;     - Intervals would have to account for all possible intervals just in case the root isn't played
-;       - i.e. is it really :P1?
-
 (defn notes->shapes
+  "Fuzzy-find any shape from notes and their chromas
+   Match on chromas instead of...
+    - pitches because chromas capture enharmonic equivalents
+       - Best for input notes, not input chord/scales
+    - intervals because chromas account for missing notes better
+       - Intervals would have to account for all possible intervals just in case the root isn't played
+         - i.e. is it really :P1?"
   [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
                        :or {heuristic :overlap
                             max-shapes 10
@@ -67,13 +66,12 @@
   (let [chromas (map #(-> % algo/parts :pitch specs/pitches) notes)
         shapes (if (= shape-type :chord) all-chords all-scales)]
     (->> shapes
-         (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
-         (map (fn [shape]
-                (-> shape
-                    (assoc :heuristics (calculate-heuristics chromas (:chromas shape))
-                           :type shape-type)
-                    (dissoc :chromas))))
-         (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))
+         (into []
+               (comp
+                (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
+                (map #(assoc % :heuristics (calculate-heuristics chromas (:chromas %))))
+                (map #(dissoc % :chromas))
+                (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))))
          (sort-by (comp heuristic :heuristics) >)
          (take max-shapes))))
 
@@ -109,7 +107,9 @@
   [{:keys [name pitches]} & {:keys [num-thirds] :or {num-thirds 3}}]
   (let [chord-names (scale-name->chords name :num-thirds num-thirds)]
     (map-indexed (fn [idx pitch]
-                   {:pitch pitch :name (nth chord-names idx)})
+                   {:pitch pitch
+                    :type :chord
+                    :name (nth chord-names idx)})
                  pitches)))
 
 ; Find scales from chords
@@ -126,15 +126,16 @@
 (defn- pitches->interval-seqs
   "Generate new intervals to supplied pitches from perspective of all pitches (i.e. test all roots)"
   [pitches]
-  (reduce (fn [m root-pitch]
-            (let [intervals (keep #(let [interval (algo/->interval root-pitch %)]
-                                     (if (= :P8 interval) :P1 interval))
-                                  pitches)]
-              (if (= (count intervals) (count pitches))
-                (assoc m root-pitch intervals)
-                m)))
-          {}
-          specs/simple-pitch-keys))
+  (into
+   {}
+   (for [root-pitch specs/simple-pitch-keys
+         :let [intervals (->> pitches
+                              (into []
+                                    (comp (map #(algo/->interval root-pitch %))
+                                          (replace {:P8 :P1})
+                                          (remove nil?))))]
+         :when (= (count intervals) (count pitches))]
+     [root-pitch intervals])))
 
 (defn- intervals->scales
   "Find scale (names) by intervals"
@@ -158,6 +159,7 @@
                       tonic (degree->tonic pitch scale-name chord-degree)]
                 :when (if (some? degree) (= degree chord-degree) true)]
             {:pitch tonic
+             :type :scale
              :name scale-name
              :degree chord-degree}))
          (sort-by (comp utils/parse-int name :degree)))))
@@ -177,25 +179,24 @@
 (defn connect-shapes
   [shapes input-shape-type]
   {:pre [(every? specs/shape? shapes)]}
-  (let [shape->comp-shapes (reduce (fn [m shape]
+  (let [complementary-fn (if (= input-shape-type :chord) chord->scales scale->chords)
+        shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
-                                            (set (remove #(nil? (:name %)) (map #(select-keys % [:pitch :name])
-                                                                                ((if (= input-shape-type :chord)
-                                                                                   chord->scales
-                                                                                   scale->chords)
-                                                                                 (algo/resolve-shape (assoc shape :type input-shape-type))))))))
+                                            (set (remove (comp nil? :name)
+                                                         (map #(select-keys % [:pitch :type :name])
+                                                              (complementary-fn
+                                                               (algo/resolve-shape shape)))))))
                                    {} shapes)
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
      {}
      (for [[comp-shape shapes] comp-shape->shapes]
-       [(assoc comp-shape :type (if (= input-shape-type :chord) :scale :chord))
-        (sort-by #(algo/roman-numeral->int (name (:context %)))
-                 (map (fn [shape]
-                        {:found shape
-                         :context (contextualize (algo/resolve-shape (assoc shape :type input-shape-type))
-                                                 (algo/resolve-shape (assoc comp-shape :type (if (= input-shape-type :chord) :scale :chord))))})
-                      shapes))]))))
+       [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
+                            (map (fn [shape]
+                                   {:found shape
+                                    :context (contextualize (algo/resolve-shape shape)
+                                                            (algo/resolve-shape comp-shape))})
+                                 shapes))]))))
 
 (defn connect
   "Given some note sets, find connective shapes
@@ -206,18 +207,17 @@
   (let [note-seq-sets (set note-seqs)
         note-seq->shapes (reduce (fn [m note-seq]
                                    (assoc m note-seq
-                                          (set (map #(select-keys % [:pitch :name :heuristics])
+                                          (set (map #(select-keys % [:pitch :type :name :heuristics])
                                                     (notes->shapes note-seq input-shape-type :max-shapes max-shapes)))))
                                  {}
                                  note-seqs)
         shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
+        complementary-fn (if (= input-shape-type :chord) chord->scales scale->chords)
         shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
-                                            (set (remove #(nil? (:name %)) (map #(select-keys % [:pitch :type :name])
-                                                                                ((if (= input-shape-type :chord)
-                                                                                   chord->scales
-                                                                                   scale->chords)
-                                                                                 (algo/resolve-shape (assoc shape :type input-shape-type))))))))
+                                            (set (remove (comp nil? :name)
+                                                         (map #(select-keys % [:pitch :type :name])
+                                                              (complementary-fn (algo/resolve-shape shape)))))))
                                    {} (keys shape->note-seqs))
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
@@ -228,14 +228,13 @@
                                                (mapcat #(get shape->note-seqs %))
                                                set)]
            :when (= note-seq-sets note-seqs-for-comp-shape)]
-       [(assoc comp-shape :type (if (= input-shape-type :chord) :scale :chord))
-        (sort-by #(algo/roman-numeral->int (name (:context %)))
-                 (map (fn [shape]
-                        {:input (shape->note-seqs shape)
-                         :found shape
-                         :context (contextualize (algo/resolve-shape (assoc shape :type input-shape-type))
-                                                 (algo/resolve-shape (assoc comp-shape :type (if (= input-shape-type :chord) :scale :chord))))})
-                      shapes))]))))
+       [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
+                            (map (fn [shape]
+                                   {:input (shape->note-seqs shape)
+                                    :found shape
+                                    :context (contextualize (algo/resolve-shape shape)
+                                                            (algo/resolve-shape comp-shape))})
+                                 shapes))]))))
 
 (def memoize-connect (memoize connect))
 (def memoize-connect-shapes (memoize connect-shapes))

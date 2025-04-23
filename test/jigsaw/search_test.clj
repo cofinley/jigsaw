@@ -65,7 +65,7 @@
           :diminished [nil nil nil nil nil nil :dim7 :dim7]
           :minor   [:m7 :m7b5 :maj7 :m7 :m7 :maj7 :7])))
     (testing "scale->chords"
-      (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/resolve-shape pitch :scale scale-name)))
+      (are+ [pitch scale-name expected] (= expected (map #(select-keys % [:pitch :name]) (search/scale->chords (algo/resolve-shape pitch :scale scale-name))))
         :C :major '({:pitch :C, :name :maj}
                     {:pitch :D, :name :m}
                     {:pitch :E, :name :m}
@@ -82,7 +82,7 @@
                          {:pitch :A, :name :dim}
                          {:pitch :B, :name :dim})))
     (testing "chord->scales"
-      (are+ [pitch chord-name expected] (= (set expected) (set (search/chord->scales (algo/resolve-shape pitch :chord chord-name))))
+      (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (search/chord->scales (algo/resolve-shape pitch :chord chord-name)))))
         :C :maj [{:pitch :C, :degree :1, :name :lydian-dominant-pentatonic}
                  {:pitch :C, :degree :1, :name :bebop-major}
                  {:pitch :C, :degree :1, :name :lydian}
