@@ -51,6 +51,16 @@
      :overlap (heuristic->float (jaccard-index input-set candidate-set))
      :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
 
+(defn contextualize
+  "If input-shape is a chord, find degree in candidate-shape (scale)
+   If input-shape is a scale, find the candidate-shape's (chord) degree"
+  [input-shape candidate-shape]
+  {:pre [(every? specs/shape? [input-shape candidate-shape])]}
+  (let [scale (if (or (contains? input-shape :degrees) (contains? input-shape :degree)) input-shape candidate-shape)
+        chord (if (= scale input-shape) candidate-shape input-shape)
+        degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
+    (algo/degree-chord->roman-numeral degree (:name chord))))
+
 (defn notes->shapes
   "Fuzzy-find any shape from notes and their chromas
    Match on chromas instead of...
@@ -104,13 +114,17 @@
         chord-name))))
 
 (defn scale->chords
-  [{:keys [name pitches]} & {:keys [num-thirds] :or {num-thirds 3}}]
+  [{:keys [name pitches degrees]} & {:keys [num-thirds] :or {num-thirds 3}}]
+  {:post [(every? specs/shape-ref? %)]}
   (let [chord-names (scale-name->chords name :num-thirds num-thirds)]
-    (map-indexed (fn [idx pitch]
-                   {:pitch pitch
-                    :type :chord
-                    :name (nth chord-names idx)})
-                 pitches)))
+    (for [idx (range (count pitches))
+          :let [pitch (nth pitches idx)
+                chord-name (nth chord-names idx)]
+          :when chord-name]
+      {:pitch pitch
+       :type :chord
+       :name chord-name
+       :chord-degree (algo/degree-chord->roman-numeral (nth degrees idx) chord-name)})))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
@@ -149,32 +163,25 @@
   "Find scales by chord
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
-  [{:keys [pitch pitches]} & {:keys [degree] :or {degree nil}}]
+  [{:keys [pitch pitches] :as chord} & {:keys [degree] :or {degree nil}}]
+  {:post [(every? specs/shape-ref? %)]}
   (let [rotated-intervals (pitches->interval-seqs pitches)]
     (->> (concat
           (for [[_ intervals] rotated-intervals
                 scale-name (intervals->scales intervals)
                 :let [scale (get specs/scales scale-name)
                       chord-degree (nth (:degrees scale) (.indexOf (:intervals scale) (first intervals)))
+                      chord-degree-roman (algo/degree-chord->roman-numeral chord-degree (:name chord))
                       tonic (degree->tonic pitch scale-name chord-degree)]
                 :when (if (some? degree) (= degree chord-degree) true)]
             {:pitch tonic
              :type :scale
              :name scale-name
-             :degree chord-degree}))
-         (sort-by (comp utils/parse-int name :degree)))))
+             :degree chord-degree-roman}))
+         (sort-by #(algo/roman-numeral->int (name (:degree %)))))))
 
 ; Find more deeply linked shapes
 
-(defn contextualize
-  "If input-shape is a chord, find degree in candidate-shape (scale)
-   If input-shape is a scale, find the candidate-shape's (chord) degree"
-  [input-shape candidate-shape]
-  {:pre [(every? specs/shape? [input-shape candidate-shape])]}
-  (let [scale (if (or (contains? input-shape :degrees) (contains? input-shape :degree)) input-shape candidate-shape)
-        chord (if (= scale input-shape) candidate-shape input-shape)
-        degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
-    (algo/degree-chord->roman-numeral degree (:name chord))))
 
 (defn connect-shapes
   [shapes input-shape-type]

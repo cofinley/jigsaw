@@ -290,16 +290,14 @@
                 (map-indexed (fn [idx numeral]
                                [numeral (inc idx)])
                              ["I" "II" "III" "IV" "V" "VI" "VII"]))]
-    (cond-> (second (first (filter
-                            #(= (string/upper-case
-                                 (-> numeral-string
-                                     (string/replace  "b" "")
-                                     (string/replace  "#" "")
-                                     (string/replace  "°" "")
-                                     (string/replace  "+" "")
-                                     (string/replace  "7" ""))) (first %)) m)))
-      (string/starts-with? numeral-string "b") dec
-      (string/starts-with? numeral-string "#") inc)))
+    (second (first (filter
+                    #(= (string/upper-case
+                         (-> numeral-string
+                             (string/replace  "b" "")
+                             (string/replace  "#" "")
+                             (string/replace  "°" "")
+                             (string/replace  "+" "")
+                             (string/replace  "7" ""))) (first %)) m)))))
 
 (defn degree-chord->roman-numeral
   [degree chord-name]

@@ -387,7 +387,9 @@
     :b11 :11 :#11
     :b12 :12 :#12})
 
-(s/def ::degree degrees)
+; Roman numeral degree with chord quality
+(def chord-degree-pattern #"[#b]?[ivIV]+[+°7]?")
+(s/def ::degree (s/and keyword? #(re-find chord-degree-pattern (name %))))
 
 (s/def ::name (set (concat (keys chords) (keys scales))))
 (s/def ::type #{:chord :scale})
@@ -396,7 +398,8 @@
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
 ; Lookup info, enough to resolve final pitches/notes
-(s/def ::shape-ref (s/keys :req-un [::name ::type (or ::pitch ::note)]))
+(s/def ::shape-ref (s/keys :req-un [::name ::type (or ::pitch ::note)]
+                           :opt-un [::degree]))
 ; Resolved, with intervals converted into pitches/notes
 (s/def ::shape (s/merge ::shape-blueprint
                         (s/keys :req-un [::name
