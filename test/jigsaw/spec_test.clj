@@ -51,7 +51,7 @@
         {:note :C4 :type :scale :name :major} true
         {:type :scale :name :major} false
         {:pitch :C :type :chord} false
-        {:pitch :C :name :maj} false))
+        {:pitch :C :name :maj} true))
     (testing "with shape-blueprint"
       (are+ [m valid] (= valid (s/valid? ::specs/shape-blueprint m))
         {:name :maj :intervals [:P1 :M3 :P5]} true

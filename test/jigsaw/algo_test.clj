@@ -284,18 +284,18 @@
     (testing "with ->shape"
       (testing "starting from a chord"
         (testing "starting from a pitch"
-          (are+ [pitch chord-name want] (= want (algo/->shape pitch :chord chord-name))
+          (are+ [pitch chord-name want] (= want (algo/->shape pitch chord-name))
             :C  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :aliases ["M" "major"]}
             :C# :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#] :aliases ["min" "-" "minor"]}
             :F# :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##] :aliases ["+" "+5" "^#5" "augmented"]}))
         (testing "starting from a note"
-          (are+ [note chord-name want] (= want (algo/->shape note :chord chord-name))
+          (are+ [note chord-name want] (= want (algo/->shape note chord-name))
             :C3  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3] :aliases ["M" "major"]}
             :C#4 :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4] :aliases ["min" "-" "minor"]}
             :F#5 :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6] :aliases ["+" "+5" "^#5" "augmented"]})))
       (testing "starting from a scale"
         (testing "starting from a pitch"
-          (are+ [pitch scale-name want] (= want (algo/->shape pitch :scale scale-name))
+          (are+ [pitch scale-name want] (= want (algo/->shape pitch scale-name))
             :C :major {:name :major
                        :pitch :C
                        :aliases ["ionian"]
@@ -326,7 +326,7 @@
                         :degrees [:1 :2 :3 :4 :5 :6 :7]
                         :pitches [:F# :G# :A# :B :C# :D# :E#]}))
         (testing "starting from a note"
-          (are+ [note scale-name want] (= want (algo/->shape note :scale scale-name))
+          (are+ [note scale-name want] (= want (algo/->shape note scale-name))
             :C4 :major {:name :major
                         :pitch :C
                         :aliases ["ionian"]
@@ -354,7 +354,27 @@
                          :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                          :degrees [:1 :2 :3 :4 :5 :6 :7]
                          :pitches [:F# :G# :A# :B :C# :D# :E#]
-                         :notes [:F#4 :G#4 :A#4 :B4 :C#5 :D#5 :E#5]}))))
+                         :notes [:F#4 :G#4 :A#4 :B4 :C#5 :D#5 :E#5]})))
+      (testing "with shape-ref (map) input"
+        (are+ [shape-ref want] (= want (algo/->shape shape-ref))
+          {:pitch :C :name :maj} {:pitch :C
+                                  :name :maj
+                                  :intervals [:P1 :M3 :P5]
+                                  :pitches [:C :E :G]
+                                  :aliases ["M" "major"]}))
+      (testing "with keyword input"
+        (are+ [k want] (= want (algo/->shape k))
+          :Cmaj {:pitch :C
+                 :name :maj
+                 :intervals [:P1 :M3 :P5]
+                 :pitches [:C :E :G]
+                 :aliases ["M" "major"]}
+          ; Only works with pitch-based shapes because note octave numbers could be confused with chord names which start with numbers
+          :Eb13sus4 {:aliases ["13sus"],
+                     :intervals [:P1 :P4 :P5 :m7 :M9 :M13],
+                     :name :13sus4,
+                     :pitch :Eb,
+                     :pitches [:Eb :Ab :Bb :Db :F :C]})))
     (testing "with interval->degree"
       (are+ [interval want] (= want (algo/interval->degree interval))
         :P1 :1

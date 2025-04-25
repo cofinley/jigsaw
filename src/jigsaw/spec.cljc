@@ -391,6 +391,7 @@
 (def chord-degree-pattern #"[#b]?[ivIV]+[+°7]?")
 (s/def ::degree (s/and keyword? #(re-find chord-degree-pattern (name %))))
 
+(def name->shape (merge chords scales))
 (s/def ::name (set (concat (keys chords) (keys scales))))
 (s/def ::type #{:chord :scale})
 
@@ -398,8 +399,8 @@
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
 ; Lookup info, enough to resolve final pitches/notes
-(s/def ::shape-ref (s/keys :req-un [::name ::type (or ::pitch ::note)]
-                           :opt-un [::degree]))
+(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]
+                           :opt-un [::degree ::type]))
 ; Resolved, with intervals converted into pitches/notes
 (s/def ::shape (s/merge ::shape-blueprint
                         (s/keys :req-un [::name

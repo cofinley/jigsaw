@@ -217,14 +217,23 @@
 
 (defn ->shape
   "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
-  ([m]
-   (if (or (contains? m :pitches) (contains? m :notes))
-     m
-     (->shape (or (:note m) (:pitch m)) (:type m) (:name m))))
-  ([x shape-type shape-name]
+  ([x]
+   ; Different notations
+   (cond
+     ; E.g. :Cmaj
+     (keyword? x) (let [pattern (re-pattern (str "^" specs/pitch-pattern-str "([a-z0-9-]+)" "$"))
+                        [_ pitch-str _ _ shape-name-str] (re-find pattern (name x))
+                        pitch (keyword pitch-str)
+                        shape-name (keyword shape-name-str)]
+                    (->shape pitch shape-name))
+     ; E.g. {:pitch :C :name :maj}
+     (specs/shape-ref? x) (if (or (contains? x :pitches) (contains? x :notes))
+                            x
+                            (->shape (or (:note x) (:pitch x)) (:name x)))))
+  ([x shape-name]
    {:pre [(specs/pitch-or-note? x)]}
    (let [{:keys [pitch note]} (parts x)
-         shape (get (if (= shape-type :chord) specs/chords specs/scales) shape-name)
+         shape (get specs/name->shape shape-name)
          intervals (:intervals shape)
          pitches (mapv (partial +interval pitch) intervals)]
      (cond-> shape
