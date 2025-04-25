@@ -61,7 +61,7 @@
              [[:option {:value :piano} "Piano"]
               [:option {:value :staff} "Staff"]]]])]
         [table {:ms (cond->> shapes
-                      (some? (:pitch @data)) (map #(algo/resolve-shape (algo/pitch->note (:pitch @data)) shape-type (:name %))))
+                      (some? (:pitch @data)) (map #(algo/->shape (algo/pitch->note (:pitch @data)) shape-type (:name %))))
                 :row-render (cond-> {"Name" :name
                                      "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))}
                               @show-previews? (assoc "Piano" (fn [shape] (when (and (:pitch shape) (:name shape)) [piano-preview (:notes shape)]))))

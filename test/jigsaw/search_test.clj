@@ -65,7 +65,7 @@
           :diminished [nil nil nil nil nil nil :dim7 :dim7]
           :minor   [:m7 :m7b5 :maj7 :m7 :m7 :maj7 :7])))
     (testing "scale->chords"
-      (are+ [pitch scale-name expected] (= expected (map #(select-keys % [:pitch :name]) (search/scale->chords (algo/resolve-shape pitch :scale scale-name))))
+      (are+ [pitch scale-name expected] (= expected (map #(select-keys % [:pitch :name]) (search/scale->chords (algo/->shape pitch :scale scale-name))))
         :C :major '({:pitch :C, :name :maj}
                     {:pitch :D, :name :m}
                     {:pitch :E, :name :m}
@@ -82,7 +82,7 @@
                          {:pitch :A, :name :dim}
                          {:pitch :B, :name :dim})))
     (testing "chord->scales"
-      (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (search/chord->scales (algo/resolve-shape pitch :chord chord-name)))))
+      (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (search/chord->scales (algo/->shape pitch :chord chord-name)))))
         :C :maj [{:pitch :C, :degree :1, :name :lydian-dominant-pentatonic}
                  {:pitch :C, :degree :1, :name :bebop-major}
                  {:pitch :C, :degree :1, :name :lydian}
@@ -301,7 +301,7 @@
         [] []
         [:P1 :m3 :P5 :m7 :P11] [:m7add11 :m11]))
     (testing "with scale->mode"
-      (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (search/scale->mode (algo/resolve-shape :C :scale base-scale-name) mode-num)))
+      (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (search/scale->mode (algo/->shape :C :scale base-scale-name) mode-num)))
         :major 1 :major
         :major 2 :dorian
         :major 3 :phrygian
@@ -318,10 +318,10 @@
         :melodic-minor 7 :altered))
     (testing "with scale->modes"
       (are+ [base-scale modes] (= modes (search/scale->modes base-scale))
-        (algo/resolve-shape :C :scale :major) '({:pitch :C, :type :scale, :name :major}
-                                                {:pitch :D, :type :scale, :name :dorian}
-                                                {:pitch :E, :type :scale, :name :phrygian}
-                                                {:pitch :F, :type :scale, :name :lydian}
-                                                {:pitch :G, :type :scale, :name :mixolydian}
-                                                {:pitch :A, :type :scale, :name :minor}
-                                                {:pitch :B, :type :scale, :name :locrian})))))
+        (algo/->shape :C :scale :major) '({:pitch :C, :type :scale, :name :major}
+                                          {:pitch :D, :type :scale, :name :dorian}
+                                          {:pitch :E, :type :scale, :name :phrygian}
+                                          {:pitch :F, :type :scale, :name :lydian}
+                                          {:pitch :G, :type :scale, :name :mixolydian}
+                                          {:pitch :A, :type :scale, :name :minor}
+                                          {:pitch :B, :type :scale, :name :locrian})))))

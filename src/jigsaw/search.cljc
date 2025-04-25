@@ -11,7 +11,7 @@
 (defn- resolve-all-shapes [shape-type]
   (for [pitch specs/simple-pitch-keys
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))]
-    (let [shape (algo/resolve-shape {:note (algo/pitch->note pitch) :type shape-type :name shape-name})
+    (let [shape (algo/->shape {:note (algo/pitch->note pitch) :type shape-type :name shape-name})
           chromas (map specs/pitches (:pitches shape))]
       (assoc (select-keys shape [:pitch :type :name])
              :chromas chromas))))
@@ -185,7 +185,7 @@
                                             (set (remove (comp nil? :name)
                                                          (map #(select-keys % [:pitch :type :name])
                                                               (complementary-fn
-                                                               (algo/resolve-shape shape)))))))
+                                                               (algo/->shape shape)))))))
                                    {} shapes)
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
@@ -194,8 +194,8 @@
        [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
                             (map (fn [shape]
                                    {:found shape
-                                    :context (contextualize (algo/resolve-shape shape)
-                                                            (algo/resolve-shape comp-shape))})
+                                    :context (contextualize (algo/->shape shape)
+                                                            (algo/->shape comp-shape))})
                                  shapes))]))))
 
 (defn connect
@@ -212,12 +212,13 @@
                                  {}
                                  note-seqs)
         shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
+        ; TODO: combine with connect-shapes
         complementary-fn (if (= input-shape-type :chord) chord->scales scale->chords)
         shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
                                             (set (remove (comp nil? :name)
                                                          (map #(select-keys % [:pitch :type :name])
-                                                              (complementary-fn (algo/resolve-shape shape)))))))
+                                                              (complementary-fn (algo/->shape shape)))))))
                                    {} (keys shape->note-seqs))
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
@@ -232,8 +233,8 @@
                             (map (fn [shape]
                                    {:input (shape->note-seqs shape)
                                     :found shape
-                                    :context (contextualize (algo/resolve-shape shape)
-                                                            (algo/resolve-shape comp-shape))})
+                                    :context (contextualize (algo/->shape shape)
+                                                            (algo/->shape comp-shape))})
                                  shapes))]))))
 
 (def memoize-connect (memoize connect))
@@ -258,21 +259,21 @@
     (scale->mode scale (inc n))))
 
 (comment
-  (let [scale (algo/resolve-shape :E :scale :harmonic-minor)]
+  (let [scale (algo/->shape :E :scale :harmonic-minor)]
     (scale->chords scale :num-thirds 4))
-  (notes->shapes (:notes (algo/resolve-shape :C4 :chord :maj)) :scale)
+  (notes->shapes (:notes (algo/->shape :C4 :chord :maj)) :scale)
   (intervals->chords [:P1 :M3 :P5 :M6])
-  (scale->chords (algo/resolve-shape :C :scale :major))
+  (scale->chords (algo/->shape :C :scale :major))
   (scale-name->chords :ionian-pentatonic :num-thirds 3)
   (intervals->scales [:P1 :M3 :P5 :M6])
   (pitches->interval-seqs [:C :E :G])
-  (chord->scales (algo/resolve-shape :C :chord :13sus4))
-  (contextualize (algo/resolve-shape :B :chord :maj) (algo/resolve-shape :C :scale :major))
-  (algo/resolve-shape :F :scale :mixolydian)
+  (chord->scales (algo/->shape :C :chord :13sus4))
+  (contextualize (algo/->shape :B :chord :maj) (algo/->shape :C :scale :major))
+  (algo/->shape :F :scale :mixolydian)
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect-shapes [(algo/resolve-shape :C :chord :maj) (algo/resolve-shape :D :chord :m)] :chord)
-  (connect [(:notes (algo/resolve-shape :C4 :chord :maj)) (:notes (algo/resolve-shape :D4 :chord :m))] :chord)
+  (connect-shapes [(algo/->shape :C :chord :maj) (algo/->shape :D :chord :m)] :chord)
+  (connect [(:notes (algo/->shape :C4 :chord :maj)) (:notes (algo/->shape :D4 :chord :m))] :chord)
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
   (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
-  (scale->modes (algo/resolve-shape :C :scale :major)))
+  (scale->modes (algo/->shape :C :scale :major)))

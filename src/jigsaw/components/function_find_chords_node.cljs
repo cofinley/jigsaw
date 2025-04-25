@@ -47,7 +47,7 @@
                                  "Piano" (fn [shape]
                                            (when (:name shape)
                                              [piano-preview
-                                              (:notes (algo/resolve-shape (algo/pitch->note (:pitch shape)) :chord (:name shape)))
+                                              (:notes (algo/->shape (algo/pitch->note (:pitch shape)) :chord (:name shape)))
                                               :parent-notes (:notes @parent-data)]))}
                     :row-title-render utils/pprint-aliases
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))

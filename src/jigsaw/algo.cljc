@@ -215,12 +215,12 @@
       (pitch+interval x interval multiplier)
       (note+interval x interval multiplier))))
 
-(defn resolve-shape
+(defn ->shape
   "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
   ([m]
    (if (or (contains? m :pitches) (contains? m :notes))
      m
-     (resolve-shape (or (:note m) (:pitch m)) (:type m) (:name m))))
+     (->shape (or (:note m) (:pitch m)) (:type m) (:name m))))
   ([x shape-type shape-name]
    {:pre [(specs/pitch-or-note? x)]}
    (let [{:keys [pitch note]} (parts x)

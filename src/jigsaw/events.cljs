@@ -92,7 +92,7 @@
   (let [shape-type (if (utils/in? [:input-chord :function-scale-chords] (:type node)) :chord :scale)
         {:keys [pitch name]} node]
     (when (and (some? pitch) (some? name))
-      (algo/resolve-shape (algo/pitch->note pitch) shape-type (keyword name)))))
+      (algo/->shape (algo/pitch->note pitch) shape-type (keyword name)))))
 
 (re-frame/reg-event-db
  ::calculate-shape

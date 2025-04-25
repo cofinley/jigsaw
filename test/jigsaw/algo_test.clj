@@ -281,21 +281,21 @@
         :Dbbb   :Cb
         :Dbbbb  :Cbb
         :Dbbbbb :Bb))
-    (testing "with resolve-shape"
+    (testing "with ->shape"
       (testing "starting from a chord"
         (testing "starting from a pitch"
-          (are+ [pitch chord-name want] (= want (algo/resolve-shape pitch :chord chord-name))
+          (are+ [pitch chord-name want] (= want (algo/->shape pitch :chord chord-name))
             :C  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :aliases ["M" "major"]}
             :C# :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#] :aliases ["min" "-" "minor"]}
             :F# :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##] :aliases ["+" "+5" "^#5" "augmented"]}))
         (testing "starting from a note"
-          (are+ [note chord-name want] (= want (algo/resolve-shape note :chord chord-name))
+          (are+ [note chord-name want] (= want (algo/->shape note :chord chord-name))
             :C3  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3] :aliases ["M" "major"]}
             :C#4 :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4] :aliases ["min" "-" "minor"]}
             :F#5 :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6] :aliases ["+" "+5" "^#5" "augmented"]})))
       (testing "starting from a scale"
         (testing "starting from a pitch"
-          (are+ [pitch scale-name want] (= want (algo/resolve-shape pitch :scale scale-name))
+          (are+ [pitch scale-name want] (= want (algo/->shape pitch :scale scale-name))
             :C :major {:name :major
                        :pitch :C
                        :aliases ["ionian"]
@@ -326,7 +326,7 @@
                         :degrees [:1 :2 :3 :4 :5 :6 :7]
                         :pitches [:F# :G# :A# :B :C# :D# :E#]}))
         (testing "starting from a note"
-          (are+ [note scale-name want] (= want (algo/resolve-shape note :scale scale-name))
+          (are+ [note scale-name want] (= want (algo/->shape note :scale scale-name))
             :C4 :major {:name :major
                         :pitch :C
                         :aliases ["ionian"]
