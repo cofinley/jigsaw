@@ -71,11 +71,11 @@
                                   "Piano" (fn [[comp-shape _]]
                                             (when (:name comp-shape)
                                               [piano-preview
-                                               (:notes (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:type comp-shape) (:name comp-shape)))]))
+                                               (:notes (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:name comp-shape)))]))
                                   "Inputs" #(->> %
                                                  second
                                                  (map (partial matched-shape @parent-data id)))}
-                     :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:type comp-shape) (:name comp-shape))]))
+                     :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:name comp-shape))]))
                      :row-selected? (fn [[comp-shape _]] (and (= (:pitch @data) (:pitch comp-shape))
                                                               (= (:name @data) (:name comp-shape))))}])
            [:p "Connect more than one"])]))))

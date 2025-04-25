@@ -393,14 +393,13 @@
 
 (def name->shape (merge chords scales))
 (s/def ::name (set (concat (keys chords) (keys scales))))
-(s/def ::type #{:chord :scale})
 
 ; Base chord/scale shapes
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
 ; Lookup info, enough to resolve final pitches/notes
 (s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]
-                           :opt-un [::degree ::type]))
+                           :opt-un [::degree]))
 ; Resolved, with intervals converted into pitches/notes
 (s/def ::shape (s/merge ::shape-blueprint
                         (s/keys :req-un [::name
