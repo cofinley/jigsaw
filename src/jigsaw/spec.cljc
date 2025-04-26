@@ -397,7 +397,7 @@
 ; Base chord/scale shapes
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
-; Lookup info, enough to resolve final pitches/notes
+; Lookup info for algo/->shape, enough to resolve final pitches/notes
 (s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]
                            :opt-un [::degree]))
 ; Resolved, with intervals converted into pitches/notes

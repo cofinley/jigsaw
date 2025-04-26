@@ -180,28 +180,36 @@
 
 ; Find more deeply linked shapes
 
+(defn shape->shapes
+  "Get complementary shapes (e.g. chord->scales or scale->chords) without specifying input shape type"
+  [shape]
+  {:pre (specs/shape? shape)
+   :post (every? specs/shape-ref? %)}
+  ((if (specs/chord? shape)
+     chord->scales
+     scale->chords) shape))
 
 (defn connect-shapes
-  [shapes input-shape-type]
+  [shapes]
   {:pre [(every? specs/shape? shapes)]}
-  (let [complementary-fn (if (= input-shape-type :chord) chord->scales scale->chords)
-        shape->comp-shapes (reduce (fn [m shape]
+  (let [shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
                                             (set (remove (comp nil? :name)
+                                                         ; Keep comp-shape reusable by removing :degree (added back later)
                                                          (map #(select-keys % [:pitch :name])
-                                                              (complementary-fn
-                                                               (algo/->shape shape)))))))
+                                                              (shape->shapes shape))))))
                                    {} shapes)
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
      {}
-     (for [[comp-shape shapes] comp-shape->shapes]
+     (for [[comp-shape matched-shapes] comp-shape->shapes
+           :when (= (count shapes) (count matched-shapes))]
        [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
                             (map (fn [shape]
                                    {:found shape
                                     :context (contextualize (algo/->shape shape)
                                                             (algo/->shape comp-shape))})
-                                 shapes))]))))
+                                 matched-shapes))]))))
 
 (defn connect
   "Given some note sets, find connective shapes
@@ -217,13 +225,11 @@
                                  {}
                                  note-seqs)
         shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
-        ; TODO: combine with connect-shapes
-        complementary-fn (if (= input-shape-type :chord) chord->scales scale->chords)
         shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
                                             (set (remove (comp nil? :name)
                                                          (map #(select-keys % [:pitch :name])
-                                                              (complementary-fn (algo/->shape shape)))))))
+                                                              (shape->shapes (algo/->shape shape)))))))
                                    {} (keys shape->note-seqs))
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
@@ -262,19 +268,20 @@
     (scale->mode scale (inc n))))
 
 (comment
-  (let [scale (algo/->shape :E :scale :harmonic-minor)]
+  (let [scale (algo/->shape :E :harmonic-minor)]
     (scale->chords scale :num-thirds 4))
-  (notes->shapes (:notes (algo/->shape :C4 :chord :maj)) :scale)
+  (notes->shapes (:notes (algo/->shape :C4 :maj)) :scale)
   (intervals->chords [:P1 :M3 :P5 :M6])
   (scale->chords (algo/->shape :Cmajor))
+  (shape->shapes (algo/->shape :Cmajor))
   (scale-name->chords :ionian-pentatonic :num-thirds 3)
   (intervals->scales [:P1 :M3 :P5 :M6])
   (pitches->interval-seqs [:C :E :G])
   (chord->scales (algo/->shape :Eb6add9))
   (contextualize (algo/->shape :Bmaj) (algo/->shape :Cmajor))
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect-shapes [(algo/->shape :Cmaj) (algo/->shape :Dm)] :chord)
-  (connect [(:notes (algo/->shape :C4 :chord :maj)) (:notes (algo/->shape :D4 :chord :m))] :chord)
+  (connect-shapes [(algo/->shape :Cmaj) (algo/->shape :Dm) (algo/->shape :Em)])
+  (connect [(:notes (algo/->shape :C4 :maj)) (:notes (algo/->shape :D4 :m))] :chord)
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
   (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
