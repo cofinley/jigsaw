@@ -41,7 +41,7 @@
                                                     (:degree %)
                                                     (:name @parent-data))
                                  "Piano" (fn [shape] [piano-preview
-                                                      (:notes (algo/->shape (algo/pitch->note (:pitch shape)) :scale (:name shape)))
+                                                      (:notes (algo/->shape (algo/pitch->note (:pitch shape)) (:name shape)))
                                                       :parent-notes (:notes @parent-data)])}
                     :row-title-render (fn [shape] (utils/pprint-aliases (specs/scales (:name shape))))
                     :row-selected? (fn [shape] (and
@@ -50,7 +50,7 @@
                                                 (= (:degree @data) (:degree shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id
-                                                        (merge shape (algo/->shape (algo/pitch->note (:pitch shape)) :scale (:name shape)))])
+                                                        (merge shape (algo/->shape (algo/pitch->note (:pitch shape)) (:name shape)))])
                                     (re-frame/dispatch [::events/calculate-shape id]))}]])
          [:p "Input is not a chord"])
        [:p "No input"])]))

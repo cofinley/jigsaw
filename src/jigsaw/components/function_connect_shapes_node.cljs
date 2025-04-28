@@ -40,7 +40,7 @@
                    "%"))
             ")")]
    [piano-preview
-    (:notes (algo/->shape (algo/pitch->note (:pitch found)) :chord (:name found)))]])
+    (:notes (algo/->shape (algo/pitch->note (:pitch found)) (:name found)))]])
 
 (defn function-connect-shapes-node [{:keys [id]}]
   (let [max-shapes (r/atom 2)]
