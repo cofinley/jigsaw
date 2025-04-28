@@ -24,12 +24,10 @@
        (if (contains? @parent-data :degrees)
          (let [num-thirds (or (:num-thirds @data) 3)
                shape-refs (search/scale->chords @parent-data :num-thirds num-thirds)
-               pitches (:pitches @parent-data)
                chord-shapes (map (fn [shape]
                                    (assoc shape
                                           :aliases (:aliases (specs/chords (:name shape)))))
-                                 shape-refs)
-               pitch->degrees (zipmap pitches (:degrees @parent-data))]
+                                 shape-refs)]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Thirds"]
@@ -41,18 +39,17 @@
             [table {:ms chord-shapes
                     :row-render {"Root" :pitch
                                  "Name" :name
-                                 "Degree" #(algo/degree-chord->roman-numeral
-                                            (get pitch->degrees (:pitch %))
-                                            (:name %))
+                                 "Degree" :degree
                                  "Piano" (fn [shape]
                                            (when (:name shape)
                                              [piano-preview
-                                              (:notes (algo/->shape (algo/pitch->note (:pitch shape)) (:name shape)))
+                                              (:notes (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape)))))
                                               :parent-notes (:notes @parent-data)]))}
                     :row-title-render utils/pprint-aliases
-                    :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
+                    :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape))
+                                                    (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]
-                                    (re-frame/dispatch [::events/update-node-data id shape])
-                                    (re-frame/dispatch [::events/calculate-shape id]))}]])
+                                    (re-frame/dispatch [::events/update-node-data id
+                                                        (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape))))]))}]])
          [:p "Input is not a scale"])
        [:p "No input"])]))

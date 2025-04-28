@@ -206,14 +206,16 @@
 (defn +interval
   "Add/subtract interval to/from pitch or note"
   [x interval & [multiplier]]
-  {:pre [(specs/pitch-or-note? x)
-         (specs/interval? interval)]
-   :post [(specs/pitch-or-note? %)]}
+  ; {:pre [(specs/pitch-or-note? x)
+  ;        (specs/interval? interval)]
+  ;  :post [(specs/pitch-or-note? %)]}
   (if (= :P1 interval)
     x
     (if (specs/pitch? x)
       (pitch+interval x interval multiplier)
       (note+interval x interval multiplier))))
+
+(def +interval-memo (memoize +interval))
 
 (defn ->shape
   "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
@@ -231,16 +233,16 @@
                             x
                             (->shape (or (:note x) (:pitch x)) (:name x)))))
   ([x shape-name]
-   {:pre [(specs/pitch-or-note? x)]}
+   ; {:pre [(specs/pitch-or-note? x)]}
    (let [{:keys [pitch note]} (parts x)
          shape (get specs/name->shape shape-name)
          intervals (:intervals shape)
-         pitches (mapv (partial +interval pitch) intervals)]
+         pitches (mapv (partial +interval-memo pitch) intervals)]
      (cond-> shape
        true (merge {:pitch pitch
                     :name shape-name
                     :pitches pitches})
-       (specs/note? x) (assoc :notes (mapv (partial +interval note) intervals))))))
+       (specs/note? x) (assoc :notes (mapv (partial +interval-memo note) intervals))))))
 
 (defn pitches->notes
   "Convert one or more pitches to notes, incrementing octaves as needed"
@@ -335,6 +337,7 @@
 ;;  - Key signature, proper accidentals on music staff
 ;;  - slash chords
 ;;  - voicings/inversions/closest voicing
+;;  - Fit (i.e. force connect), find how two different shape types could connect and/or what the context would be
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap

@@ -30,7 +30,8 @@
    :input-piano [:function-find-shape]
    :function-chord-scales [:function-scale-chords :function-find-shape]
    :function-scale-chords [:function-chord-scales :function-find-shape]
-   :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape]})
+   :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape]
+   :function-connect-shapes [:function-scale-chords :function-find-shape]})
 
 (defn node-context-menu [{:keys [type] :as props}]
   [context-menu props

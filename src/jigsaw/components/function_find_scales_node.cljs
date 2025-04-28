@@ -37,20 +37,16 @@
             [table {:ms scales
                     :row-render {"Tonic" :pitch
                                  "Name" :name
-                                 "Chord's Degree" #(algo/degree-chord->roman-numeral
-                                                    (:degree %)
-                                                    (:name @parent-data))
+                                 "Chord's Degree" :degree
                                  "Piano" (fn [shape] [piano-preview
-                                                      (:notes (algo/->shape (algo/pitch->note (:pitch shape)) (:name shape)))
+                                                      (:notes (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape)))))
                                                       :parent-notes (:notes @parent-data)])}
                     :row-title-render (fn [shape] (utils/pprint-aliases (specs/scales (:name shape))))
                     :row-selected? (fn [shape] (and
                                                 (= (:pitch @data) (:pitch shape))
-                                                (= (:name @data) (:name shape))
-                                                (= (:degree @data) (:degree shape))))
+                                                (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id
-                                                        (merge shape (algo/->shape (algo/pitch->note (:pitch shape)) (:name shape)))])
-                                    (re-frame/dispatch [::events/calculate-shape id]))}]])
+                                                        (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape))))]))}]])
          [:p "Input is not a chord"])
        [:p "No input"])]))

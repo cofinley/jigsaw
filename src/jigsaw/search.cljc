@@ -123,7 +123,7 @@
           :when chord-name]
       {:pitch pitch
        :name chord-name
-       :chord-degree (algo/degree-chord->roman-numeral (nth degrees idx) chord-name)})))
+       :degree (algo/degree-chord->roman-numeral (nth degrees idx) chord-name)})))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals

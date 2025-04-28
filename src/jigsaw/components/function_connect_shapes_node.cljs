@@ -43,7 +43,7 @@
     (:notes (algo/->shape (algo/pitch->note (:pitch found)) (:name found)))]])
 
 (defn function-connect-shapes-node [{:keys [id]}]
-  (let [max-shapes (r/atom 2)]
+  (let [max-shapes (r/atom 1)]
     (fn []
       (let [data (re-frame/subscribe [::subs/data id])
             parent-data (re-frame/subscribe [::subs/multi-parent-data id])]
