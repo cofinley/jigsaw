@@ -3,11 +3,9 @@
    [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
    [jigsaw.components.output-piano-node :refer [piano-preview]]
-   [jigsaw.components.select :refer [select]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
    [jigsaw.search :as search]
-   [jigsaw.spec :as specs]
    [jigsaw.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
@@ -15,7 +13,7 @@
 (defn function-fit-shape-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
         parent-data (re-frame/subscribe [::subs/multi-parent-data id])]
-    [node {:title "Fit Shape"
+    [node {:title "Fit Notes to Shape"
            :id id
            :data @data
            :parent-data @parent-data
