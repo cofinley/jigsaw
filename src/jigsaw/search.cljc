@@ -3,6 +3,7 @@
 (ns jigsaw.search
   (:require
    [clojure.set :as set]
+   [clojure.math.combinatorics :as combo]
    [jigsaw.algo :as algo]
    [jigsaw.spec :as specs]
    [jigsaw.utils :as utils]))
@@ -267,6 +268,62 @@
   (for [n (take (count (:pitches scale)) (range))]
     (scale->mode scale (inc n))))
 
+(defn fit
+  "
+  Find closest shape to candidate-shape that is compatible with the target-shape
+  Addresses extra shapes one doesn't know what to do with or how they fit
+  I.e. target-shape of Cmajor and candidate-notes of Cm notes => [Cmaj, ...]
+
+  C D E F G A B
+  0 2 4 5 7 9 11
+
+  C Eb G
+  0  3 5
+
+  Intersection #{0 5}
+
+  Disjoint #{3}
+  Nearest #{2 4}
+
+  Test combinations: #{0 2 5}, #{0 4 5}
+  "
+  [target-shape candidate-notes & {:keys [max-shapes] :or {max-shapes 1}}]
+  ; {:pre [(specs/shape? target-shape) (every? specs/note? candidate-notes)]
+  ;  :post [(every? specs/shape-ref? %)]}
+  (let [comp-shape-type (if (specs/chord? target-shape) :scale :chord)
+        shapes (if (= :chord comp-shape-type) all-chords all-scales)
+        target-pitches (:pitches target-shape)
+        target-chromas (map specs/pitches target-pitches)
+        ; target-chromas->pitches (zipmap target-chromas target-pitches)
+        target-set (set target-chromas)
+        candidate-set (set (map #(mod (algo/note->midi %) 12) candidate-notes))
+        ; intersection (set/intersection candidate-set target-set)
+        difference-set (set/difference candidate-set target-set)
+        chroma->replacements (into {}
+                                   (for [diff-chroma difference-set
+                                         :let [closest-offset (first (sort (map #(Math/abs (- diff-chroma %)) target-set)))
+                                               nearest (set (filter (fn [chroma]
+                                                                      (= (Math/abs (- diff-chroma chroma)) closest-offset))
+                                                                    target-set))]]
+                                     [diff-chroma nearest]))
+        combinations (apply combo/cartesian-product (map #(if (set? %)
+                                                            (seq %)
+                                                            (list %))
+                                                         (replace chroma->replacements candidate-set)))]
+    (utils/distinct-by
+     (juxt :pitch :name)
+     (flatten (for [combination combinations
+                    :let [new-set (set combination)]]
+                (->> shapes
+                     (filter (fn [shape]
+                               (let [shape-chroma-set (set (:chromas shape))
+                                     smaller (if (< (count shape-chroma-set) (count new-set)) shape-chroma-set new-set)]
+                                 (= (set/intersection shape-chroma-set new-set) smaller))))
+                     (map #(assoc % :heuristics (calculate-heuristics new-set (:chromas %))))
+                     (sort-by (juxt #(Math/abs (- (count (:chromas %)) (count new-set)))
+                                    #(- (get-in % [:heuristics :overlap]))))
+                     (take max-shapes)))))))
+
 (comment
   (let [scale (algo/->shape :E :harmonic-minor)]
     (scale->chords scale :num-thirds 4))
@@ -285,4 +342,5 @@
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
   (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
-  (scale->modes (algo/->shape :Cmajor)))
+  (scale->modes (algo/->shape :Cmajor))
+  (fit (algo/->shape :C4 :major) (:notes (algo/->shape :C4 :m))))

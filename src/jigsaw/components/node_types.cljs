@@ -4,6 +4,7 @@
    [jigsaw.components.function-find-scales-node :refer [function-find-scales-node]]
    [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
    [jigsaw.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
+   [jigsaw.components.function-fit-shape-node :refer [function-fit-shape-node]]
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.components.input-shape-node :refer [input-shape-node]]))
 
@@ -39,4 +40,8 @@
    {:type :function-connect-shapes
     :category :function
     :label "Connect Shapes"
-    :component function-connect-shapes-node}])
+    :component function-connect-shapes-node}
+   {:type :function-fit-shape
+    :category :function
+    :label "Fit Shape"
+    :component function-fit-shape-node}])
