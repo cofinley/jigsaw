@@ -3,7 +3,6 @@
 (ns jigsaw.search
   (:require
    [clojure.set :as set]
-   [clojure.math.combinatorics :as combo]
    [jigsaw.algo :as algo]
    [jigsaw.spec :as specs]
    [jigsaw.utils :as utils]))
@@ -306,7 +305,7 @@
                                                                       (= (Math/abs (- diff-chroma chroma)) closest-offset))
                                                                     target-set))]]
                                      [diff-chroma nearest]))
-        combinations (apply combo/cartesian-product (map #(if (set? %)
+        combinations (apply utils/cartesian-product (map #(if (set? %)
                                                             (seq %)
                                                             (list %))
                                                          (replace chroma->replacements candidate-set)))]
