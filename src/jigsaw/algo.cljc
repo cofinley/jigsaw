@@ -337,7 +337,8 @@
 ;;  - Key signature, proper accidentals on music staff
 ;;  - slash chords
 ;;  - voicings/inversions/closest voicing
-;;  - Fit (i.e. force connect), find how two different shape types could connect and/or what the context would be
+;;  - neighbors fn; like notes->shapes but from shape and get closest; maybe rethink notes->shapes?
+;;  - factor in context more
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap
