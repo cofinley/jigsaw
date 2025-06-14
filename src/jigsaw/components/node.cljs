@@ -8,6 +8,7 @@
    [jigsaw.components.output-piano-node :refer [output-piano-view]]
    [jigsaw.components.output-music-staff-node :refer [output-music-staff-view]]
    [jigsaw.components.output-debug-node :refer [output-debug-view]]
+   [jigsaw.components.output-circle-of-fifths-node :refer [output-circle-of-fifths-view]]
    ["@xyflow/react" :refer [Handle]]))
 
 (def right-arrow "&#9658;")
@@ -20,6 +21,9 @@
    {:type :output-music-staff
     :label "Music Staff"
     :component output-music-staff-view}
+   {:type :output-circle-of-fifths
+    :label "Circle of Fifths"
+    :component output-circle-of-fifths-view}
    {:type :output-debug
     :label "Debug"
     :component output-debug-view}])
