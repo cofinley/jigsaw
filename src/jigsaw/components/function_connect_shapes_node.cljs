@@ -13,7 +13,7 @@
 
 (defn matched-shape [parent-data id {:keys [input found context]}]
   [:div
-   {:class "flex gap-2 justify-between items-center py-2 pl-2"
+   {:class "flex gap-2 justify-between items-center py-2 pl-2 hover:text-yellow-400"
     :onMouseOver (fn []
                    (let [inputs (map set input)
                          matching-incoming-node-ids (if (seq inputs)

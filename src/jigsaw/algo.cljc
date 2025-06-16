@@ -333,7 +333,6 @@
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
 ;;  - Handle list views/multiplexing the node views
-;;  - Circle of fifths view
 ;;  - Key signature, proper accidentals on music staff
 ;;  - slash chords
 ;;  - voicings/inversions/closest voicing

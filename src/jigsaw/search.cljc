@@ -269,17 +269,19 @@
 
 (defn fit
   "
-  Find closest shape to candidate-shape that is compatible with the target-shape
+  Find closest shape to candidate-notes that is compatible with the target-shape
   Addresses extra shapes one doesn't know what to do with or how they fit
   I.e. target-shape of Cmajor and candidate-notes of Cm notes => [Cmaj, ...]
 
+  Cmajor (scale) pitches and chromas
   C D E F G A B
   0 2 4 5 7 9 11
 
+  Cm (chord)
   C Eb G
   0  3 5
 
-  Intersection #{0 5}
+  Intersection of chromas: #{0 5}
 
   Disjoint #{3}
   Nearest #{2 4}
