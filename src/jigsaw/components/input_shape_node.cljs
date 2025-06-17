@@ -19,9 +19,7 @@
         shapes (map #(assoc (second %) :name (first %))
                     (if (= shape-type :chord) specs/chords specs/scales))
         title (if (= shape-type :chord) "Chord" "Scale")
-        search (r/atom "")
-        show-previews? (r/atom true)
-        preview-type (r/atom :piano)]
+        search (r/atom "")]
     (fn [{:keys [id]}]
       [node {:title title
              :id id
@@ -46,27 +44,13 @@
          [:input {:class "p-1 rounded-md border border-gray-400 nodrag text-black"
                   :on-change #(reset! search (-> % .-target .-value))}]]
         ;; Shape names
-        [:div {:class "inline-flex self-start align-center space-x-4"}
-         [:label {:class "flex items-center space-x-2"}
-          [:span "Show previews?"]
-          [:input {:type "checkbox"
-                   :class "h-6 w-6"
-                   :checked @show-previews?
-                   :on-change #(swap! show-previews? not)}]]
-         (when @show-previews?
-           [:label {:class "flex items-center space-x-2"}
-            [:span "Preview type:"]
-            [select {:value @preview-type
-                     :on-change #(reset! preview-type (-> % .-target .-value keyword))}
-             [[:option {:value :piano} "Piano"]
-              [:option {:value :staff} "Staff"]]]])]
         [table {:ms (cond->> shapes
                       (some? (:pitch @data)) (map #(algo/->shape (algo/pitch->note (:pitch @data)) (:name %))))
-                :row-render (cond-> {"Name" :name
-                                     "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))}
-                              @show-previews? (assoc "Piano" (fn [shape]
-                                                               (when (and (:pitch shape) (:name shape))
-                                                                 [piano-preview shape]))))
+                :row-render {"Name" :name
+                             "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))
+                             "Piano" (fn [shape]
+                                       (when (and (:pitch shape) (:name shape))
+                                         [piano-preview shape]))}
                 :row-title-render utils/pprint-aliases
                 :row-selected? (fn [shape] (= (:name @data) (:name shape)))
                 :row-filter (fn [shape] (if (> (count @search) 0) (s/includes? (name (:name shape)) @search) true))

@@ -35,7 +35,7 @@
     :component function-find-scales-node}
    {:type :function-find-shape
     :category :function
-    :label "Find Compatible Shapes"
+    :label "Find Nearest Shapes"
     :component function-find-shape-node}
    {:type :function-connect-shapes
     :category :function
@@ -43,5 +43,5 @@
     :component function-connect-shapes-node}
    {:type :function-fit-shape
     :category :function
-    :label "Fit Shape"
+    :label "Fit Notes to Shape"
     :component function-fit-shape-node}])

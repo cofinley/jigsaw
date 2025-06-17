@@ -223,12 +223,11 @@
   ([x]
    ; Different notations
    (cond
-     ; E.g. :Cmaj
-     (keyword? x) (let [pattern (re-pattern (str "^" specs/pitch-pattern-str "([a-z0-9-]+)" "$"))
-                        [_ pitch-str _ _ shape-name-str] (re-find pattern (name x))
-                        pitch (keyword pitch-str)
+     ; E.g. :C_maj, C4_maj
+     (keyword? x) (let [[pitch-or-note-str shape-name-str] (string/split (name x) #"_")
+                        pitch-or-note (keyword pitch-or-note-str)
                         shape-name (keyword shape-name-str)]
-                    (->shape pitch shape-name))
+                    (->shape pitch-or-note shape-name))
      ; E.g. {:pitch :C :name :maj}
      (specs/shape-ref? x) (if (or (contains? x :pitches) (contains? x :notes))
                             x
@@ -333,11 +332,9 @@
 ;;  - Chord progressions/cadences (i.e. shape of shapes)
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
-;;  - Handle list views/multiplexing the node views
 ;;  - Key signature, proper accidentals on music staff
 ;;  - slash chords
 ;;  - voicings/inversions/closest voicing
-;;  - neighbors fn; like notes->shapes but from shape and get closest; maybe rethink notes->shapes?
 ;;  - factor in context more
 
 (defn- circle-of-fifths [major-or-minor]

@@ -51,7 +51,7 @@
                          " Z")]
          [:path {:key (str "highlight-" i)
                  :d path-d
-                 :class (if is-starting-pitch? "fill-indigo-500" "fill-green-500")
+                 :class (if is-starting-pitch? "fill-green-500" "fill-indigo-500")
                  :opacity (if is-starting-pitch? 0.8 0.6)}]))
 
      ;; Outer circle
@@ -88,7 +88,7 @@
                :text-anchor "middle" :dominant-baseline "middle"
                :class (str "text-lg font-semibold "
                            (if highlighted?
-                             (if is-starting-pitch? "fill-indigo-400" "fill-green-400")
+                             (if is-starting-pitch? "fill-green-400" "fill-indigo-400")
                              "fill-gray-500"))}
         display-label])]))
 

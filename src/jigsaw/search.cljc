@@ -273,20 +273,20 @@
   Addresses extra shapes one doesn't know what to do with or how they fit
   I.e. target-shape of Cmajor and candidate-notes of Cm notes => [Cmaj, ...]
 
-  Cmajor (scale) pitches and chromas
+  Cmajor (scale, target shape) pitches and chromas
   C D E F G A B
   0 2 4 5 7 9 11
 
-  Cm (chord)
-  C Eb G
-  0  3 5
+  Cm (candidate notes)
+  C4 Eb4 G4
+  0   3  7
 
-  Intersection of chromas: #{0 5}
+  Intersection of chromas: #{0 7}
 
   Disjoint #{3}
   Nearest #{2 4}
 
-  Test combinations: #{0 2 5}, #{0 4 5}
+  Test combinations: #{0 2 7} AKA Csus2, #{0 4 7} AKA Cmaj
   "
   [target-shape candidate-notes & {:keys [max-shapes] :or {max-shapes 1}}]
   ; {:pre [(specs/shape? target-shape) (every? specs/note? candidate-notes)]

@@ -372,17 +372,24 @@
                                   :aliases ["M" "major"]}))
       (testing "with keyword input"
         (are+ [k want] (= want (algo/->shape k))
-          :Cmaj {:pitch :C
-                 :name :maj
-                 :intervals [:P1 :M3 :P5]
-                 :pitches [:C :E :G]
-                 :aliases ["M" "major"]}
-          ; Only works with pitch-based shapes because note octave numbers could be confused with chord names which start with numbers
-          :Eb13sus4 {:aliases ["13sus"],
-                     :intervals [:P1 :P4 :P5 :m7 :M9 :M13],
-                     :name :13sus4,
-                     :pitch :Eb,
-                     :pitches [:Eb :Ab :Bb :Db :F :C]})))
+          ; Pitch-based
+          :C_maj {:pitch :C
+                  :name :maj
+                  :intervals [:P1 :M3 :P5]
+                  :pitches [:C :E :G]
+                  :aliases ["M" "major"]}
+          ; Note-based
+          :C4_maj {:pitch :C
+                   :name :maj
+                   :intervals [:P1 :M3 :P5]
+                   :pitches [:C :E :G]
+                   :notes [:C4 :E4 :G4]
+                   :aliases ["M" "major"]}
+          :Eb_13sus4 {:aliases ["13sus"],
+                      :intervals [:P1 :P4 :P5 :m7 :M9 :M13],
+                      :name :13sus4,
+                      :pitch :Eb,
+                      :pitches [:Eb :Ab :Bb :Db :F :C]})))
     (testing "with interval->degree"
       (are+ [interval want] (= want (algo/interval->degree interval))
         :P1 :1

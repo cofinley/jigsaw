@@ -16,7 +16,7 @@
 (defn function-find-shape-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
         parent-data (re-frame/subscribe [::subs/parent-data id])]
-    [node {:title "Compatible Shapes"
+    [node {:title "Find Nearest Shapes"
            :id id
            :data @data
            :parent-data @parent-data
