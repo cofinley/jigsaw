@@ -1,12 +1,14 @@
 (ns jigsaw.components.output-piano-node
   (:require
+   ["react-piano" :refer [Piano]]
    [clojure.set :as set]
    [clojure.string :as s]
-   [reagent.core :as r]
    [jigsaw.algo :as algo]
    [jigsaw.components.select :refer [select]]
-   ["react-piano" :refer [Piano]]
-   [jigsaw.utils :as utils]))
+   [jigsaw.events :as events]
+   [jigsaw.utils :as utils]
+   [re-frame.core :as re-frame]
+   [reagent.core :as r]))
 
 (defn output-piano-view [props]
   (let [selected-label (r/atom :pitches)
@@ -80,9 +82,13 @@
 
 (def margin-keys #{:A :B :D :E :G})
 
-(defn piano-preview [notes & {:keys [parent-notes]
+(defn piano-preview [shape & {:keys [parent-notes]
                               :or {parent-notes []}}]
-  (let [midis (map algo/note->midi notes)
+  (let [full-shape (if (contains? shape :notes)
+                     shape
+                     (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape)))))
+        notes (:notes full-shape)
+        midis (map algo/note->midi notes)
         parent-midis (map algo/note->midi parent-notes)
         white-key-width 20
         first-midi (first midis)
@@ -101,7 +107,10 @@
         black-key-offset (- (- (/ black-key-width 2)) border-width)
         margin (str "0 0 0 " black-key-offset "px")]
     [:div.flex.rounded.overflow-hidden.pl-2
-     {:class "cursor-pointer"}
+     {:class "cursor-pointer"
+      :on-click (fn [e]
+                  (.stopPropagation e)
+                  (re-frame/dispatch [::events/play-shape full-shape]))}
      (for [key piano-key-span
            :let [white? (= :w (:color key))
                  octave? (= 0 (mod (:midi key) 12))
