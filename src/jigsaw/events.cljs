@@ -1,9 +1,11 @@
 (ns jigsaw.events
   (:require
-   [re-frame.core :as re-frame]
-   [jigsaw.db :as db]
+   ["soundfont-player" :as soundfont]
    [jigsaw.algo :as algo]
-   [jigsaw.utils :as utils]))
+   [jigsaw.db :as db]
+   [jigsaw.spec :as specs]
+   [jigsaw.utils :as utils]
+   [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-fx
  ::initialize-db
@@ -114,3 +116,38 @@
          ;; TODO: create clear-shape fn to remove any scale/chord keys, like :degrees, before setting new shape
          new-node (merge (update node :data dissoc :degrees) (merge selected-shape {:selected-shape-type shape-type}))]
      (assoc-in db [:node-data id] new-node))))
+
+;; Audio state management
+(defonce audio-state (atom {:instruments {} :audio-context nil}))
+
+(defn init-audio-context! []
+  (when-not (:audio-context @audio-state)
+    (let [ctx (js/AudioContext.)]
+      (swap! audio-state assoc :audio-context ctx)
+      ctx)))
+
+(defn load-instrument! [instrument-name]
+  (let [ctx (init-audio-context!)]
+    (when-not (get-in @audio-state [:instruments instrument-name])
+      (-> (soundfont/instrument ctx instrument-name)
+          (.then (fn [instrument]
+                   (swap! audio-state assoc-in [:instruments instrument-name] instrument)))))))
+
+;; Event handler for playing shapes
+(re-frame/reg-event-fx
+ ::play-shape
+ (fn [{:keys [_]} [_ shape]]
+   (let [instrument-name "acoustic_grand_piano"
+         chord? (specs/chord? shape)
+         note-duration (if chord? 30 300)] ; 30ms per note if chord, 300ms if scale
+     (load-instrument! instrument-name)
+     (js/setTimeout
+      (fn []
+        (when-let [instrument (get-in @audio-state [:instruments instrument-name])]
+          (doseq [[i note] (map-indexed vector (:notes shape))]
+            (js/setTimeout
+             (fn []
+               (.play instrument (algo/note->midi note)))
+             (* i note-duration)))))
+      100) ; Small delay to ensure instrument is loaded
+     {}))) ; Return empty effects map since this is a side effect

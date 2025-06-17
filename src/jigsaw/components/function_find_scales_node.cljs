@@ -39,7 +39,7 @@
                                  "Name" :name
                                  "Chord's Degree" :degree
                                  "Piano" (fn [shape] [piano-preview
-                                                      (:notes (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape)))))
+                                                      shape
                                                       :parent-notes (:notes @parent-data)])}
                     :row-title-render (fn [shape] (utils/pprint-aliases (specs/scales (:name shape))))
                     :row-selected? (fn [shape] (and

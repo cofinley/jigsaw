@@ -64,7 +64,9 @@
                       (some? (:pitch @data)) (map #(algo/->shape (algo/pitch->note (:pitch @data)) (:name %))))
                 :row-render (cond-> {"Name" :name
                                      "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))}
-                              @show-previews? (assoc "Piano" (fn [shape] (when (and (:pitch shape) (:name shape)) [piano-preview (:notes shape)]))))
+                              @show-previews? (assoc "Piano" (fn [shape]
+                                                               (when (and (:pitch shape) (:name shape))
+                                                                 [piano-preview shape]))))
                 :row-title-render utils/pprint-aliases
                 :row-selected? (fn [shape] (= (:name @data) (:name shape)))
                 :row-filter (fn [shape] (if (> (count @search) 0) (s/includes? (name (:name shape)) @search) true))

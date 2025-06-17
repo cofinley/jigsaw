@@ -12,6 +12,7 @@
    [reagent.core :as r]))
 
 (defn matched-shape [parent-data id {:keys [input found context]}]
+  ^{:key (str (:pitch found) (:name found) (name context))}
   [:div
    {:class "flex gap-2 justify-between items-center py-2 pl-2 hover:text-yellow-400"
     :onMouseOver (fn []
@@ -39,8 +40,7 @@
                    (int (* 100 overlap))
                    "%"))
             ")")]
-   [piano-preview
-    (:notes (algo/->shape (algo/pitch->note (:pitch found)) (:name found)))]])
+   [piano-preview found]])
 
 (defn function-connect-shapes-node [{:keys [id]}]
   (let [max-shapes (r/atom 1)]
@@ -70,8 +70,7 @@
                                   "Shape" (comp :name first)
                                   "Piano" (fn [[comp-shape _]]
                                             (when (:name comp-shape)
-                                              [piano-preview
-                                               (:notes (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:name comp-shape)))]))
+                                              [piano-preview comp-shape]))
                                   "Inputs" #(->> %
                                                  second
                                                  (map (partial matched-shape @parent-data id)))}

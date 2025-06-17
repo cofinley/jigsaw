@@ -201,7 +201,15 @@
             :C# :M7 :B#
 
             :F :d4 :Bbb
-            :F :P5 :C))
+            :F :P5 :C
+
+            :B# :A2 :D#  ; technically C### but it's clamped
+            :B# :A3 :E#  ; technically D###
+            :B# :A4 :E##
+            :B# :A5 :G#  ; technically F###
+            :B# :A6 :A#  ; technically G###
+            :B# :A7 :B#  ; technically A###
+            :B# :A8 :B##))
         (testing "subtracting"
           (are+ [p interval want] (= want (algo/+interval p interval -1))
             :C :d2  :B#
