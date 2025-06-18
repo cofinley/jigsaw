@@ -9,6 +9,7 @@
    [jigsaw.components.node-types :refer [node-types node-categories]]
    ["react" :refer [useMemo useState useRef useCallback]]
    ["@xyflow/react" :refer [ReactFlow
+                            ReactFlowProvider
                             Background
                             BaseEdge
                             getBezierPath
@@ -16,7 +17,8 @@
                             applyNodeChanges
                             applyEdgeChanges
                             addEdge
-                            Panel]]))
+                            Panel
+                            useReactFlow]]))
 
 (defn memoized-node
   "Memoize node so it only re-renders if data changes"
@@ -42,9 +44,10 @@
                             :path edge-path}]]
     (r/as-element edge)))
 
-(defn flow []
+(defn flow-content []
   (let [nodes (re-frame/subscribe [::subs/nodes])
         edges (re-frame/subscribe [::subs/edges])
+        flow-instance (useReactFlow)
         on-nodes-change (fn [changes]
                           (re-frame/dispatch [::events/set-nodes (applyNodeChanges changes @nodes)]))
         on-edges-change (fn [changes]
@@ -63,10 +66,13 @@
                                    (cond-> {:top (and (< (.-clientY e) (- (.-height pane) 200)) (.-clientY e))
                                             :left (and (< (.-clientX e) (- (.-width pane) 200)) (.-clientX e))
                                             :right (and (>= (.-clientX e) (- (.-width pane) 200)) (- (.-width pane) (.-clientX e)))
-                                            :bottom (and (>= (.-clientY e) (- (.-height pane) 200)) (- (.-height pane) (.-clientY e)))}
+                                            :bottom (and (>= (.-clientY e) (- (.-height pane) 200)) (- (.-height pane) (.-clientY e)))
+                                            :mouse-x (.-clientX e)
+                                            :mouse-y (.-clientY e)
+                                            :flow-instance flow-instance}
                                      (some? node) (merge {:id (.-id node)
                                                           :type (keyword (.-type node))})))))
-                              #js [set-node-menu])
+                              #js [set-node-menu flow-instance])
         on-pane-click (useCallback #(set-node-menu nil) #js [set-node-menu])
         flow-node-types (useMemo
                          #(clj->js
@@ -103,3 +109,7 @@
       (when node-menu
         [node-context-menu (merge {:on-click on-pane-click} node-menu)])
       [:> Controls]]]))
+
+(defn flow []
+  [:> ReactFlowProvider
+   [:f> flow-content]])

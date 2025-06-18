@@ -54,11 +54,20 @@
 
 (defn create-node [db _node-props & [parent-id]]
   (let [node-type (keyword (:type _node-props))
-        node-props (merge _node-props {:type node-type})
+        ;; Convert screen coordinates to flow coordinates if available
+        flow-position (when (and (:mouse-x _node-props) (:mouse-y _node-props) (:flow-instance _node-props))
+                        (let [flow-instance (:flow-instance _node-props)
+                              screen-to-flow-pos (.-screenToFlowPosition flow-instance)]
+                          (when screen-to-flow-pos
+                            (let [flow-pos (screen-to-flow-pos #js {:x (:mouse-x _node-props) :y (:mouse-y _node-props)})]
+                              {:x (.-x flow-pos) :y (.-y flow-pos)}))))
+        node-props (cond-> _node-props
+                     true (assoc :type node-type)
+                     flow-position (assoc :position flow-position))
         parent-node (when parent-id
                       (assoc (js->clj (first (filter #(= parent-id (.-id %)) (:nodes db))) :keywordize-keys true)
                              :data (get-in db [:node-data parent-id])))
-        node (db/->node (dissoc node-props :data) parent-node)
+        node (db/->node (dissoc node-props :data :mouse-x :mouse-y :flow-instance) parent-node)
         node-data (assoc (:data node-props) :type node-type)
         id (:id node)]
     (cond-> db

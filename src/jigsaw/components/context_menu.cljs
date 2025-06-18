@@ -18,9 +18,14 @@
    label])
 
 (defn add-node-menu-item [context-menu-props node-type label]
-  [menu-item {:on-click (fn []
-                          (re-frame/dispatch [::events/add-node {:type node-type} (:id context-menu-props)])
-                          ((:on-click context-menu-props)))}
+  [menu-item
+   {:on-click (fn []
+                (re-frame/dispatch [::events/add-node {:type node-type
+                                                       :mouse-x (:mouse-x context-menu-props)
+                                                       :mouse-y (:mouse-y context-menu-props)
+                                                       :flow-instance (:flow-instance context-menu-props)}
+                                    (:id context-menu-props)])
+                ((:on-click context-menu-props)))}
    label])
 
 (def node-type-allowed-children
@@ -37,4 +42,5 @@
   [context-menu props
    (for [node-type node-types
          :when (utils/in? (node-type-allowed-children type) (:type node-type))]
-     ^{:key node-type} [add-node-menu-item props (:type node-type) (:label node-type)])])
+     ^{:key node-type}
+     [add-node-menu-item props (:type node-type) (:label node-type)])])
