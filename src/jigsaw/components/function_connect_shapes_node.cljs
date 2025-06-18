@@ -40,7 +40,7 @@
                    (int (* 100 overlap))
                    "%"))
             ")")]
-   [piano-preview found]])
+   [piano-preview found :parent-notes (first input)]])
 
 (defn function-connect-shapes-node [{:keys [id]}]
   (let [max-shapes (r/atom 1)]

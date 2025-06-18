@@ -8,7 +8,8 @@
    [jigsaw.events :as events]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]
-   [reagent.core :as r]))
+   [reagent.core :as r]
+   [jigsaw.spec :as specs]))
 
 (defn output-piano-view [props]
   (let [selected-label (r/atom :pitches)
@@ -32,7 +33,7 @@
                 width (* key-width (- midi-range-end midi-range-start))]
             [:<>
              (when (and (some (partial contains? data) label-types) display-label-options?)
-               [:div {:class "self-start flex space-x-2 items-center mb-2"}
+               [:div {:class "self-start flex space-x-2 items-center mb-2 text-lg"}
                 [:label "Key Labels"]
                 [select {:value (or @selected-label "")
                          :class "text-black"
@@ -88,8 +89,10 @@
                      shape
                      (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape)))))
         notes (:notes full-shape)
+        chromas (map specs/pitches (:pitches full-shape))
         midis (map algo/note->midi notes)
         parent-midis (map algo/note->midi parent-notes)
+        parent-chromas (map #(-> % algo/parts :pitch specs/pitches) parent-notes)
         white-key-width 20
         first-midi (first midis)
         midi-range-start (- first-midi (mod first-midi 12))
@@ -97,8 +100,11 @@
         piano-key-span (filter #(<= midi-range-start (:midi %) midi-range-end) piano-keys)
         num-white-keys (count (filter #(= :w (:color %)) piano-key-span))
         current-specific-notes (set/difference (set midis) (set parent-midis))
+        current-specific-chromas (set/difference (set chromas) (set parent-chromas))
         parent-specific-notes (set/difference (set parent-midis) (set midis))
+        parent-specific-chromas (set/difference (set parent-chromas) (set chromas))
         shared-notes (set/intersection (set midis) (set parent-midis))
+        shared-pitches (set/intersection (set chromas) (set parent-chromas))
         piano-width (* white-key-width num-white-keys)
         piano-height (* 2.3 white-key-width)
         border-width (* 0.0015 piano-width)
@@ -112,16 +118,22 @@
                   (.stopPropagation e)
                   (re-frame/dispatch [::events/play-shape full-shape]))}
      (for [key piano-key-span
-           :let [white? (= :w (:color key))
+           :let [pitch (:pitch key)
+                 chroma (specs/pitches pitch)
+                 white? (= :w (:color key))
                  octave? (= 0 (mod (:midi key) 12))
                  highlighted? (utils/in? (if (seq parent-midis) parent-midis midis) (:midi key))
                  parent-specific-note? (utils/in? parent-specific-notes (:midi key))
+                 parent-specific-chroma? (utils/in? parent-specific-chromas chroma)
                  current-specific-note? (if (seq parent-midis) (utils/in? current-specific-notes (:midi key)) false)
+                 current-specific-chroma? (utils/in? current-specific-chromas chroma)
                  shared-note? (utils/in? shared-notes (:midi key))
+                 shared-chroma? (utils/in? shared-pitches chroma)
                  key-color (cond
-                             parent-specific-note? key-removed-in-chord
-                             current-specific-note? key-added-in-chord
+                             (and parent-specific-note? parent-specific-chroma?) key-removed-in-chord
+                             (and current-specific-note? current-specific-chroma?) key-added-in-chord
                              shared-note? key-kept-in-chord
+                             (and highlighted? shared-chroma?) key-kept-in-chord
                              highlighted? (if white? white-key-color-played black-key-color-played)
                              :else (if white? white-key-color black-key-color))
                  border (str border-width "px solid rgba(0,0,0,0.5)")]]

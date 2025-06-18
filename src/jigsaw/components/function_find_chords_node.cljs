@@ -42,9 +42,7 @@
                                  "Degree" :degree
                                  "Piano" (fn [shape]
                                            (when (:name shape)
-                                             [piano-preview
-                                              shape
-                                              :parent-notes (:notes @parent-data)]))}
+                                             [piano-preview shape]))}
                     :row-title-render utils/pprint-aliases
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape))
                                                     (= (:name @data) (:name shape))))

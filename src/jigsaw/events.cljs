@@ -133,13 +133,11 @@
           (.then (fn [instrument]
                    (swap! audio-state assoc-in [:instruments instrument-name] instrument)))))))
 
-;; Event handler for playing shapes
 (re-frame/reg-event-fx
  ::play-shape
  (fn [{:keys [_]} [_ shape]]
    (let [instrument-name "acoustic_grand_piano"
-         chord? (specs/chord? shape)
-         note-duration (if chord? 30 300)] ; 30ms per note if chord, 300ms if scale
+         note-offset-ms (if (specs/chord? shape) 30 300)]
      (load-instrument! instrument-name)
      (js/setTimeout
       (fn []
@@ -148,6 +146,6 @@
             (js/setTimeout
              (fn []
                (.play instrument (algo/note->midi note)))
-             (* i note-duration)))))
+             (* i note-offset-ms)))))
       100) ; Small delay to ensure instrument is loaded
-     {}))) ; Return empty effects map since this is a side effect
+     {})))
