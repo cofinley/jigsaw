@@ -77,4 +77,4 @@
                      :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:name comp-shape))]))
                      :row-selected? (fn [[comp-shape _]] (and (= (:pitch @data) (:pitch comp-shape))
                                                               (= (:name @data) (:name comp-shape))))}])
-           [:p "Connect more than one"])]))))
+           [:p {:class "text-lg"} "Connect more than one"])]))))

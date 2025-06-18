@@ -79,4 +79,4 @@
     (if (and (every? data [:notes :pitch :name]) (seq notes))
       [score data]
       ;; TODO: allow just notes, maybe key/pitch override?
-      [:p "Insufficient input; needs notes, pitch, and name"])))
+      [:p {:class "text-lg"} "Insufficient input; needs notes, pitch, and name"])))

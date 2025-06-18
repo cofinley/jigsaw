@@ -36,13 +36,13 @@
     (fn [{:keys [title id data parent-data handles class]} & body]
       (r/as-element
        [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
-        [:div {:class "flex border-b border-gray-400 mb-4"}
-         [:div {:class "w-max flex cursor-pointer space-x-1 grow"
+        [:div {:class "flex border-b border-neutral-400 mb-4 gap-2"}
+         [:div {:class "cursor-pointer"
                 :on-click #(reset! open? (not @open?))}
           [:span {:class "text-lg cursor-pointer"}
-           (gstr/unescapeEntities (if @open? down-arrow right-arrow))]
-          [:h4 {:class "w-max font-semibold text-2xl"} title]]
-         [:button {:class "text-gray-400 cursor-pointer bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+           (gstr/unescapeEntities (if @open? down-arrow right-arrow))]]
+         [:h4 {:class "w-max font-semibold text-2xl"} title]
+         [:button {:class "text-neutral-400 cursor-pointer bg-transparent hover:bg-neutral-200 hover:text-neutral-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-neutral-600 dark:hover:text-white"
                    :on-click #(when (js/confirm "Delete?")
                                 (.stopPropagation %)
                                 (re-frame/dispatch [::events/delete-node id]))}

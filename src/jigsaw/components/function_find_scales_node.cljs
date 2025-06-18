@@ -48,5 +48,5 @@
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id
                                                         (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape))))]))}]])
-         [:p "Input is not a chord"])
-       [:p "No input"])]))
+         [:p {:class "text-lg"} "Input is not a chord"])
+       [:p {:class "text-lg"} "No input"])]))

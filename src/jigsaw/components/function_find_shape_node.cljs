@@ -85,5 +85,5 @@
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id shape]))}]])
-         [:p "No notes in input"])
-       [:p "No input"])]))
+         [:p {:class "text-lg"} "No notes in input"])
+       [:p {:class "text-lg"} "No input"])]))

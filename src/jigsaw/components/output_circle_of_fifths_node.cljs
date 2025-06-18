@@ -100,4 +100,4 @@
     (if (seq notes)
       (let [pitch-set (set pitches)]
         [draw-circle-of-fifths pitch-set starting-pitch])
-      [:p "No notes to display"])))
+      [:p {:class "text-lg"} "No notes to display"])))

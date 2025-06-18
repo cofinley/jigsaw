@@ -55,7 +55,7 @@
                                          (midi->label midi)]))))
                 :activeNotes midis
                 :width width}]]])
-          [:p "Nothing selected"])))))
+          [:p {:class "text-lg"} "Nothing selected"])))))
 
 (def white-key-color "#CBCBCB")
 (def white-key-border-color "#AAA")

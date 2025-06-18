@@ -47,4 +47,4 @@
                   :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                   :on-row-click (fn [shape]
                                   (re-frame/dispatch [::events/update-node-data id shape]))}]])
-       [:p "Need two inputs"])]))
+       [:p {:class "text-lg"} "Need two inputs"])]))
