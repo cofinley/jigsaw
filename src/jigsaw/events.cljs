@@ -52,6 +52,16 @@
                                  new-edge
                                  js-edge))))))))
 
+(re-frame/reg-event-db
+ ::clear-edge-highlighting
+ (fn [db [_]]
+   (-> db
+       (assoc :edges (.map (:edges db)
+                           (fn [js-edge]
+                             (let [clj-edge (js->clj js-edge :keywordize-keys true)
+                                   data (:data clj-edge)]
+                               (clj->js (assoc clj-edge :data (dissoc data :highlighted?))))))))))
+
 (defn create-node [db _node-props & [parent-id]]
   (let [node-type (keyword (:type _node-props))
         ;; Convert screen coordinates to flow coordinates if available

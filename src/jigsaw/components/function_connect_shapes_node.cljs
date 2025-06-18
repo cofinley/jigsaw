@@ -15,6 +15,8 @@
   ^{:key (str (:pitch found) (:name found) (name context))}
   [:div
    {:class "flex gap-2 justify-between items-center py-2 pl-2 hover:text-yellow-400"
+    :onMouseOut (fn []
+                  (re-frame/dispatch [::events/clear-edge-highlighting]))
     :onMouseOver (fn []
                    (let [inputs (map set input)
                          matching-incoming-node-ids (if (seq inputs)
