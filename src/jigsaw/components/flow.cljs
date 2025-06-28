@@ -74,6 +74,26 @@
                                                           :type (keyword (.-type node))})))))
                               #js [set-node-menu flow-instance])
         on-pane-click (useCallback #(set-node-menu nil) #js [set-node-menu])
+        on-drag-over (useCallback
+                      (fn [e]
+                        (.preventDefault e)
+                        (set! (.-dropEffect (.-dataTransfer e)) "copy"))
+                      #js [])
+        on-drop (useCallback
+                 (fn [e]
+                   (.preventDefault e)
+                   (let [drag-data (try
+                                     (js/JSON.parse (.getData (.-dataTransfer e) "application/json"))
+                                     (catch :default _
+                                       nil))]
+                     (when drag-data
+                       (let [flow-pos (.screenToFlowPosition flow-instance #js {:x (.-clientX e) :y (.-clientY e)})
+                             shape-data (as-> (js->clj drag-data :keywordize-keys true) m
+                                          (assoc m :pitch (keyword (:pitch m)))
+                                          (assoc m :name (keyword (:name m))))]
+                         (re-frame/dispatch [::events/create-node-from-drag shape-data
+                                             {:x (.-x flow-pos) :y (.-y flow-pos)}])))))
+                 #js [flow-instance])
         flow-node-types (useMemo
                          #(clj->js
                            (reduce (fn [m node-type]
@@ -91,6 +111,8 @@
                     :onNodeContextMenu on-node-context-menu
                     :onPaneContextMenu on-node-context-menu
                     :onPaneClick on-pane-click
+                    :onDragOver on-drag-over
+                    :onDrop on-drop
                     :nodeTypes flow-node-types
                     :edgeTypes edge-types
                     :fitView true

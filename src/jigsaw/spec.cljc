@@ -398,8 +398,7 @@
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
 ; Lookup info for algo/->shape, enough to resolve final pitches/notes
-(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]
-                           :opt-un [::degree]))
+(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]))
 ; Resolved, with intervals converted into pitches/notes
 (s/def ::shape (s/merge ::shape-blueprint
                         (s/keys :req-un [::name

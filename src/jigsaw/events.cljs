@@ -168,3 +168,19 @@
              (* i note-offset-ms)))))
       100) ; Small delay to ensure instrument is loaded
      {})))
+
+;; Drag and drop functionality
+(re-frame/reg-event-db
+ ::create-node-from-drag
+ (fn [db [_ shape-data position]]
+   (when (specs/shape-ref? shape-data)
+     (let [node-type (cond
+                       (contains? specs/chords (:name shape-data)) :input-chord
+                       (contains? specs/scales (:name shape-data)) :input-scale
+                       :else nil)
+           shape (algo/->shape (algo/pitch->note (:pitch shape-data)) (:name shape-data))]
+       (if node-type
+         (create-node db {:type node-type
+                          :position position
+                          :data (assoc shape :view-type :output-piano)})
+         db)))))
