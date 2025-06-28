@@ -131,6 +131,28 @@
  (fn [db [_ id data]]
    (update-in db [:node-data id] merge data)))
 
+(re-frame/reg-event-db
+ ::set-node-loading
+ (fn [db [_ id loading?]]
+   (assoc-in db [:node-loading id] loading?)))
+
+(re-frame/reg-event-fx
+ ::compute-with-loading
+ (fn [{:keys [_]} [_ id compute-fn]]
+   {:fx [[:dispatch [::set-node-loading id true]]
+         [:dispatch-later [{:ms 0 :dispatch [::execute-computation id compute-fn]}]]]}))
+
+(re-frame/reg-event-fx
+ ::execute-computation
+ (fn [{:keys [db]} [_ id compute-fn]]
+   (try
+     (let [result (compute-fn db)]
+       {:fx [[:dispatch [::update-node-data id result]]
+             [:dispatch [::set-node-loading id false]]]})
+     (catch js/Error e
+       (js/console.error "Computation error:" e)
+       {:fx [[:dispatch [::set-node-loading id false]]]}))))
+
 ;; Audio state management
 (defonce audio-state (atom {:instruments {} :audio-context nil}))
 

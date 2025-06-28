@@ -54,3 +54,8 @@
  ::data
  (fn [db [_ id]]
    (get-in db [:node-data id])))
+
+(re-frame/reg-sub
+ ::node-loading?
+ (fn [db [_ id]]
+   (get-in db [:node-loading id] false)))

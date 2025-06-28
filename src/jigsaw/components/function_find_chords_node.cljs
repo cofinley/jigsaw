@@ -22,12 +22,17 @@
                      {:type "source" :position "right"}]}
      (if @parent-data
        (if (contains? @parent-data :degrees)
-         (let [num-thirds (or (:num-thirds @data) 3)
-               shape-refs (search/scale->chords @parent-data :num-thirds num-thirds)
-               chord-shapes (map (fn [shape]
-                                   (assoc shape
-                                          :aliases (:aliases (specs/chords (:name shape)))))
-                                 shape-refs)]
+         (let [num-thirds (or (:num-thirds @data) 3)]
+          ;; Trigger computation with loading state for heavy operations
+           (when (not (:chord-shapes @data))
+             (re-frame/dispatch [::events/compute-with-loading id
+                                 (fn [_db]
+                                   (let [shape-refs (search/scale->chords @parent-data :num-thirds num-thirds)
+                                         chord-shapes (map (fn [shape]
+                                                             (assoc shape
+                                                                    :aliases (:aliases (specs/chords (:name shape)))))
+                                                           shape-refs)]
+                                     {:chord-shapes chord-shapes}))]))
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Thirds"]
@@ -35,19 +40,29 @@
                       :class "p-1 rounded-md border border-gray-400 nodrag text-black"
                       :size 2
                       :value num-thirds
-                      :on-change #(re-frame/dispatch [::events/update-node-data id {:num-thirds (-> % .-target .-value int)}])}]]
-            [table {:ms chord-shapes
-                    :row-render {"Root" :pitch
-                                 "Name" :name
-                                 "Degree" :degree
-                                 "Piano" (fn [shape]
-                                           (when (:name shape)
-                                             [piano-preview shape]))}
-                    :row-title-render utils/pprint-aliases
-                    :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape))
-                                                    (= (:name @data) (:name shape))))
-                    :on-row-click (fn [shape]
-                                    (re-frame/dispatch [::events/update-node-data id
-                                                        (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape))))]))}]])
+                      :on-change #(let [new-thirds (-> % .-target .-value int)]
+                                    (re-frame/dispatch [::events/compute-with-loading id
+                                                        (fn [_db]
+                                                          (let [shape-refs (search/scale->chords @parent-data :num-thirds new-thirds)
+                                                                chord-shapes (map (fn [shape]
+                                                                                    (assoc shape
+                                                                                           :aliases (:aliases (specs/chords (:name shape)))))
+                                                                                  shape-refs)]
+                                                            {:num-thirds new-thirds
+                                                             :chord-shapes chord-shapes}))]))}]]
+            (when-let [chord-shapes (:chord-shapes @data)]
+              [table {:ms chord-shapes
+                      :row-render {"Root" :pitch
+                                   "Name" :name
+                                   "Degree" :degree
+                                   "Piano" (fn [shape]
+                                             (when (:name shape)
+                                               [piano-preview shape]))}
+                      :row-title-render utils/pprint-aliases
+                      :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape))
+                                                      (= (:name @data) (:name shape))))
+                      :on-row-click (fn [shape]
+                                      (re-frame/dispatch [::events/update-node-data id
+                                                          (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape))))]))}])])
          [:p {:class "text-lg"} "Input is not a scale"])
        [:p {:class "text-lg"} "No input"])]))

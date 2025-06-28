@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as string]
    [jigsaw.spec :as specs]
-   [reagent.core :as r]
    ["react" :refer [useEffect useRef]]))
 
 (defn is-draggable-row? [m]
