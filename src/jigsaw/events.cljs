@@ -32,7 +32,8 @@
    (assoc db :edges edges)))
 
 (defn add-edge [db edge]
-  (assoc db :edges (.concat (:edges db) (clj->js (assoc edge :type :custom-edge)))))
+  (assoc db :edges (clj->js (conj (js->clj (:edges db))
+                                  (clj->js (assoc edge :type :custom-edge))))))
 
 (re-frame/reg-event-db
  ::add-edge
@@ -81,7 +82,8 @@
         node-data (assoc (:data node-props) :type node-type)
         id (:id node)]
     (cond-> db
-      true (assoc :nodes (.concat (:nodes db) (clj->js node)))
+      true (assoc :nodes (clj->js (conj (js->clj (:nodes db))
+                                        (clj->js node))))
       true (assoc-in [:node-data id] node-data)
       (some? parent-id) (add-edge {:id (str parent-id "->" id) :source parent-id :target id}))))
 
@@ -92,7 +94,8 @@
 
 (defn delete-node [db id]
   (-> db
-      (assoc :nodes (.filter (:nodes db) #(not= id (.-id %))))
+      (assoc :nodes (clj->js (remove #(= id (get % "id"))
+                                     (js->clj (:nodes db)))))
       (update :node-data dissoc id)))
 
 (re-frame/reg-event-db
@@ -128,14 +131,6 @@
  (fn [db [_ id data]]
    (update-in db [:node-data id] merge data)))
 
-(re-frame/reg-event-db
- ::set-selected-shape
- (fn [db [_ id shape-type selected-shape]]
-   (let [node (get-in db [:node-data id])
-         ;; TODO: create clear-shape fn to remove any scale/chord keys, like :degrees, before setting new shape
-         new-node (merge (update node :data dissoc :degrees) (merge selected-shape {:selected-shape-type shape-type}))]
-     (assoc-in db [:node-data id] new-node))))
-
 ;; Audio state management
 (defonce audio-state (atom {:instruments {} :audio-context nil}))
 
@@ -168,3 +163,19 @@
              (* i note-offset-ms)))))
       100) ; Small delay to ensure instrument is loaded
      {})))
+
+;; Drag and drop functionality
+(re-frame/reg-event-db
+ ::create-node-from-drag
+ (fn [db [_ shape-data position]]
+   (when (specs/shape-ref? shape-data)
+     (let [node-type (cond
+                       (contains? specs/chords (:name shape-data)) :input-chord
+                       (contains? specs/scales (:name shape-data)) :input-scale
+                       :else nil)
+           shape (algo/->shape (algo/pitch->note (:pitch shape-data)) (:name shape-data))]
+       (if node-type
+         (create-node db {:type node-type
+                          :position position
+                          :data (assoc shape :view-type :output-piano)})
+         db)))))

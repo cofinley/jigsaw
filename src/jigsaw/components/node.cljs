@@ -57,8 +57,8 @@
 
         (when @open?
           [:<>
-           (for [child body]
-             (with-meta child {:key (str "node-body-" id)}))
+           (for [[i child] (map-indexed vector body)]
+             (with-meta child {:key (str "node-body-" id "-" i)}))
 
            (let [view-type (:view-type data)]
              [:div {:class "flex flex-col space-y-4"}
