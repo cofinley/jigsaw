@@ -6,7 +6,6 @@
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
-   [jigsaw.search :as search]
    [jigsaw.spec :as specs]
    [jigsaw.subs :as subs]
    [jigsaw.utils :as utils]
@@ -14,7 +13,8 @@
 
 (defn function-find-scales-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
-        parent-data (re-frame/subscribe [::subs/parent-data id])]
+        parent-data (re-frame/subscribe [::subs/parent-data id])
+        scale-shapes (re-frame/subscribe [::subs/function-result id])]
     [node {:title "Chord Scales"
            :id id
            :data @data
@@ -24,27 +24,19 @@
      (if @parent-data
        (if (contains? @parent-data :intervals)
          (let [selected-degree (:selected-degree @data)]
-           (when (not (:scale-shapes @data))
-             (re-frame/dispatch [::events/compute-with-loading id
-                                 (fn [_db]
-                                   (let [scale-shapes (search/chord->scales @parent-data :degree selected-degree)]
-                                     {:scale-shapes scale-shapes}))]))
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Degree"]
              [select {:value selected-degree
                       :on-change (fn [e]
                                    (let [degree (-> e .-target .-value)]
-                                     (re-frame/dispatch [::events/compute-with-loading id
-                                                         (fn [_db]
-                                                           (let [scale-shapes (search/chord->scales @parent-data :degree selected-degree)]
-                                                             {:selected-degree (when (not= "" degree) (keyword degree))
-                                                              :scale-shapes scale-shapes}))])))}
+                                     (re-frame/dispatch [::events/update-node-data id
+                                                         {:selected-degree (when (not= "" degree) (keyword degree))}])))}
               (cons [:option {:value ""} "All"]
                     (for [deg (sort-by utils/parse-int specs/degrees)]
                       [:option {:value deg} deg]))]]
-            (when-let [scale-shapes (:scale-shapes @data)]
-              [table {:ms scale-shapes
+            (when @scale-shapes
+              [table {:ms @scale-shapes
                       :row-render {"Tonic" :pitch
                                    "Name" :name
                                    "Chord's Degree" :degree

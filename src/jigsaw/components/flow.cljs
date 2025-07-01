@@ -55,7 +55,8 @@
         on-connect (fn [params]
                      (re-frame/dispatch [::events/set-edges (addEdge (clj->js (assoc (js->clj params)
                                                                                      :id (str (.-source params) "->" (.-target params))
-                                                                                     :type :custom-edge)) @edges)]))
+                                                                                     :type :custom-edge)) @edges)])
+                     (re-frame/dispatch [::events/recompute (.-target params)]))
         ref (useRef nil)
         [node-menu set-node-menu] (useState nil)
         on-node-context-menu (useCallback

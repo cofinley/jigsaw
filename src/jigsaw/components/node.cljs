@@ -4,7 +4,7 @@
    [goog.string :as gstr]
    [re-frame.core :as re-frame]
    [jigsaw.components.select :refer [select]]
-   [jigsaw.components.loading :refer [node-loading]]
+   [jigsaw.components.loading :refer [loading-indicator]]
    [jigsaw.events :as events]
    [jigsaw.subs :as subs]
    [jigsaw.components.output-piano-node :refer [output-piano-view]]
@@ -38,7 +38,13 @@
     (fn [{:keys [title id data parent-data handles class]} & body]
       (let [loading? @(re-frame/subscribe [::subs/node-loading? id])]
         (r/as-element
-         [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6"} class)
+         [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6 relative"} class)
+
+          ;; Loading overlay
+          (when loading?
+            [:div {:class "absolute inset-0 bg-neutral-900 bg-opacity-70 flex items-center justify-center z-10 rounded-lg pointer-events-auto"}
+             [loading-indicator {:message "Computing..."}]])
+
           [:div {:class "flex border-b border-neutral-400 mb-4 gap-2"}
            [:div {:class "cursor-pointer"
                   :on-click #(reset! open? (not @open?))}
@@ -60,10 +66,8 @@
 
           (when @open?
             [:<>
-             (if loading?
-               [node-loading {:message "Computing..."}]
-               (for [[i child] (map-indexed vector body)]
-                 (with-meta child {:key (str "node-body-" id "-" i)})))
+             (for [[i child] (map-indexed vector body)]
+               (with-meta child {:key (str "node-body-" id "-" i)}))
 
              (let [view-type (:view-type data)]
                [:div {:class "flex flex-col space-y-4"}
@@ -78,11 +82,9 @@
                      [:option {:value (:type view)} (:label view)]))]]
 
                 (when (some? view-type)
-                  (if loading?
-                    [node-loading {:message "Loading view..."}]
-                    (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
-                          props {:data data :parent-data parent-data}]
-                      [view props])))])])
+                  (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
+                        props {:data data :parent-data parent-data}]
+                    [view props]))])])
 
           (for [i (range (count handles))
                 :let [h (nth handles i)

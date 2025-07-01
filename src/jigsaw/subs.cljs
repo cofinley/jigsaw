@@ -59,3 +59,9 @@
  ::node-loading?
  (fn [db [_ id]]
    (get-in db [:node-loading id] false)))
+
+;; Simple subscriptions for function results
+(re-frame/reg-sub
+ ::function-result
+ (fn [db [_ id]]
+   (get-in db [:function-results id])))
