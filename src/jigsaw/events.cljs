@@ -122,23 +122,22 @@
         node (db/->node (dissoc node-props :data :mouse-x :mouse-y :flow-instance) parent-node)
         node-data (assoc (:data node-props) :type node-type)
         id (:id node)]
-    (cond-> db
-      true (assoc :nodes (clj->js (conj (js->clj (:nodes db))
-                                        (clj->js node))))
-      true (assoc-in [:node-data id] node-data)
-      (some? parent-id) (add-edge {:id (str parent-id "->" id) :source parent-id :target id}))))
+    [id (cond-> db
+          true (assoc :nodes (clj->js (conj (js->clj (:nodes db))
+                                            (clj->js node))))
+          true (assoc-in [:node-data id] node-data)
+          (some? parent-id) (add-edge {:id (str parent-id "->" id) :source parent-id :target id}))]))
 
 (re-frame/reg-event-fx
  ::add-node
  (fn [{:keys [db]} [_ node-props & [parent-id]]]
-   (let [new-db (create-node db node-props parent-id)
-         node-id (:id node-props)
+   (let [[node-id new-db] (create-node db node-props parent-id)
          node-type (keyword (:type node-props))
-         parent-data (when parent-id (get-parent-data-for-node new-db node-id))
+         parent-data (when (some? parent-id) (get-parent-data-for-node new-db node-id))
          node-data (get-in new-db [:node-data node-id])]
      (cond-> {:db new-db}
-       (and parent-data (should-trigger-computation? node-type parent-data))
-       (assoc :fx [[:dispatch [::compute-function-result node-id node-type parent-data node-data]]])))))
+       (and (some? parent-data) (should-trigger-computation? node-type parent-data))
+       (assoc :fx [[:dispatch ^:flush-dom [::compute-function-result node-id node-type parent-data node-data]]])))))
 
 (defn delete-node [db id]
   (-> db
@@ -151,28 +150,27 @@
  (fn [db [_ id]]
    (delete-node db id)))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::toggle-note
- (fn [db [_ id midi]]
+ (fn [{:keys [db]} [_ id midi]]
    (let [notes-path [:node-data id :notes]
          notes (set (or (get-in db notes-path) #{}))
-         note (algo/midi->note midi nil)]
-     (assoc-in db notes-path ((if (some? (some #{note} notes)) disj conj) notes note)))))
+         note (algo/midi->note midi nil)
+         new-notes ((if (some? (some #{note} notes)) disj conj) notes note)]
+     {:fx [[:dispatch [::update-node-data id {:notes new-notes}]]]})))
 
 ;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
 (defn calculate-shape [node]
-  (let [shape-type (if (utils/in? [:input-chord :function-scale-chords] (:type node)) :chord :scale)
-        {:keys [pitch name]} node]
+  (let [{:keys [pitch name]} node]
     (when (and (some? pitch) (some? name))
       (algo/->shape (algo/pitch->note pitch) (keyword name)))))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::calculate-shape
- (fn [db [_ id]]
+ (fn [{:keys [db]} [_ id]]
    (let [node (get-in db [:node-data id])
          shape (calculate-shape node)]
-     (cond-> db
-       (some? shape) (update-in [:node-data id] merge shape)))))
+     {:fx [[:dispatch ^:flush-dom [::update-node-data id shape]]]})))
 
 ;; Function computation helpers
 (defn compute-scale-chords [parent-data data]
@@ -238,9 +236,11 @@
          new-db (assoc-in db [:node-data id] new-data)
          node-type (:type new-data)
          parent-data (get-parent-data-for-node new-db id)
+         opt-changed? (not-any? #(contains? data %) [:pitch :note :name])
 
          ;; Only trigger computation for this node, not children yet
-         this-node-fx (when (should-trigger-computation? node-type parent-data)
+         this-node-fx (when (and opt-changed?
+                                 (should-trigger-computation? node-type parent-data))
                         [[:dispatch ^:flush-dom [::compute-function-result id node-type parent-data new-data]]])
 
          child-fx [[:dispatch ^:flush-dom [::cascade-to-children id]]]]
@@ -250,20 +250,20 @@
 
 (re-frame/reg-event-fx
  ::compute-function-result
- (fn [{:keys [db]} [_ id node-type parent-data data]]
+ (fn [{:keys [db]} [_ id node-type parent-data opts]]
    {:db (assoc-in db [:node-loading id] true)
-    :fx [[:dispatch ^:flush-dom [::execute-function-computation id node-type parent-data data]]]}))
+    :fx [[:dispatch ^:flush-dom [::execute-function-computation id node-type parent-data opts]]]}))
 
 (re-frame/reg-event-fx
  ::execute-function-computation
- (fn [{:keys [db]} [_ id node-type parent-data data]]
+ (fn [{:keys [db]} [_ id node-type parent-data opts]]
    (try
      (let [result (case node-type
-                    :function-scale-chords (compute-scale-chords parent-data data)
-                    :function-chord-scales (compute-chord-scales parent-data data)
-                    :function-find-shape (compute-closest-shapes parent-data data)
-                    :function-connect-shapes (compute-shape-connections parent-data data)
-                    :function-fit-shape (compute-fitted-shapes parent-data data)
+                    :function-scale-chords (compute-scale-chords parent-data opts)
+                    :function-chord-scales (compute-chord-scales parent-data opts)
+                    :function-find-shape (compute-closest-shapes parent-data opts)
+                    :function-connect-shapes (compute-shape-connections parent-data opts)
+                    :function-fit-shape (compute-fitted-shapes parent-data opts)
                     nil)]
        {:db (-> db
                 (assoc-in [:function-results id] result)
@@ -328,7 +328,7 @@
                        :else nil)
            shape (algo/->shape (algo/pitch->note (:pitch shape-data)) (:name shape-data))]
        (if node-type
-         (create-node db {:type node-type
-                          :position position
-                          :data (assoc shape :view-type :output-piano)})
+         (second (create-node db {:type node-type
+                                  :position position
+                                  :data (assoc shape :view-type :output-piano)}))
          db)))))
