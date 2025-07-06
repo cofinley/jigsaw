@@ -26,7 +26,7 @@
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Thirds"]
              [:input {:type "number"
-                      :class "p-1 rounded-md border border-gray-400 nodrag text-black"
+                      :class "p-1 rounded-md border-2 border-gray-400 nodrag"
                       :size 2
                       :value num-thirds
                       :on-change #(re-frame/dispatch [::events/update-node-data id {:num-thirds (-> % .-target .-value int)}])}]]
