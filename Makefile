@@ -18,7 +18,7 @@
 
 # .PHONY: ensures target used rather than matching file name
 # https://makefiletutorial.com/#phony
-.PHONY: all lint deps dist pre-commit-check repl test test-ci test-watch clean
+.PHONY: all lint deps dist pre-commit-check repl test test-ci test-watch clean tailwind app
 
 # ------- Makefile Variables --------- #
 # run help if no target specified
@@ -49,6 +49,9 @@ help:  ## Describe available tasks in Makefile
 # ------- Clojure Development -------- #
 app:
 	npm run watch
+
+tailwind:
+	npx @tailwindcss/cli -i ./src/main.css -o ./resources/public/css/tailwind.css --watch
 # ------------------------------------ #
 
 # ------- Clojure Development -------- #

@@ -3,6 +3,6 @@
    [reagent.core :as r]))
 
 (defn select [props options]
-  [:select (r/merge-props {:class "p-1 rounded-md border border-gray-400 nodrag text-black"} props)
+  [:select (r/merge-props {:class "p-1 rounded-md border-2 border-neutral-400 nodrag"} props)
    (map #(with-meta % {:key (str %)}) options)])
 

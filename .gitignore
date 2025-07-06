@@ -23,6 +23,7 @@
 !dev/
 !docs/
 !resources/
+resources/public/css/tailwind.css
 !src/
 !test/
 

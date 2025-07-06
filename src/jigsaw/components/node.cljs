@@ -38,7 +38,7 @@
     (fn [{:keys [title id data parent-data handles class]} & body]
       (let [loading? @(re-frame/subscribe [::subs/node-loading? id])]
         (r/as-element
-         [:div (merge {:class "react-flow__node-default w-full flex flex-col pb-5 pt-2 px-6 relative"} class)
+         [:div (merge {:class "react-flow__node-default w-full! flex flex-col pb-5 pt-2 px-6 relative"} class)
 
           ;; Loading overlay
           (when loading?

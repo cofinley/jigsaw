@@ -2,7 +2,6 @@
   (:require
    ["react-piano" :refer [Piano]]
    [clojure.set :as set]
-   [clojure.string :as s]
    [jigsaw.algo :as algo]
    [jigsaw.components.select :refer [select]]
    [jigsaw.events :as events]
@@ -17,13 +16,13 @@
     (fn [props]
       (let [data (:data props)
             notes (:notes data)
-            parent-data (:parent-data props)
-            parent-notes (:notes parent-data)
+            ; parent-data (:parent-data props)
+            ; parent-notes (:notes parent-data)
             key-width (or (:key-width props) 30)
             display-label-options? (if-some [a (:display-label-options? props)] a true)]
         (if (seq notes)
           (let [midis (map algo/note->midi notes)
-                parent-midis (map algo/note->midi parent-notes)
+                ; parent-midis (map algo/note->midi parent-notes)
                 midi->label (zipmap midis (get data @selected-label))
                 first-midi (first midis)
                 midi-range-start (- first-midi (mod first-midi 12))
@@ -36,7 +35,6 @@
                [:div {:class "self-start flex space-x-2 items-center mb-2 text-lg"}
                 [:label "Key Labels"]
                 [select {:value (or @selected-label "")
-                         :class "text-black"
                          :on-change #(reset! selected-label (keyword (-> % .-target .-value)))
                          :placeholder "Key Labels"}
                  (for [label-type label-types
@@ -121,7 +119,6 @@
            :let [pitch (:pitch key)
                  chroma (specs/pitches pitch)
                  white? (= :w (:color key))
-                 octave? (= 0 (mod (:midi key) 12))
                  highlighted? (utils/in? (if (seq parent-midis) parent-midis midis) (:midi key))
                  parent-specific-note? (utils/in? parent-specific-notes (:midi key))
                  parent-specific-chroma? (utils/in? parent-specific-chromas chroma)
@@ -153,9 +150,4 @@
                    :z-index 2
                    :border border
                    :background-color key-color
-                   :margin margin})}
-        (comment
-          (when (and octave? (not (seq parent-midis)))
-            [:span
-             {:class (s/join " " [(if highlighted? "dark:text-neutral-100" "dark:text-neutral-900") "relative text-xs opacity-80"])}
-             (str "C" (dec (int (/ (:midi key) 12))))]))])]))
+                   :margin margin})}])]))

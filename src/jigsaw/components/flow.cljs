@@ -120,7 +120,8 @@
                     :colorMode "dark"}
       [:> Panel {:position "top-right"}
        [select {:on-change #(re-frame/dispatch [::events/add-node {:type (-> % .-target .-value)}])
-                :value ""}
+                :value ""
+                :class "text-gray-100"}
         (cons
          [:option {:disabled true :value ""} "(Add Node)"]
          (for [[cat-k cat-label] node-categories]

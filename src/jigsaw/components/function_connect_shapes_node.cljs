@@ -57,7 +57,7 @@
       [:input {:type "number"
                :value (or (:max-shapes @data) 1)
                :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (-> % .-target .-value int)}])
-               :class "p-1 rounded-md border border-gray-400 nodrag text-black"
+               :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
                :size 2}]]
      (if (> (count @parent-data) 1)
        (when @connections
