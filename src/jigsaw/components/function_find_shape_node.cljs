@@ -1,6 +1,5 @@
 (ns jigsaw.components.function-find-shape-node
   (:require
-   [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
    [jigsaw.components.output-piano-node :refer [piano-preview]]
    [jigsaw.components.select :refer [select]]
@@ -12,10 +11,10 @@
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
-;; TODO: allow click-and-drag of table row into new input-shape node
 (defn function-find-shape-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
-        parent-data (re-frame/subscribe [::subs/parent-data id])]
+        parent-data (re-frame/subscribe [::subs/parent-data id])
+        resolved-shapes (re-frame/subscribe [::subs/function-result id])]
     [node {:title "Find Closest Shapes"
            :id id
            :data @data
@@ -26,20 +25,12 @@
        (if-let [notes (seq (get-in @parent-data [:notes]))]
          (let [incoming-shape-type (cond
                                      (contains? @parent-data :degrees) :scale
-                                     (contains? @parent-data :intervals) :chord ; Scales have intervals too, but we didn't find :degrees
+                                     (contains? @parent-data :intervals) :chord
                                      :else :notes)
-               ; Recommend finding scales by default if incoming shape is a chord, otherwise find chords
                selected-shape-type (or (:selected-shape-type @data) (if (= :chord incoming-shape-type) :scale :chord))
                selected-pitch (or (:selected-pitch @data) "")
                heuristic (or (:heuristic @data) :overlap)
-               max-shapes (or (:max-shapes @data) 10)
-               shapes (search/notes->shapes-memo notes
-                                                 selected-shape-type
-                                                 :max-shapes max-shapes
-                                                 :heuristic (keyword heuristic)
-                                                 :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
-               ; Resolve shapes at last mile
-               resolved-shapes (map #(merge % (algo/->shape (algo/pitch->note (:pitch %)) (:name %))) shapes)]
+               max-shapes (or (:max-shapes @data) 10)]
            [:div {:class "flex flex-col space-y-2 items-start text-xl"}
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Find"]
@@ -72,18 +63,19 @@
                       :size 2
                       :value max-shapes
                       :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]
-            [table {:ms resolved-shapes
-                    :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
-                                 "Name" :name
-                                 "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")
-                                 "Piano" (fn [shape]
-                                           (when (:name shape)
-                                             [piano-preview
-                                              shape
-                                              :parent-notes (:notes @parent-data)]))}
-                    :row-title-render utils/pprint-aliases
-                    :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
-                    :on-row-click (fn [shape]
-                                    (re-frame/dispatch [::events/update-node-data id shape]))}]])
+            (when @resolved-shapes
+              [table {:ms @resolved-shapes
+                      :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
+                                   "Name" :name
+                                   "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")
+                                   "Piano" (fn [shape]
+                                             (when (:name shape)
+                                               [piano-preview
+                                                shape
+                                                :parent-notes (:notes @parent-data)]))}
+                      :row-title-render utils/pprint-aliases
+                      :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
+                      :on-row-click (fn [shape]
+                                      (re-frame/dispatch [::events/update-node-data id shape]))}])])
          [:p {:class "text-lg"} "No notes in input"])
        [:p {:class "text-lg"} "No input"])]))

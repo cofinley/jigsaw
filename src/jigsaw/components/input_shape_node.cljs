@@ -55,5 +55,4 @@
                 :row-selected? (fn [shape] (= (:name @data) (:name shape)))
                 :row-filter (fn [shape] (if (> (count @search) 0) (s/includes? (name (:name shape)) @search) true))
                 :on-row-click (fn [shape]
-                                (re-frame/dispatch [::events/update-node-data id shape])
-                                (re-frame/dispatch [::events/calculate-shape id]))}]]])))
+                                (re-frame/dispatch [::events/update-node-data id shape]))}]]])))
