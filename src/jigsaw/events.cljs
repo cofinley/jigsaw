@@ -45,7 +45,6 @@
         (when (seq sources)
           (get-in db [:node-data (.-source (first sources))]))))))
 
-; TODO: trigger on edge connect (force) and node-data update (but only for parameter changes, not row selection)
 (defn should-trigger-computation? [node-type parent-data]
   (case node-type
     :function-scale-chords (and parent-data (contains? parent-data :degrees))
