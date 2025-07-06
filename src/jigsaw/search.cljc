@@ -150,6 +150,8 @@
          :when (= (count intervals) (count pitches))]
      [root-pitch intervals])))
 
+(def pitches->interval-seqs-memo (memoize pitches->interval-seqs))
+
 (defn- intervals->scales
   "Find scale (names) by intervals"
   [intervals]
@@ -164,7 +166,7 @@
    Optionally filter by desired degree"
   [{:keys [pitch pitches] :as chord} & {:keys [degree] :or {degree nil}}]
   {:post [(every? specs/shape-ref? %)]}
-  (let [rotated-intervals (pitches->interval-seqs pitches)]
+  (let [rotated-intervals (pitches->interval-seqs-memo pitches)]
     (->> (concat
           (for [[_ intervals] rotated-intervals
                 scale-name (intervals->scales intervals)

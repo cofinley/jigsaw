@@ -150,15 +150,6 @@
  (fn [db [_ id]]
    (delete-node db id)))
 
-(re-frame/reg-event-fx
- ::toggle-note
- (fn [{:keys [db]} [_ id midi]]
-   (let [notes-path [:node-data id :notes]
-         notes (set (or (get-in db notes-path) #{}))
-         note (algo/midi->note midi nil)
-         new-notes ((if (some? (some #{note} notes)) disj conj) notes note)]
-     {:fx [[:dispatch [::update-node-data id {:notes new-notes}]]]})))
-
 ;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
 (defn calculate-shape [node]
   (let [{:keys [pitch name]} node]
@@ -176,17 +167,14 @@
 (defn compute-scale-chords [parent-data data]
   (when (and parent-data (contains? parent-data :degrees))
     (let [num-thirds (or (:num-thirds data) 3)
-          shape-refs (search/scale->chords parent-data :num-thirds num-thirds)
-          chord-shapes (map (fn [shape]
-                              (assoc shape
-                                     :aliases (:aliases (specs/chords (:name shape)))))
-                            shape-refs)]
-      chord-shapes)))
+          shape-refs (search/scale->chords parent-data :num-thirds num-thirds)]
+      (map #(merge % (algo/->shape (assoc % :note (algo/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-chord-scales [parent-data data]
   (when (and parent-data (contains? parent-data :intervals))
-    (let [selected-degree (:selected-degree data)]
-      (search/chord->scales parent-data :degree selected-degree))))
+    (let [selected-degree (:selected-degree data)
+          shape-refs (search/chord->scales parent-data :degree selected-degree)]
+      (map #(merge % (algo/->shape (assoc % :note (algo/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-closest-shapes [parent-data data]
   (when-let [notes (seq (get-in parent-data [:notes]))]

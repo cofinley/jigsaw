@@ -83,7 +83,7 @@
 
                 (when (some? view-type)
                   (let [view (:component (first (filter #(= view-type (:type %)) node-output-views)))
-                        props {:data data :parent-data parent-data}]
+                        props {:data (merge {:id id} data) :parent-data parent-data}]
                     [view props]))])])
 
           (for [i (range (count handles))
