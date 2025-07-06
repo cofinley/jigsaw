@@ -40,7 +40,7 @@
                                       :targetX targetX
                                       :targetY targetY})
         edge [BaseEdge #js {:id id
-                            :className (if (:highlighted? data) "stroke-yellow-400" "")
+                            :className (if (:highlighted? data) "stroke-yellow-400!" "")
                             :path edge-path}]]
     (r/as-element edge)))
 
