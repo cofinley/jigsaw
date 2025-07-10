@@ -5,7 +5,6 @@
    [jigsaw.db :as db]
    [jigsaw.search :as search]
    [jigsaw.spec :as specs]
-   [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-fx

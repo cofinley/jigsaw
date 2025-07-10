@@ -180,6 +180,7 @@
                  {:pitch :E, :name :minor, :degree :bVI}
                  {:pitch :E, :name :diminished, :degree :bVI}
                  {:pitch :E, :name :spanish-heptatonic, :degree :bVI}
+                 {:pitch :E, :name :tizita, :degree :bVI}
                  {:pitch :Eb, :name :half-whole-diminished, :degree :VI}
                  {:pitch :Db, :name :lydian-#9, :degree :VII}
                  {:pitch :D, :name :dorian, :degree :bVII}

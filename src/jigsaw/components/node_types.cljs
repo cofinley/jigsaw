@@ -27,11 +27,11 @@
     :component input-shape-node}
    {:type :function-scale-chords
     :category :function
-    :label "Find Chords"
+    :label "Find Chords (from scale)"
     :component function-find-chords-node}
    {:type :function-chord-scales
     :category :function
-    :label "Find Scales"
+    :label "Find Scales (from chord)"
     :component function-find-scales-node}
    {:type :function-find-shape
     :category :function

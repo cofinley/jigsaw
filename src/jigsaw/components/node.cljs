@@ -31,14 +31,14 @@
     :component output-debug-view}])
 
 (defn handle [props]
-  [:> Handle (r/merge-props {:class "h-8 w-5 rounded-md"} props)])
+  [:> Handle (r/merge-props {:class "h-5! w-5! rounded-md"} props)])
 
 (defn node [props & body]
   (let [open? (r/atom true)]
     (fn [{:keys [title id data parent-data handles class]} & body]
       (let [loading? @(re-frame/subscribe [::subs/node-loading? id])]
         (r/as-element
-         [:div (merge {:class "react-flow__node-default w-full! flex flex-col pb-5 pt-2 px-6 relative"} class)
+         [:div (merge {:class "react-flow__node-default w-full! flex flex-col pb-5 pt-2 px-6! relative"} class)
 
           ;; Loading overlay
           (when loading?

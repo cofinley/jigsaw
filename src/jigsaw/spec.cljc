@@ -289,6 +289,7 @@
    ; :iwato {:intervals [:P1 :m2 :P4 :d5 :m7] :degrees [:1 :b2 :4 :b5 :b7]}
    ; :in-sen {:intervals [:P1 :m2 :P4 :P5 :m7] :degrees [:1 :b2 :4 :5 :b7]}
    :lydian-pentatonic {:intervals [:P1 :M3 :A4 :P5 :M7] :aliases ["chinese"] :degrees [:1 :3 :#4 :5 :7]}
+   :tizita {:intervals [:P1 :M2 :m3 :P5 :m6] :aliases ["ethiopian"] :degrees [:1 :2 :b3 :5 :b6]}
    ; :malkos-raga {:intervals [:P1 :m3 :P4 :m6 :m7] :degrees [:1 :b3 :4 :b6 :b7]}
    :locrian-pentatonic {:intervals [:P1 :m3 :P4 :d5 :m7] :aliases ["minor seven flat five pentatonic"] :degrees [:1 :b3 :4 :b5 :b7]}
    :minor-pentatonic {:intervals [:P1 :m3 :P4 :P5 :m7] :aliases ["vietnamese 2"] :degrees [:1 :b3 :4 :5 :b7]}
