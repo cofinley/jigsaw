@@ -98,32 +98,30 @@
   (if (seq intervals)
     (let [interval-set (set intervals)]
       (->> specs/intervals->chords
-           (filter (fn [[chord-interval-set _]] (clojure.set/subset? interval-set chord-interval-set)))
+           (filter (fn [[chord-interval-set _]] (clojure.set/subset? chord-interval-set interval-set)))
            vals))
     []))
 
-(defn scale-name->chords
-  "Get diatonic chords based on thirds; lines up with indexes of :pitches, :degrees, and :notes"
-  [scale-name & {:keys [num-thirds] :or {num-thirds 3}}]
-  (let [scale (specs/scales scale-name)
-        pitches (map #(algo/+interval :C %) (:intervals scale))]
-    (for [rotation (range (count (:intervals scale)))]
-      (let [rotated-pitches (take num-thirds (take-nth 2 (cycle (utils/rotate pitches rotation))))
-            intervals (algo/->intervals rotated-pitches)
-            chord-name (specs/intervals->chords (set intervals))]
-        chord-name))))
+(defn rotate-intervals
+  "Recontextualize intervals by rotating/inverting them"
+  [intervals n]
+  (let [pitches (map #(algo/+interval :C %) intervals)
+        rotated-pitches (utils/rotate pitches n)
+        rotated-intervals (algo/->intervals rotated-pitches)]
+    rotated-intervals))
 
 (defn scale->chords
-  [{:keys [name pitches degrees]} & {:keys [num-thirds] :or {num-thirds 3}}]
+  "Find chords which are diatonic to the scale (i.e. pitch subsets)"
+  [{:keys [pitches intervals degrees]}]
   {:post [(every? specs/shape-ref? %)]}
-  (let [chord-names (scale-name->chords name :num-thirds num-thirds)]
-    (for [idx (range (count pitches))
-          :let [pitch (nth pitches idx)
-                chord-name (nth chord-names idx)]
-          :when chord-name]
-      {:pitch pitch
-       :name chord-name
-       :degree (algo/degree-chord->roman-numeral (nth degrees idx) chord-name)})))
+  (for [idx (range (count pitches))
+        :let [pitch (nth pitches idx)
+              rotated-intervals (rotate-intervals intervals idx)]
+        chord-name (intervals->chords rotated-intervals)
+        :when chord-name]
+    {:pitch pitch
+     :name chord-name
+     :degree (algo/degree-chord->roman-numeral (nth degrees idx) chord-name)}))
 
 ; Find scales from chords
 ; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
@@ -155,10 +153,11 @@
 (defn- intervals->scales
   "Find scale (names) by intervals"
   [intervals]
-  (->> specs/intervals->scales
-       (filter (fn [[scale-intervals _]]
-                 (set/subset? (set intervals) (set scale-intervals))))
-       (map second)))
+  (let [interval-set (set intervals)]
+    (->> specs/intervals->scales
+         (filter (fn [[scale-intervals _]]
+                   (set/subset? interval-set (set scale-intervals))))
+         (map second))))
 
 (defn chord->scales
   "Find scales by chord
@@ -257,17 +256,18 @@
   [scale n]
   {:pre [(specs/scale? scale)]
    :post [(specs/shape-ref? %)]}
-  (let [pitches (utils/rotate (:pitches scale) (dec n))
-        intervals (into [:P1] (map #(algo/->interval (first pitches) %)) (rest pitches))]
-    (when-let [new-scale-name (get specs/intervals->scales intervals)]
-      {:pitch (first pitches) :name new-scale-name})))
+  (let [pitches (utils/rotate (:pitches scale) n)
+        rotated-intervals (rotate-intervals (:intervals scale) n)]
+    (when-let [new-scale-name (get specs/intervals->scales rotated-intervals)]
+      {:pitch (first pitches)
+       :name new-scale-name})))
 
 (defn scale->modes
   [scale]
   {:pre [(specs/scale? scale)]
    :post [(every? specs/shape-ref? %)]}
-  (for [n (take (count (:pitches scale)) (range))]
-    (scale->mode scale (inc n))))
+  (for [n (range (count (:pitches scale)))]
+    (scale->mode scale n)))
 
 (defn fit
   "
@@ -329,21 +329,24 @@
 
 (comment
   (let [scale (algo/->shape :E :harmonic-minor)]
-    (scale->chords scale :num-thirds 4))
+    (scale->chords scale))
   (notes->shapes (:notes (algo/->shape :C4 :maj)) :scale)
   (intervals->chords [:P1 :M3 :P5 :M6])
-  (scale->chords (algo/->shape :Cmajor))
   (shape->shapes (algo/->shape :Cmajor))
-  (scale-name->chords :ionian-pentatonic :num-thirds 3)
+  (rotate-intervals [:P1 :M3 :P5] 1)
   (intervals->scales [:P1 :M3 :P5 :M6])
   (pitches->interval-seqs [:C :E :G])
+  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones specs/intervals) (algo/->intervals [:Gb :G :B :Db :D]))))
+  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones specs/intervals) [:P1 :M2 :m3 :P5 :m6])))
+  (map #(specs/intervals (algo/+interval :Gb %)) [:P1 :M2 :m3 :P5 :m6])
   (chord->scales (algo/->shape :Eb6add9))
-  (contextualize (algo/->shape :Bmaj) (algo/->shape :Cmajor))
+  (scale->chords (algo/->shape :C_diminished))
+  (contextualize (algo/->shape :B_maj) (algo/->shape :C_major))
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
   (connect-shapes [(algo/->shape :Cmaj) (algo/->shape :Dm) (algo/->shape :Em)])
   (connect [(:notes (algo/->shape :C4 :maj)) (:notes (algo/->shape :D4 :m))] :chord)
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
   (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
-  (scale->modes (algo/->shape :Cmajor))
+  (scale->modes (algo/->shape :G_lydian-pentatonic))
   (fit (algo/->shape :C4 :major) (:notes (algo/->shape :C4 :m))))

@@ -111,7 +111,8 @@
         black-key-offset (- (- (/ black-key-width 2)) border-width)
         margin (str "0 0 0 " black-key-offset "px")]
     [:div.flex.rounded.overflow-hidden.pl-2
-     {:class "cursor-pointer"
+     {:class "cursor-pointer!"
+      :title "Click to play"
       :on-click (fn [e]
                   (.stopPropagation e)
                   (re-frame/dispatch [::events/play-shape full-shape]))}

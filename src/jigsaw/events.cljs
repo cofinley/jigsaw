@@ -164,8 +164,7 @@
 ;; Function computation helpers
 (defn compute-scale-chords [parent-data data]
   (when (and parent-data (contains? parent-data :degrees))
-    (let [num-thirds (or (:num-thirds data) 3)
-          shape-refs (search/scale->chords parent-data :num-thirds num-thirds)]
+    (let [shape-refs (search/scale->chords parent-data)]
       (map #(merge % (algo/->shape (assoc % :note (algo/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-chord-scales [parent-data data]

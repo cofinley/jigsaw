@@ -16,7 +16,7 @@
            :id id
            :data @data
            :parent-data @parent-data
-           :handles [{:type "target" :id "target-shape" :position "left" :style {:top "10%"}}
+           :handles [{:type "target" :id "target-shape" :position "left"}
                      {:type "target" :id "candidate-shape" :position "left"}
                      {:type "source" :position "right"}]}
      (if (= (count @parent-data) 2)

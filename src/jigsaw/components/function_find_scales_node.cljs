@@ -15,7 +15,7 @@
   (let [data (re-frame/subscribe [::subs/data id])
         parent-data (re-frame/subscribe [::subs/parent-data id])
         scale-shapes (re-frame/subscribe [::subs/function-result id])]
-    [node {:title "Chord Scales"
+    [node {:title "Scales (from chord)"
            :id id
            :data @data
            :parent-data @parent-data
