@@ -14,7 +14,7 @@
 (defn function-find-scales-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
         parent-data (re-frame/subscribe [::subs/parent-data id])
-        scale-shapes (re-frame/subscribe [::subs/function-result id])]
+        scales (re-frame/subscribe [::subs/function-result id])]
     [node {:title "Scales (from chord)"
            :id id
            :data @data
@@ -22,7 +22,7 @@
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if @parent-data
-       (if (contains? @parent-data :intervals)
+       (if (specs/chord? @parent-data)
          (let [selected-degree (:selected-degree @data)]
            [:div {:class "flex flex-col text-xl items-start space-y-4"}
             [:label {:class "space-x-4"}
@@ -35,15 +35,16 @@
               (cons [:option {:value ""} "All"]
                     (for [deg (sort-by utils/parse-int specs/degrees)]
                       [:option {:value deg} deg]))]]
-            (when @scale-shapes
-              [table {:ms @scale-shapes
+            (when @scales
+              [table {:ms @scales
                       :row-render {"Tonic" :pitch
                                    "Name" :name
                                    "Chord's Degree" :degree
-                                   "Piano" (fn [shape] [piano-preview
-                                                        shape
-                                                        :parent-notes (:notes @parent-data)])}
-                      :row-title-render (fn [shape] (utils/pprint-aliases (specs/scales (:name shape))))
+                                   "Piano" (fn [shape]
+                                             [piano-preview
+                                              shape
+                                              :parent-notes (:notes @parent-data)])}
+                      :row-title-render utils/pprint-aliases
                       :row-selected? (fn [shape] (and
                                                   (= (:pitch @data) (:pitch shape))
                                                   (= (:name @data) (:name shape))))

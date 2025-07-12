@@ -5,6 +5,7 @@
    [jigsaw.components.output-piano-node :refer [piano-preview]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
+   [jigsaw.spec :as specs]
    [jigsaw.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
@@ -12,7 +13,7 @@
 (defn function-find-chords-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
         parent-data (re-frame/subscribe [::subs/parent-data id])
-        chord-shapes (re-frame/subscribe [::subs/function-result id])]
+        chords (re-frame/subscribe [::subs/function-result id])]
     [node {:title "Chords (from scale)"
            :id id
            :data @data
@@ -20,16 +21,17 @@
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if @parent-data
-       (if (contains? @parent-data :degrees)
+       (if (specs/scale? @parent-data)
          [:div {:class "flex flex-col text-xl items-start space-y-4"}
-          (when @chord-shapes
-            [table {:ms @chord-shapes
+          (when @chords
+            [table {:ms @chords
                     :row-render {"Root" :pitch
                                  "Name" :name
                                  "Degree" :degree
                                  "Piano" (fn [shape]
-                                           (when (:name shape)
-                                             [piano-preview shape]))}
+                                           [piano-preview
+                                            shape
+                                            :parent-notes (:notes @parent-data)])}
                     :row-title-render utils/pprint-aliases
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape))
                                                     (= (:name @data) (:name shape))))

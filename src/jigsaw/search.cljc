@@ -13,8 +13,7 @@
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))]
     (let [shape (algo/->shape {:note (algo/pitch->note pitch) :name shape-name})
           chromas (map specs/pitches (:pitches shape))]
-      (assoc (select-keys shape [:pitch :name])
-             :chromas chromas))))
+      (assoc shape :chromas chromas))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -56,7 +55,7 @@
    If input-shape is a scale, find the candidate-shape's (chord) degree"
   [input-shape candidate-shape]
   {:pre [(every? specs/shape? [input-shape candidate-shape])]}
-  (let [scale (if (or (contains? input-shape :degrees) (contains? input-shape :degree)) input-shape candidate-shape)
+  (let [scale (if (specs/scale? input-shape) input-shape candidate-shape)
         chord (if (= scale input-shape) candidate-shape input-shape)
         degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
     (algo/degree-chord->roman-numeral degree (:name chord))))
@@ -87,97 +86,36 @@
 
 (def notes->shapes-memo (memoize notes->shapes))
 
-; Find chords from scales (via matching intervals)
-
-(defn intervals->chord [intervals]
-  (when (seq intervals)
-    (let [interval-set (set intervals)]
-      (specs/intervals->chords interval-set))))
-
-(defn intervals->chords [intervals]
-  (if (seq intervals)
-    (let [interval-set (set intervals)]
-      (->> specs/intervals->chords
-           (filter (fn [[chord-interval-set _]] (clojure.set/subset? chord-interval-set interval-set)))
-           vals))
-    []))
-
-(defn rotate-intervals
-  "Recontextualize intervals by rotating/inverting them"
-  [intervals n]
-  (let [pitches (map #(algo/+interval :C %) intervals)
-        rotated-pitches (utils/rotate pitches n)
-        rotated-intervals (algo/->intervals rotated-pitches)]
-    rotated-intervals))
+; Find chords from scales (via matching pitches)
 
 (defn scale->chords
   "Find chords which are diatonic to the scale (i.e. pitch subsets)"
-  [{:keys [pitches intervals degrees]}]
+  [{:keys [pitches] :as scale}]
   {:post [(every? specs/shape-ref? %)]}
-  (for [idx (range (count pitches))
-        :let [pitch (nth pitches idx)
-              rotated-intervals (rotate-intervals intervals idx)]
-        chord-name (intervals->chords rotated-intervals)
-        :when chord-name]
-    {:pitch pitch
-     :name chord-name
-     :degree (algo/degree-chord->roman-numeral (nth degrees idx) chord-name)}))
+  (let [pitch-set (set pitches)]
+    (for [chord all-chords
+          :when (set/subset? (set (:pitches chord)) pitch-set)]
+      {:pitch (:pitch chord)
+       :name (:name chord)
+       :degree (contextualize chord scale)})))
 
 ; Find scales from chords
-; I.e. re-evaluate chord as intervals from different possible roots; find scales with matching intervals
-
-(defn- degree->tonic
-  "Given some pitch (e.g. :Eb), scale (e.g. :major), and the pitch's degree in the scale (e.g. :5), find the original tonic pitch (e.g. :Ab)"
-  [pitch scale-name pitch-degree]
-  (let [scale (specs/scales scale-name)
-        n (.indexOf (:degrees scale) pitch-degree)
-        interval (nth (:intervals scale) n)]
-    (algo/+interval pitch interval -1)))
-
-(defn- pitches->interval-seqs
-  "Generate new intervals to supplied pitches from perspective of all pitches (i.e. test all roots)"
-  [pitches]
-  (into
-   {}
-   (for [root-pitch specs/simple-pitch-keys
-         :let [intervals (->> pitches
-                              (into []
-                                    (comp (map #(algo/->interval root-pitch %))
-                                          (replace {:P8 :P1})
-                                          (remove nil?))))]
-         :when (= (count intervals) (count pitches))]
-     [root-pitch intervals])))
-
-(def pitches->interval-seqs-memo (memoize pitches->interval-seqs))
-
-(defn- intervals->scales
-  "Find scale (names) by intervals"
-  [intervals]
-  (let [interval-set (set intervals)]
-    (->> specs/intervals->scales
-         (filter (fn [[scale-intervals _]]
-                   (set/subset? interval-set (set scale-intervals))))
-         (map second))))
 
 (defn chord->scales
   "Find scales by chord
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
-  [{:keys [pitch pitches] :as chord} & {:keys [degree] :or {degree nil}}]
+  [{:keys [pitches] :as chord} & {:keys [degree] :or {degree nil}}]
   {:post [(every? specs/shape-ref? %)]}
-  (let [rotated-intervals (pitches->interval-seqs-memo pitches)]
-    (->> (concat
-          (for [[_ intervals] rotated-intervals
-                scale-name (intervals->scales intervals)
-                :let [scale (get specs/scales scale-name)
-                      chord-degree (nth (:degrees scale) (.indexOf (:intervals scale) (first intervals)))
-                      chord-degree-roman (algo/degree-chord->roman-numeral chord-degree (:name chord))
-                      tonic (degree->tonic pitch scale-name chord-degree)]
-                :when (if (some? degree) (= degree chord-degree) true)]
-            {:pitch tonic
-             :name scale-name
-             :degree chord-degree-roman}))
-         (sort-by #(algo/roman-numeral->int (name (:degree %)))))))
+  (let [pitch-set (set pitches)]
+    (sort-by #(algo/roman-numeral->int (name (:degree %)))
+             (for [scale all-scales
+                   :when (set/subset? pitch-set (set (:pitches scale)))
+                   :let [chord-degree (contextualize chord scale)]
+                   :when (if (some? degree) (= degree chord-degree) true)]
+               {:pitch (:pitch scale)
+                :name (:name scale)
+                :degree chord-degree}))))
 
 ; Find more deeply linked shapes
 
@@ -251,6 +189,14 @@
 
 (def memoize-connect (memoize connect))
 (def memoize-connect-shapes (memoize connect-shapes))
+
+(defn rotate-intervals
+  "Recontextualize intervals by rotating/inverting them"
+  [intervals n]
+  (let [pitches (map #(algo/+interval :C %) intervals)
+        rotated-pitches (utils/rotate pitches n)
+        rotated-intervals (algo/->intervals rotated-pitches)]
+    rotated-intervals))
 
 (defn scale->mode
   [scale n]
@@ -331,16 +277,13 @@
   (let [scale (algo/->shape :E :harmonic-minor)]
     (scale->chords scale))
   (notes->shapes (:notes (algo/->shape :C4 :maj)) :scale)
-  (intervals->chords [:P1 :M3 :P5 :M6])
   (shape->shapes (algo/->shape :Cmajor))
-  (rotate-intervals [:P1 :M3 :P5] 1)
-  (intervals->scales [:P1 :M3 :P5 :M6])
-  (pitches->interval-seqs [:C :E :G])
   (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones specs/intervals) (algo/->intervals [:Gb :G :B :Db :D]))))
   (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones specs/intervals) [:P1 :M2 :m3 :P5 :m6])))
   (map #(specs/intervals (algo/+interval :Gb %)) [:P1 :M2 :m3 :P5 :m6])
   (chord->scales (algo/->shape :Eb6add9))
   (scale->chords (algo/->shape :C_diminished))
+  (algo/->shape :Db_diminished)
   (contextualize (algo/->shape :B_maj) (algo/->shape :C_major))
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
   (connect-shapes [(algo/->shape :Cmaj) (algo/->shape :Dm) (algo/->shape :Em)])

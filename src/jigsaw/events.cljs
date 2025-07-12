@@ -170,7 +170,7 @@
 (defn compute-chord-scales [parent-data data]
   (when (and parent-data (contains? parent-data :intervals))
     (let [selected-degree (:selected-degree data)
-          shape-refs (search/chord->scales parent-data :degree selected-degree)]
+          shape-refs (search/chord->scales (algo/->shape parent-data) :degree selected-degree)]
       (map #(merge % (algo/->shape (assoc % :note (algo/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-closest-shapes [parent-data data]

@@ -53,89 +53,156 @@
                          :shares-root? 1}))
     (testing "scale->chords"
       (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/->shape pitch scale-name)))
-        :C :major '({:pitch :C, :name :5, :degree :i}
+        :C :major '({:pitch :C, :name :maj, :degree :I}
+                    {:pitch :C, :name :maj7, :degree :I}
+                    {:pitch :C, :name :maj9, :degree :I}
+                    {:pitch :C, :name :maj13, :degree :I}
                     {:pitch :C, :name :6, :degree :I}
-                    {:pitch :C, :name :maj, :degree :I}
+                    {:pitch :C, :name :6add9, :degree :I}
                     {:pitch :C, :name :sus4, :degree :i}
                     {:pitch :C, :name :sus2, :degree :i}
-                    {:pitch :C, :name :M7sus4, :degree :i}
+                    {:pitch :C, :name :5, :degree :i}
                     {:pitch :C, :name :sus24, :degree :i}
-                    {:pitch :C, :name :maj7, :degree :I}
-                    {:pitch :D, :name :5, :degree :ii}
-                    {:pitch :D, :name :sus4, :degree :ii}
-                    {:pitch :D, :name :madd4, :degree :ii}
+                    {:pitch :C, :name :M7add13, :degree :I}
+                    {:pitch :C, :name :Madd9, :degree :I}
+                    {:pitch :C, :name :M7sus4, :degree :i}
+                    {:pitch :C, :name :M9sus4, :degree :i}
+                    {:pitch :D, :name :m, :degree :ii}
                     {:pitch :D, :name :m7, :degree :ii}
                     {:pitch :D, :name :m6, :degree :ii}
+                    {:pitch :D, :name :m9, :degree :ii}
+                    {:pitch :D, :name :m11, :degree :ii}
+                    {:pitch :D, :name :m13, :degree :ii}
+                    {:pitch :D, :name :sus4, :degree :ii}
                     {:pitch :D, :name :sus2, :degree :ii}
                     {:pitch :D, :name :7sus4, :degree :ii}
-                    {:pitch :D, :name :m, :degree :ii}
+                    {:pitch :D, :name :11, :degree :ii}
+                    {:pitch :D, :name :5, :degree :ii}
                     {:pitch :D, :name :sus24, :degree :ii}
-                    {:pitch :E, :name :5, :degree :iii}
-                    {:pitch :E, :name :sus4, :degree :iii}
-                    {:pitch :E, :name :madd4, :degree :iii}
-                    {:pitch :E, :name :m7, :degree :iii}
-                    {:pitch :E, :name :m7#5, :degree :iii}
-                    {:pitch :E, :name :7sus4, :degree :iii}
+                    {:pitch :D, :name :m69, :degree :ii}
+                    {:pitch :D, :name :madd4, :degree :ii}
+                    {:pitch :D, :name :m7add11, :degree :ii}
+                    {:pitch :D, :name :madd9, :degree :ii}
+                    {:pitch :D, :name :9sus4, :degree :ii}
+                    {:pitch :D, :name :13sus4, :degree :ii}
+                    {:pitch :D, :name :q, :degree :ii}
                     {:pitch :E, :name :m, :degree :iii}
-                    {:pitch :F, :name :5, :degree :iv}
-                    {:pitch :F, :name :6, :degree :IV}
+                    {:pitch :E, :name :m7, :degree :iii}
+                    {:pitch :E, :name :sus4, :degree :iii}
+                    {:pitch :E, :name :7sus4, :degree :iii}
+                    {:pitch :E, :name :b9sus, :degree :iii}
+                    {:pitch :E, :name :5, :degree :iii}
+                    {:pitch :E, :name :madd4, :degree :iii}
+                    {:pitch :E, :name :m7add11, :degree :iii}
+                    {:pitch :E, :name :m7#5, :degree :iii}
+                    {:pitch :E, :name :mb6b9, :degree :iii}
+                    {:pitch :E, :name :7sus4b9b13, :degree :iii}
+                    {:pitch :E, :name :q, :degree :iii}
+                    {:pitch :E, :name :11b9, :degree :iii}
                     {:pitch :F, :name :maj, :degree :IV}
-                    {:pitch :F, :name :sus2, :degree :iv}
                     {:pitch :F, :name :maj7, :degree :IV}
-                    {:pitch :G, :name :7no5, :degree :V}
-                    {:pitch :G, :name :5, :degree :v}
-                    {:pitch :G, :name :6, :degree :V}
+                    {:pitch :F, :name :maj9, :degree :IV}
+                    {:pitch :F, :name :maj13, :degree :IV}
+                    {:pitch :F, :name :6, :degree :IV}
+                    {:pitch :F, :name :6add9, :degree :IV}
+                    {:pitch :F, :name :maj#4, :degree :IV}
+                    {:pitch :F, :name :sus2, :degree :iv}
+                    {:pitch :F, :name :5, :degree :iv}
+                    {:pitch :F, :name :maj9#11, :degree :IV}
+                    {:pitch :F, :name :M6#11, :degree :IV}
+                    {:pitch :F, :name :M7add13, :degree :IV}
+                    {:pitch :F, :name :69#11, :degree :IV}
+                    {:pitch :F, :name :M13#11, :degree :IV}
+                    {:pitch :F, :name :Madd9, :degree :IV}
                     {:pitch :G, :name :maj, :degree :V}
-                    {:pitch :G, :name :sus4, :degree :v}
+                    {:pitch :G, :name :6, :degree :V}
+                    {:pitch :G, :name :6add9, :degree :V}
                     {:pitch :G, :name :7, :degree :V7}
+                    {:pitch :G, :name :9, :degree :V}
+                    {:pitch :G, :name :13, :degree :V}
+                    {:pitch :G, :name :sus4, :degree :v}
                     {:pitch :G, :name :sus2, :degree :v}
                     {:pitch :G, :name :7sus4, :degree :v}
+                    {:pitch :G, :name :11, :degree :v}
+                    {:pitch :G, :name :5, :degree :v}
                     {:pitch :G, :name :sus24, :degree :v}
-                    {:pitch :A, :name :5, :degree :vi}
-                    {:pitch :A, :name :sus4, :degree :vi}
-                    {:pitch :A, :name :madd4, :degree :vi}
+                    {:pitch :G, :name :7add6, :degree :V}
+                    {:pitch :G, :name :Madd9, :degree :V}
+                    {:pitch :G, :name :7no5, :degree :V}
+                    {:pitch :G, :name :9no5, :degree :V}
+                    {:pitch :G, :name :13no5, :degree :V}
+                    {:pitch :G, :name :9sus4, :degree :v}
+                    {:pitch :G, :name :13sus4, :degree :v}
+                    {:pitch :A, :name :m, :degree :vi}
                     {:pitch :A, :name :m7, :degree :vi}
-                    {:pitch :A, :name :m7#5, :degree :vi}
+                    {:pitch :A, :name :m9, :degree :vi}
+                    {:pitch :A, :name :m11, :degree :vi}
+                    {:pitch :A, :name :sus4, :degree :vi}
                     {:pitch :A, :name :sus2, :degree :vi}
                     {:pitch :A, :name :7sus4, :degree :vi}
-                    {:pitch :A, :name :m, :degree :vi}
+                    {:pitch :A, :name :11, :degree :vi}
+                    {:pitch :A, :name :5, :degree :vi}
                     {:pitch :A, :name :sus24, :degree :vi}
-                    {:pitch :B, :name :m7b5, :degree :vii°}
+                    {:pitch :A, :name :madd4, :degree :vi}
+                    {:pitch :A, :name :m7add11, :degree :vi}
+                    {:pitch :A, :name :madd9, :degree :vi}
+                    {:pitch :A, :name :m7#5, :degree :vi}
+                    {:pitch :A, :name :m9#5, :degree :vi}
+                    {:pitch :A, :name :9sus4, :degree :vi}
+                    {:pitch :A, :name :q, :degree :vi}
                     {:pitch :B, :name :dim, :degree :vii°}
-                    {:pitch :B, :name :m7#5, :degree :vii})
+                    {:pitch :B, :name :m7b5, :degree :vii°}
+                    {:pitch :B, :name :m7#5, :degree :vii}
+                    {:pitch :B, :name :mb6b9, :degree :vii}
+                    {:pitch :B, :name :q, :degree :vii})
 
-        :C :diminished '({:pitch :C, :name :mb6M7, :degree :i}
+        :C :diminished '({:pitch :C, :name :dim, :degree :i°}
                          {:pitch :C, :name :dim7M7, :degree :i°}
-                         {:pitch :C, :name :dim, :degree :i°}
                          {:pitch :C, :name :dimM7, :degree :i°}
-                         {:pitch :D, :name :m7b5, :degree :ii°}
-                         {:pitch :D, :name :5, :degree :ii}
-                         {:pitch :D, :name :dim, :degree :ii°}
+                         {:pitch :C, :name :mb6M7, :degree :i}
+                         {:pitch :D, :name :m, :degree :ii}
                          {:pitch :D, :name :m7, :degree :ii}
                          {:pitch :D, :name :m6, :degree :ii}
-                         {:pitch :D, :name :m, :degree :ii}
-                         {:pitch :Eb, :name :M7#5sus4, :degree :biii+}
+                         {:pitch :D, :name :dim, :degree :ii°}
+                         {:pitch :D, :name :m7b5, :degree :ii°}
+                         {:pitch :D, :name :5, :degree :ii}
                          {:pitch :Eb, :name :m#5, :degree :biii+}
-                         {:pitch :F, :name :7no5, :degree :IV}
-                         {:pitch :F, :name :5, :degree :iv}
-                         {:pitch :F, :name :6, :degree :IV}
+                         {:pitch :Eb, :name :M7#5sus4, :degree :biii+}
+                         {:pitch :Eb, :name :M9#5sus4, :degree :biii+}
                          {:pitch :F, :name :maj, :degree :IV}
+                         {:pitch :F, :name :6, :degree :IV}
+                         {:pitch :F, :name :m, :degree :iv}
                          {:pitch :F, :name :m7, :degree :iv}
                          {:pitch :F, :name :m6, :degree :iv}
                          {:pitch :F, :name :7, :degree :IV7}
-                         {:pitch :F, :name :m, :degree :iv}
-                         {:pitch :Ab, :name :7no5, :degree :bVI}
-                         {:pitch :Ab, :name :5, :degree :bvi}
-                         {:pitch :Ab, :name :6, :degree :bVI}
+                         {:pitch :F, :name :7#11, :degree :IV}
+                         {:pitch :F, :name :7b9, :degree :IV}
+                         {:pitch :F, :name :alt7, :degree :IV}
+                         {:pitch :F, :name :5, :degree :iv}
+                         {:pitch :F, :name :M6#11, :degree :IV}
+                         {:pitch :F, :name :7add6, :degree :IV}
+                         {:pitch :F, :name :7b9#11, :degree :IV}
+                         {:pitch :F, :name :13b9#11, :degree :IV}
+                         {:pitch :F, :name :13b9, :degree :IV}
+                         {:pitch :F, :name :Maddb9, :degree :IV}
+                         {:pitch :F, :name :7no5, :degree :IV}
                          {:pitch :Ab, :name :maj, :degree :bVI}
+                         {:pitch :Ab, :name :6, :degree :bVI}
                          {:pitch :Ab, :name :7, :degree :bVI7}
-                         {:pitch :A, :name :mb6M7, :degree :vi}
+                         {:pitch :Ab, :name :7#11, :degree :bVI}
+                         {:pitch :Ab, :name :7#9, :degree :bVI}
+                         {:pitch :Ab, :name :5, :degree :bvi}
+                         {:pitch :Ab, :name :M6#11, :degree :bVI}
+                         {:pitch :Ab, :name :7add6, :degree :bVI}
+                         {:pitch :Ab, :name :7#9#11, :degree :bVI}
+                         {:pitch :Ab, :name :13#9#11, :degree :bVI}
+                         {:pitch :Ab, :name :13#9, :degree :bVI}
+                         {:pitch :Ab, :name :7no5, :degree :bVI}
                          {:pitch :A, :name :dim, :degree :vi°}
-                         {:pitch :A, :name :dimM7, :degree :vi°}
                          {:pitch :A, :name :dim7, :degree :vi°}
-                         {:pitch :B, :name :m7b5, :degree :vii°}
                          {:pitch :B, :name :dim, :degree :vii°}
-                         {:pitch :B, :name :dim7, :degree :vii°})))
+                         {:pitch :B, :name :dim7, :degree :vii°}
+                         {:pitch :B, :name :m7b5, :degree :vii°})))
     (testing "chord->scales"
       (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (search/chord->scales (algo/->shape pitch chord-name)))))
         :C :maj [{:pitch :C, :name :lydian-dominant-pentatonic, :degree :I}
@@ -240,7 +307,6 @@
                  {:pitch :E, :name :diminished, :degree :bVI}
                  {:pitch :E, :name :spanish-heptatonic, :degree :bVI}
                  {:pitch :E, :name :tizita, :degree :bVI}
-                 {:pitch :Eb, :name :half-whole-diminished, :degree :VI}
                  {:pitch :Db, :name :lydian-#9, :degree :VII}
                  {:pitch :D, :name :dorian, :degree :bVII}
                  {:pitch :D, :name :locrian-major, :degree :bVII}
@@ -252,8 +318,7 @@
                  {:pitch :D, :name :minor, :degree :bVII}
                  {:pitch :D, :name :bebop-minor, :degree :bVII}
                  {:pitch :D, :name :mixolydian-b6, :degree :bVII}
-                 {:pitch :D#, :name :ultralocrian, :degree :bVII}
-                 {:pitch :Db, :name :diminished, :degree :VII}]
+                 {:pitch :D#, :name :ultralocrian, :degree :bVII}]
 
         :Eb :6add9 [{:pitch :Eb, :name :bebop-major, :degree :I}
                     {:pitch :Eb, :name :lydian, :degree :I}
@@ -346,16 +411,6 @@
                     {:pitch :D, :name :phrygian, :degree :bvii}
                     {:pitch :D, :name :minor, :degree :bvii}
                     {:pitch :D, :name :spanish-heptatonic, :degree :bvii}]))
-    (testing "with intervals->chord"
-      (are+ [intervals want] (= want (search/intervals->chord intervals))
-        [] nil
-        [:P1 :M3] nil
-        [:P1 :M3 :P5] :maj
-        [:P1 :m3 :P5] :m))
-    (testing "with intervals->chords"
-      (are+ [intervals want] (= want (search/intervals->chords intervals))
-        [] []
-        [:P1 :m3 :P5 :m7 :P11] [:5 :m7add11 :m7 :m]))
     (testing "with scale->mode"
       (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (search/scale->mode (algo/->shape :C base-scale-name) mode-num)))
         :major 0 :major
