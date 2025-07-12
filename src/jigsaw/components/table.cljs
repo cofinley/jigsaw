@@ -4,18 +4,23 @@
    [jigsaw.spec :as specs]
    ["react" :refer [useEffect useRef]]))
 
-(defn is-draggable-row? [m]
-  (specs/shape-ref? m))
+(defn is-draggable-row? [x]
+  (cond
+    (map? x) (specs/shape-ref? x)
+    (vector? x) (is-draggable-row? (first x))  ; connect-shapes row
+    :else false))
 
 (defn handle-drag-start
   [m e]
-  (let [data-transfer (.-dataTransfer e)
-        drag-data (js/JSON.stringify (clj->js m))]
-    (.setData data-transfer "application/json" drag-data)
-    (set! (.-effectAllowed data-transfer) "copy")
+  (if (vector? m)
+    (handle-drag-start (first m) e)  ; connect-shapes row
+    (let [data-transfer (.-dataTransfer e)
+          drag-data (js/JSON.stringify (clj->js m))]
+      (.setData data-transfer "application/json" drag-data)
+      (set! (.-effectAllowed data-transfer) "copy")
     ;; Add visual feedback classes
-    (-> e .-target .-classList (.add "opacity-50"))
-    (-> e .-target .-classList (.add "cursor-grabbing"))))
+      (-> e .-target .-classList (.add "opacity-50"))
+      (-> e .-target .-classList (.add "cursor-grabbing")))))
 
 (defn handle-drag-end [e]
   (-> e .-target .-classList (.remove "opacity-50"))

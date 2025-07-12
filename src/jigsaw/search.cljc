@@ -178,7 +178,8 @@
            :let [note-seqs-for-comp-shape (->> shapes
                                                (mapcat #(get shape->note-seqs %))
                                                set)]
-           :when (= note-seq-sets note-seqs-for-comp-shape)]
+           :when (or (= (count note-seq-sets) (count note-seqs-for-comp-shape))
+                     (>= (count shapes) 2))]
        [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
                             (map (fn [shape]
                                    {:input (shape->note-seqs shape)

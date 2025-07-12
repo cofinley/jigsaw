@@ -285,22 +285,31 @@
           (.then (fn [instrument]
                    (swap! audio-state assoc-in [:instruments instrument-name] instrument)))))))
 
+(defn play-notes [notes note-offset-ms]
+  (let [instrument-name "acoustic_grand_piano"]
+    (load-instrument! instrument-name)
+    (js/setTimeout
+     (fn []
+       (when-let [instrument (get-in @audio-state [:instruments instrument-name])]
+         (doseq [[i note] (map-indexed vector notes)]
+           (js/setTimeout
+            (fn []
+              (.play instrument (algo/note->midi note)))
+            (* i note-offset-ms)))))
+     100) ; Small delay to ensure instrument is loaded
+    {}))
+
 (re-frame/reg-event-fx
  ::play-shape
  (fn [{:keys [_]} [_ shape]]
-   (let [instrument-name "acoustic_grand_piano"
-         note-offset-ms (if (specs/chord? shape) 30 300)]
-     (load-instrument! instrument-name)
-     (js/setTimeout
-      (fn []
-        (when-let [instrument (get-in @audio-state [:instruments instrument-name])]
-          (doseq [[i note] (map-indexed vector (:notes shape))]
-            (js/setTimeout
-             (fn []
-               (.play instrument (algo/note->midi note)))
-             (* i note-offset-ms)))))
-      100) ; Small delay to ensure instrument is loaded
-     {})))
+   (let [note-offset-ms (if (specs/chord? shape) 30 300)]
+     (play-notes (:notes shape) note-offset-ms))))
+
+(re-frame/reg-event-fx
+ ::play-notes
+ (fn [{:keys [_]} [_ notes]]
+   (let [note-offset-ms 30]
+     (play-notes notes note-offset-ms))))
 
 ;; Drag and drop functionality
 (re-frame/reg-event-db

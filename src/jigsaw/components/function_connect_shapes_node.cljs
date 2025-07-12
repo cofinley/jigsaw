@@ -64,7 +64,7 @@
          [table {:ms (sort-by (comp count second) > @connections)
                  :key-fn (fn [m] ((juxt (comp :pitch first) (comp :name first)) m))
                  :row-render {"Pitch" (comp :pitch first)
-                              "Shape" (comp :name first)
+                              "Name" (comp :name first)
                               "Piano" (fn [[comp-shape _]]
                                         (when (:name comp-shape)
                                           [piano-preview comp-shape]))

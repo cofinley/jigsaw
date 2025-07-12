@@ -15,10 +15,18 @@
            :id id
            :data @data
            :handles [{:type "source" :position "right"}]}
-     [:div {:class "flex flex-col space-y-2"}
-      [:button {:class "px-2 py-1 bg-gray-200 hover:bg-gray-100 cursor-pointer text-black rounded border self-end"
-                :on-click #(re-frame/dispatch [::events/update-node-data id {:notes []}])}
-       "Clear"]
+     [:div {:class "flex flex-col gap-2"}
+      [:div {:class "flex justify-between font-semibold"}
+       [:button
+        {:class "px-2 py-1 bg-gray-200 hover:bg-gray-100 cursor-pointer text-black rounded border cursor-pointer!"
+         :title "Click to play"
+         :on-click (fn [e]
+                     (.stopPropagation e)
+                     (re-frame/dispatch [::events/play-notes (:notes @data)]))}
+        "Play"]
+       [:button {:class "px-2 py-1 bg-gray-200 hover:bg-gray-100 cursor-pointer text-black rounded border"
+                 :on-click #(re-frame/dispatch [::events/update-node-data id {:notes []}])}
+        "Clear"]]
       [:div {:class "nodrag"}
        (let [first-midi 60
              octaves 2
