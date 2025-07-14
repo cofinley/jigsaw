@@ -351,6 +351,51 @@
       (map (comp keyword #(str % "#")) (set (take n "FCGDAEB")))
       (map (comp keyword #(str % "b")) (set (take (Math/abs n) "BEADGCF"))))))
 
+(defn note->abc [n]
+  (let [{:keys [letter octave accidental]} (parts n)
+        abc-accidental (case accidental
+                         "bb" "__"
+                         "b" "_"
+                         "#" "^"
+                         "##" "^^"
+                         "")
+        lowercase? (< 4 octave)
+        commas (if lowercase? 0 (- 4 octave))
+        apostrophes (if lowercase? (- octave 5) 0)]
+    (str
+     abc-accidental
+     ((if lowercase? string/lower-case str) letter)
+     (string/join (take commas (repeat ",")))
+     (string/join (take apostrophes (repeat "'"))))))
+
+(defn shape->abc
+  [shape & {:keys [note-length selected-key]
+            :or {note-length "1/4"}}]
+  {:pre [(specs/shape? shape)]}
+  (let [notes (set (:notes shape))
+        scale? (specs/scale? shape)
+        pitch (:pitch shape)
+        shape-name (:name shape)
+        key-ref (cond
+                  (some? selected-key) selected-key
+                  :else {:pitch :C :name :major})
+        key-shape (->shape (assoc key-ref :note (pitch->note (:pitch key-ref))))
+        key-abc (str (name (:pitch key-shape))
+                     " exp "
+                     (string/join " " (map note->abc (:notes key-shape))))
+        sorted-notes (sort-by note->midi notes)
+        pitches-str (string/join " " (map note->abc sorted-notes))]
+    (string/join "\n"
+                 ["X:1"
+                  (str "K:" key-abc)
+                  (str "L:" note-length)
+                  (string/join " "
+                               [(when-not scale?
+                                  (str "\"" (name pitch) (name shape-name) "\""))
+                                (if scale?
+                                  pitches-str
+                                  (str "[" pitches-str "]"))])])))
+
 (comment
   (take 3 (cycle '(:G :A)))
   (utils/rotate [:G :A :C :F] 3)
