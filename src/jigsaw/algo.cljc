@@ -396,6 +396,49 @@
                                   pitches-str
                                   (str "[" pitches-str "]"))])])))
 
+(defn abc-pitch->note
+  "
+  Convert abc notation pitch to :jigsaw.spec/note format
+  \"C\" :C4
+  \"^C\" :C#4
+  \"^^C\" :C##4
+  \"_D\" :Db4
+  \"__D\" :Dbb4
+  \"c\" :C5
+  \"c'\" :C6
+  \"c''\" :C7
+  \"c'''\" :C8
+  \"C,\" :C3
+  \"C,,\" :C2
+  \"C,,,\" :C1
+  \"C,,,,\" :C0
+  "
+  [abc-pitch]
+  (when abc-pitch
+    (let [pitch-str (str abc-pitch)
+          ;; Parse accidentals (^ for sharp, _ for flat)
+          accidental-count (count (take-while #(or (= % \^) (= % \_)) pitch-str))
+          accidental-char (when (pos? accidental-count) (first pitch-str))
+          accidental-str (case [accidental-char accidental-count]
+                           [\^ 1] "#"
+                           [\^ 2] "##"
+                           [\_ 1] "b"
+                           [\_ 2] "bb"
+                           "")
+          ;; Get the base note letter (after accidentals)
+          note-char (nth pitch-str accidental-count)
+          base-letter (string/upper-case (str note-char))
+          ;; Determine base octave (uppercase = 4, lowercase = 5)
+          base-octave (if (= (string/upper-case note-char) note-char) 4 5)
+          ;; Parse octave modifiers (' raises, , lowers)
+          modifier-part (subs pitch-str (inc accidental-count))
+          octave-offset (- (count (filter #(= % \') modifier-part))
+                           (count (filter #(= % \,) modifier-part)))
+          final-octave (+ base-octave octave-offset)
+          ;; Construct the note keyword
+          note-name (str base-letter accidental-str final-octave)]
+      (keyword note-name))))
+
 (comment
   (take 3 (cycle '(:G :A)))
   (utils/rotate [:G :A :C :F] 3)
