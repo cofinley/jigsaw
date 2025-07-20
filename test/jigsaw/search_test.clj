@@ -435,4 +435,76 @@
                                    {:pitch :F, :name :lydian}
                                    {:pitch :G, :name :mixolydian}
                                    {:pitch :A, :name :minor}
-                                   {:pitch :B, :name :locrian})))))
+                                   {:pitch :B, :name :locrian})))
+    (testing "notes->shapes with bass/inversions"
+      (testing "basic inversions"
+        (are+ [notes expected-pitch expected-name expected-bass]
+              (let [results (search/notes->shapes notes :chord :max-shapes 1)
+                    result (first results)]
+                (and (= expected-pitch (:pitch result))
+                     (= expected-name (:name result))
+                     (= expected-bass (:bass result))))
+          ; Root position; no bass note specified
+          [:C4 :E4 :G4] :C :maj nil
+          ; First inversion
+          [:E4 :G4 :C5] :C :maj :E
+          ; Second inversion
+          [:G4 :C5 :E5] :C :maj :G
+          ; Seventh chord inversions
+          [:B4 :C5 :E5 :G5] :C :maj7 :B))
+      (testing "slash chords"
+        (are+ [notes expected-pitch expected-name expected-bass]
+              (let [results (search/notes->shapes notes :chord :max-shapes 1)
+                    result (first results)]
+                (and (= expected-pitch (:pitch result))
+                     (= expected-name (:name result))
+                     (= expected-bass (:bass result))))
+          [:D4 :C5 :E5 :G5] :C :Madd9 :D  ; could also be C/D
+          [:G4 :F5 :A5 :C6] :F :Madd9 :G))  ; Could also be F/G
+      (testing "incomplete chords in inversion"
+        (are+ [notes expected-pitch expected-name expected-bass]
+              (let [results (search/notes->shapes notes :chord :max-shapes 1)
+                    result (first results)]
+                (and (= expected-pitch (:pitch result))
+                     (= expected-name (:name result))
+                     (= expected-bass (:bass result))))
+          ; Just root and third in first inversion
+          [:E4 :C5] :C :maj :E
+          ; Just third and fifth
+          [:G4 :E5] :C :maj :G))
+      (testing "complex chord inversions"
+        (are+ [notes expected-pitch expected-name expected-bass]
+              (let [results (search/notes->shapes notes :chord :max-shapes 1)
+                    result (first results)]
+                (and (= expected-pitch (:pitch result))
+                     (= expected-name (:name result))
+                     (= expected-bass (:bass result))))
+          ; Dm7 in first inversion
+          [:F4 :A4 :C5 :D5] :D :m7 :F
+          ; G7 in third inversion
+          [:F4 :G4 :B4 :D5] :G :7 :F))))
+  (testing "bass/inversion helper functions"
+    (let [c-maj (algo/->shape :C :maj)   ; C E G
+          c-maj7 (algo/->shape :C :maj7) ; C E G B
+          f-maj (algo/->shape :F :maj)]  ; F A C
+      (testing "bass->inversion"
+        (are+ [chord bass expected] (= expected (search/bass->inversion chord bass))
+          c-maj :C nil   ; root position; not considered an inversion here
+          c-maj :E 1     ; first inversion
+          c-maj :G 2     ; second inversion
+          c-maj7 :B 3    ; third inversion
+          c-maj :D nil   ; not a chord tone
+          f-maj :G nil)) ; not a chord tone
+      (testing "is-inversion?"
+        (are+ [chord bass expected] (= expected (search/inversion? chord bass))
+          c-maj :C false   ; root position; not considered an inversion here
+          c-maj :E true   ; first inversion
+          c-maj :G true   ; second inversion
+          c-maj :D false  ; not a chord tone
+          f-maj :G false)) ; not a chord tone
+      (testing "is-slash-chord?"
+        (are+ [chord bass expected] (= expected (search/slash-chord? chord bass))
+          c-maj :C false  ; root position, not slash
+          c-maj :E false  ; first inversion, not slash
+          c-maj :D true   ; not a chord tone, is slash
+          f-maj :G true))))) ; not a chord tone, is slash
