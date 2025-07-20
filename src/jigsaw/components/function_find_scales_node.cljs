@@ -31,9 +31,9 @@
                       :on-change (fn [e]
                                    (let [degree (-> e .-target .-value)]
                                      (re-frame/dispatch [::events/update-node-data id
-                                                         {:selected-degree (when (not= "" degree) (keyword degree))}])))}
+                                                         {:selected-degree (when (not= "" degree) (js/parseInt degree))}])))}
               (cons [:option {:value ""} "All"]
-                    (for [deg (sort-by utils/parse-int specs/degrees)]
+                    (for [deg (range 1 8)]
                       [:option {:value deg} deg]))]]
             (when @scales
               [table {:ms @scales

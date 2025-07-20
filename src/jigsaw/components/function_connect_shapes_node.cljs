@@ -5,6 +5,7 @@
    [jigsaw.components.output-piano-node :refer [piano-preview]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
+   [jigsaw.search :as search]
    [jigsaw.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
@@ -31,15 +32,28 @@
                             :let [edge-id (str incoming-node-id "->" id)
                                   highlighted? (utils/in? matching-incoming-node-ids incoming-node-id)]]
                         (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {:highlighted? highlighted?}}])))))}
-   [:p (str (name (:pitch found))
-            (name (:name found))
-            " ("
-            (name context)
-            (when-let [overlap (get-in found [:heuristics :overlap])]
-              (str ", "
-                   (int (* 100 overlap))
-                   "%"))
-            ")")]
+   [:p
+    {:title (when-let [bass (:bass found)]
+              (prn found)
+              (if-let [inversion (search/bass->inversion found bass)]
+                (case inversion
+                  1 "1st inversion"
+                  2 "2nd inversion"
+                  3 "3rd inversion"
+                  4 "4th inversion"
+                  "")
+                (str "Slash chord; " (name bass) " not in chord")))}
+    (str (name (:pitch found))
+         (name (:name found))
+         (if-let [bass (:bass found)]
+           (str "/" (name bass)) "")
+         " ("
+         (name context)
+         (when-let [overlap (get-in found [:heuristics :overlap])]
+           (str ", "
+                (int (* 100 overlap))
+                "%"))
+         ")")]
    [piano-preview found :parent-notes (first input)]])
 
 (defn function-connect-shapes-node [{:keys [id]}]

@@ -60,6 +60,24 @@
         degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
     (algo/degree-chord->roman-numeral degree (:name chord))))
 
+(defn- identify-bass-pitch
+  "Identify the bass note (lowest pitch) from a collection of notes"
+  [notes]
+  (when (seq notes)
+    (let [sorted-notes (sort-by algo/note->midi notes)
+          lowest-note (first sorted-notes)
+          bass-pitch (-> lowest-note algo/parts :pitch)]
+      bass-pitch)))
+
+(defn- find-enharomic-equivalent
+  "Find enharmonic patches of a source-pitch among target-pitches, based on chroma"
+  [source-pitch target-pitches]
+  (let [source-chroma (specs/pitches source-pitch)
+        target-chromas->pitches (reduce (fn [m pitch]
+                                          (let [chroma (specs/pitches pitch)]
+                                            (assoc m chroma pitch))) {} target-pitches)]
+    (target-chromas->pitches source-chroma)))
+
 (defn notes->shapes
   "Fuzzy-find any shape from notes and their chromas
    Match on chromas instead of...
@@ -73,18 +91,55 @@
                             max-shapes 10
                             selected-pitch nil}}]
   (let [chromas (map #(-> % algo/parts :pitch specs/pitches) notes)
-        shapes (if (= shape-type :chord) all-chords all-scales)]
+        shapes (if (= shape-type :chord) all-chords all-scales)
+        bass-pitch (identify-bass-pitch notes)]
     (->> shapes
          (into []
                (comp
                 (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
                 (map #(assoc % :heuristics (calculate-heuristics chromas (:chromas %))))
                 (map #(dissoc % :chromas))
+                ; Add bass note for chords if not in root position; try to align it with chord enharmonics if possible
+                (map #(if (and (= shape-type :chord)
+                               bass-pitch
+                               (not= (:pitch %) bass-pitch)  ; bass isn't root
+                               (not= (specs/pitches (:pitch %)) (specs/pitches bass-pitch)))  ; bass isn't root with different enharmonic (e.g. E and Fb)
+                        (assoc % :bass (or (find-enharomic-equivalent bass-pitch (:pitches %)) bass-pitch))
+                        %))
                 (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))))
          (sort-by (comp heuristic :heuristics) >)
          (take max-shapes))))
 
 (def notes->shapes-memo (memoize notes->shapes))
+
+; Helper functions for bass/inversion analysis
+
+(defn bass->inversion
+  "Determine inversion number from bass note and chord.
+   Returns:
+   - 1 for first inversion (bass is third)
+   - 2 for second inversion (bass is fifth)
+   - etc.
+   - nil if bass note is not a chord tone (slash chord)"
+  [chord-ref bass-pitch]
+  (let [chord (algo/->shape chord-ref)
+        chord-pitches (:pitches chord)
+        bass-index (.indexOf chord-pitches bass-pitch)]
+    (when (> bass-index 0)
+      bass-index)))
+
+(defn inversion?
+  "Check if the chord with bass note represents an inversion
+   (bass note is a chord tone)"
+  [chord bass-pitch]
+  (some? (bass->inversion chord bass-pitch)))
+
+(defn slash-chord?
+  "Check if the chord with bass note represents a slash chord
+   (bass note is NOT a chord tone)"
+  [chord bass-pitch]
+  (and (not= (:pitch chord) bass-pitch)
+       (not (inversion? chord bass-pitch))))
 
 ; Find chords from scales (via matching pitches)
 
@@ -112,7 +167,7 @@
              (for [scale all-scales
                    :when (set/subset? pitch-set (set (:pitches scale)))
                    :let [chord-degree (contextualize chord scale)]
-                   :when (if (some? degree) (= degree chord-degree) true)]
+                   :when (if (some? degree) (= degree (algo/roman-numeral->int (name chord-degree))) true)]
                {:pitch (:pitch scale)
                 :name (:name scale)
                 :degree chord-degree}))))
@@ -159,7 +214,7 @@
   (let [note-seq-sets (set note-seqs)
         note-seq->shapes (reduce (fn [m note-seq]
                                    (assoc m note-seq
-                                          (set (map #(select-keys % [:pitch :name :heuristics])
+                                          (set (map #(select-keys % [:pitch :name :heuristics :bass])
                                                     (notes->shapes note-seq input-shape-type :max-shapes max-shapes)))))
                                  {}
                                  note-seqs)

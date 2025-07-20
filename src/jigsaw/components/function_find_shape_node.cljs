@@ -65,7 +65,22 @@
                       :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (int (-> % .-target .-value))}])}]]
             (when @resolved-shapes
               [table {:ms @resolved-shapes
-                      :row-render {(if (= selected-shape-type :chord) "Root" "Tonic") :pitch
+                      :row-render {(if (= selected-shape-type :chord) "Root" "Tonic")
+                                   (fn [shape]
+                                     (let [pitch (:pitch shape)
+                                           bass (:bass shape)]
+                                       (if (and (= selected-shape-type :chord) bass)
+                                         [:span
+                                          {:title (if-let [inversion (search/bass->inversion shape bass)]
+                                                    (case inversion
+                                                      1 "1st inversion"
+                                                      2 "2nd inversion"
+                                                      3 "3rd inversion"
+                                                      4 "4th inversion"
+                                                      "")
+                                                    (str "Slash chord; " (name bass) " not in chord"))}
+                                          (str (name pitch) "/" (name bass))]
+                                         [:span (name (:pitch shape))])))
                                    "Name" :name
                                    "Overlap" #(str (int (* 100 (get-in % [:heuristics :overlap]))) "%")
                                    "Piano" (fn [shape]

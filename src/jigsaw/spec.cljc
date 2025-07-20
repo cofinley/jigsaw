@@ -374,19 +374,6 @@
 ;;   Can be named as dominant, subdominant, etc.
 ;;   Can be arabic (5, 6), roman numerals (V, VI)
 ;;   Can be flattened/sharpened (e.g. a mode formula relative to the base scale), but minor/major/aug/dim not applicable, that's for chords ('quality'), the degree is just the relative pitch
-(def degrees
-  #{:1
-    :b2 :2 :#2
-    :b3 :3 :#3
-    :b4 :4 :#4
-    :b5 :5 :#5
-    :b6 :6 :#6
-    :b7 :7 :#7
-    :b8 :8 :#8
-    :b9 :9 :#9
-    :b10 :10 :#10
-    :b11 :11 :#11
-    :b12 :12 :#12})
 
 ; Roman numeral degree with chord quality
 (def chord-degree-pattern #"[#b]?[ivIV]+[+°7]?")
@@ -409,8 +396,11 @@
 (defn shape-ref? [x] (s/valid? ::shape-ref x))
 (defn shape? [x] (s/valid? ::shape x))
 
+(s/def ::bass ::pitch)
+
 (s/def ::chord (s/and ::shape
-                      #(contains? chords (:name %))))
+                      #(contains? chords (:name %))
+                      (s/keys :opt-un [::bass])))
 
 (s/def ::scale (s/and ::shape
                       #(contains? scales (:name %))))
