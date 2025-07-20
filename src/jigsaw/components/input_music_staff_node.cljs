@@ -11,18 +11,21 @@
    [jigsaw.components.select :refer [select]]
    ["abcjs" :as abcjs]))
 
-(defn key-signature-options []
-  (for [pitch specs/simple-pitch-keys
-        key-type [:major :minor]]
-    {:pitch pitch
-     :name key-type
-     :display-name (str (name pitch) " " (name key-type))}))
+(def SCALE 2)
+(def mouse-height->note
+  {0 :G5 1 :F5 2 :E5 3 :D5 4 :C5
+   5 :B4 6 :A4 7 :G4 8 :F4 9 :E4 10 :D4 11 :C4
+   12 :B3 13 :A3 14 :G3 15 :F3 16 :E3 17 :D3 18 :C3
+   19 :B2 20 :A2 21 :G2 22 :F2})
 
-(defn key-signature [dom-id key-ref]
-  (let [key-shape (algo/->shape (assoc key-ref :note (algo/pitch->note (:pitch key-ref))))
-        key-abc (str (name (:pitch key-shape))
-                     " exp "
-                     (string/join " " (map algo/note->abc (:notes key-shape))))
+(def abc-options #js {:staffwidth 300
+                      :lineThickness 0.1
+                      :scale SCALE
+                      :jazzchords true
+                      :add_classes true})
+
+(defn- key-signature-impl [dom-id key-ref]
+  (let [key-abc (algo/key-signature->abc key-ref)
         syntax (string/join "\n"
                             ["X:1"
                              (str "K:" key-abc)
@@ -31,34 +34,71 @@
     (.renderAbc abcjs dom-id syntax #js {:staffwidth 100
                                          :lineThickness 0.1})))
 
-(defn key-signature-preview [key-ref]
+(defn key-signature [key-ref]
   (let [dom-id (str "key-sig-preview-" (random-uuid))]
     (r/create-class
      {:display-name "key-signature-preview"
       :component-did-mount
       (fn [_]
-        (key-signature dom-id key-ref))
+        (key-signature-impl dom-id key-ref))
       :component-did-update
       (fn [this _ _ _]
         (let [key-ref (second (r/argv this))]
-          (key-signature dom-id key-ref)))
+          (key-signature-impl dom-id key-ref)))
       :reagent-render
       (fn []
         [:div {:id dom-id
                :class "inline-block"}])})))
 
-(defn staff [dom-id data]
-  (let [key-sig (or (:key-signature data) {:pitch :C :name :major})
+(defn key-signature-options []
+  (for [pitch specs/simple-pitch-keys
+        key-type [:major :minor]]
+    {:pitch pitch
+     :name key-type
+     :display-name (str (name pitch) " " (name key-type))}))
+
+(defn key-signature-dropdown [current-key-sig on-change]
+  (let [show-dropdown (r/atom false)]
+    (fn [current-key-sig on-change]
+      [:div {:class "relative"}
+       ;; Current selection button
+       [:button {:class "flex items-center space-x-2 px-3 py-2 border-2 border-neutral-400 rounded-md nodrag min-w-48"
+                 :on-click (fn [e]
+                             (.preventDefault e)
+                             (.stopPropagation e)
+                             (swap! show-dropdown not))}
+        [:span {:class "flex-1 text-left"} (:display-name current-key-sig)]
+        [:div {:class "flex items-center space-x-2"}
+         [key-signature current-key-sig]
+         [:span {:class "text-gray-500"} (if @show-dropdown "▲" "▼")]]]
+
+       ;; Dropdown content
+       (when @show-dropdown
+         [:div {:class "nowheel absolute top-full left-0 mt-1 w-80 max-h-96 overflow-y-auto bg-neutral-900 border-2 border-neutral-400 rounded-md shadow-lg z-50 nodrag"}
+          (for [option (key-signature-options)]
+            [:div {:key (str (:pitch option) "|" (:name option))
+                   :class (str "flex items-center justify-between px-3 py-2 cursor-pointer border-b border-gray-200 last:border-b-0 "
+                               (if (and (= (:pitch current-key-sig) (:pitch option))
+                                        (= (:name current-key-sig) (:name option)))
+                                 "bg-indigo-500 hover:bg-indigo-400"
+                                 "hover:bg-neutral-800"))
+                   :on-click (fn [e]
+                               (.preventDefault e)
+                               (.stopPropagation e)
+                               (on-change option)
+                               (reset! show-dropdown false))}
+             [:span {:class "font-medium flex-1"} (:display-name option)]
+             [key-signature option]])])])))
+
+(defn staff-impl [dom-id data]
+  (let [key-ref (or (:key-signature data) {:pitch :C :name :major})
         notes (or (:notes data) #{})
         hover-note-val (get-in data [:hover-state :note])
         ;; Include hover note in display if it exists and is not already in notes
         all-notes (if (and hover-note-val (not (contains? notes hover-note-val)))
                     (conj notes hover-note-val)
                     notes)
-        key-shape (algo/->shape (assoc key-sig :note (algo/pitch->note (:pitch key-sig))))
-        key-abc (str (name (:pitch key-shape))
-                     " exp "
-                     (string/join " " (map algo/note->abc (:notes key-shape))))
+        key-abc (algo/key-signature->abc key-ref)
         sorted-notes (sort-by algo/note->midi all-notes)
         ;; Separate notes into treble (C4 and above) and bass (below C4)
         treble-notes (filter #(>= (algo/note->midi %) (algo/note->midi :C4)) sorted-notes)
@@ -69,12 +109,12 @@
                      (if (= display-mode :chord)
                        (str "[" (string/join "" (map algo/note->abc treble-notes)) "]")
                        (string/join " " (map algo/note->abc treble-notes)))
-                     "z")
+                     "yyyy")
         bass-abc (if (seq bass-notes)
                    (if (= display-mode :chord)
                      (str "[" (string/join "" (map algo/note->abc bass-notes)) "]")
                      (string/join " " (map algo/note->abc bass-notes)))
-                   "z")
+                   "yyyy")
         syntax (string/join "\n"
                             ["X:1"
                              (str "K:" key-abc)
@@ -84,9 +124,11 @@
                              "V:bass clef=bass"
                              (str "[V:treble] " treble-abc)
                              (str "[V:bass] " bass-abc)])
-        rendering (.renderAbc abcjs dom-id syntax #js {:staffwidth 1
-                                                       :lineThickness 0.1
-                                                       :add_classes true})]
+        rendering (.renderAbc abcjs dom-id syntax abc-options)]
+
+    (when-let [svg (.querySelector (.getElementById js/document dom-id) "svg")]
+      (when-let [g (.querySelector svg ".abcjs-staff-wrapper")]
+        (.setAttribute svg "height" (+ 20 (-> g .getBoundingClientRect .-height)))))
     ;; Apply hover styling after rendering
     (when hover-note-val
       (js/setTimeout
@@ -119,17 +161,32 @@
                      (.setAttribute note-elem "fill" "lightgreen"))))))))
        0))))
 
-(defn staff-component [id data on-staff-click on-staff-clear]
+(defn mouse-event->note [e]
+  (when-let [svg (.querySelector (.-currentTarget e) "svg")]
+    (let [svg-rect (.getBoundingClientRect svg)
+          click-y (- (.-clientY e) (.-top svg-rect))
+          ;; Use SVG coordinate system - find staff lines with abcjs classes
+          staff-elements (.querySelectorAll svg ".abcjs-staff")
+          ;; Calculate relative position to determine note
+          note (when (> (.-length staff-elements) 0)
+                 (let [svg-height (.-height svg-rect)
+                       grid-size (/ svg-height (count (keys mouse-height->note)) SCALE) ; 23 note positions across staff height
+                       grid-position (Math/round (/ click-y grid-size))]
+                   ;; TODO: use existing key to transpose the final note
+                   (get mouse-height->note grid-position)))]
+      note)))
+
+(defn staff [id data on-staff-click on-staff-clear]
   (let [dom-id (str "staff-" (random-uuid))]
     (r/create-class
      {:display-name "staff-component"
       :component-did-mount
       (fn [_]
-        (staff dom-id data))
+        (staff-impl dom-id data))
       :component-did-update
       (fn [this _ _ _]
         (let [new-data (nth (r/argv this) 2)]
-          (staff dom-id new-data)))
+          (staff-impl dom-id new-data)))
       :reagent-render
       (fn [_ new-data]
         [:div {:class "flex flex-col items-center space-y-2 nodrag"}
@@ -137,46 +194,14 @@
                 :style {:cursor "pointer"}
                 :on-click
                 (fn [e]
-                  ;; Find the SVG element created by abcjs
-                  (when-let [svg (.querySelector (.-currentTarget e) "svg")]
-                    (let [svg-rect (.getBoundingClientRect svg)
-                          click-y (- (.-clientY e) (.-top svg-rect))
-                          ;; Use SVG coordinate system - find staff lines with abcjs classes
-                          staff-elements (.querySelectorAll svg ".abcjs-staff")
-                          ;; Calculate relative position to determine note
-                          note (when (> (.-length staff-elements) 0)
-                                 ;; Simple grid approach - divide staff area into note positions
-                                 (let [svg-height (.-height svg-rect)
-                                       grid-size (/ svg-height 20) ; 20 note positions across staff height
-                                       grid-position (Math/round (/ click-y grid-size))
-                                       ;; Map grid positions to notes (treble to bass range)
-                                       note-map {0 :G5, 1 :F5, 2 :E5, 3 :D5, 4 :C5, 5 :B4, 6 :A4, 7 :G4, 8 :F4, 9 :E4,
-                                                 10 :D4, 11 :C4, 12 :B3, 13 :A3, 14 :G3, 15 :F3, 16 :E3, 17 :D3, 18 :C3, 19 :B2}]
-                                   (get note-map grid-position)))]
-                      (when note
-                        (on-staff-click note)))))
+                  (when-let [note (mouse-event->note e)]
+                    (on-staff-click note)))
                 :on-mouse-move
                 (fn [e]
-                  ;; Find the SVG element created by abcjs
-                  (when-let [svg (.querySelector (.-currentTarget e) "svg")]
-                    (let [svg-rect (.getBoundingClientRect svg)
-                          mouse-y (- (.-clientY e) (.-top svg-rect))
-                          ;; Use SVG coordinate system - find staff lines with abcjs classes
-                          staff-elements (.querySelectorAll svg ".abcjs-staff")
-                          ;; Calculate relative position to determine note
-                          note (when (> (.-length staff-elements) 0)
-                                 ;; Simple grid approach - divide staff area into note positions
-                                 (let [svg-height (.-height svg-rect)
-                                       grid-size (/ svg-height 20) ; 20 note positions across staff height
-                                       grid-position (Math/round (/ mouse-y grid-size))
-                                       ;; Map grid positions to notes (treble to bass range)
-                                       note-map {0 :G5, 1 :F5, 2 :E5, 3 :D5, 4 :C5, 5 :B4, 6 :A4, 7 :G4, 8 :F4, 9 :E4,
-                                                 10 :D4, 11 :C4, 12 :B3, 13 :A3, 14 :G3, 15 :F3, 16 :E3, 17 :D3, 18 :C3, 19 :B2}]
-                                   (get note-map grid-position)))]
-                      (when note
-                        (let [notes (or (:notes new-data) #{})
-                              exists? (contains? notes note)]
-                          (re-frame/dispatch [::events/update-node-data id {:hover-state {:note note :exists? exists?}}]))))))
+                  (when-let [note (mouse-event->note e)]
+                    (let [notes (or (:notes new-data) #{})
+                          exists? (contains? notes note)]
+                      (re-frame/dispatch [::events/update-node-data id {:hover-state {:note note :exists? exists?}}]))))
                 :on-mouse-leave
                 (fn [_]
                   (re-frame/dispatch [::events/update-node-data id {:hover-state {:note nil :exists? false}}]))}]
@@ -187,28 +212,21 @@
 (defn input-music-staff-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])]
     (fn [{:keys [id]}]
-      [node {:title "Music Staff Input"
+      [node {:title "Music Staff"
              :id id
              :data @data
              :handles [{:type "source" :position "right"}]}
-       [:div {:class "flex flex-col space-y-4 nodrag"}
+       [:div {:class "flex flex-col space-y-4 nodrag text-xl"}
         ;; Key signature dropdown
         [:div {:class "flex items-center space-x-2"}
          [:label {:class "font-semibold"} "Key Signature:"]
-         [select {:value (str (name (get-in @data [:key-signature :pitch] :C))
-                              "|"
-                              (name (get-in @data [:key-signature :name] :major)))
-                  :on-change (fn [e]
-                               (let [value (-> e .-target .-value)
-                                     [pitch-str name-str] (string/split value "|")
-                                     key-sig {:pitch (keyword pitch-str)
-                                              :name (keyword name-str)}]
-                                 (re-frame/dispatch [::events/update-node-data id {:key-signature key-sig}])))}
-          (for [option (key-signature-options)]
-            [:option {:value (str (name (:pitch option)) "|" (name (:name option)))
-                      :key (str (name (:pitch option)) "|" (name (:name option)))}
-             (:display-name option)])]
-         [key-signature-preview (or (:key-signature @data) {:pitch :C :name :major})]]
+         [key-signature-dropdown
+          (let [current-key (or (:key-signature @data) {:pitch :C :name :major})]
+            (assoc current-key :display-name (str (name (:pitch current-key)) " " (name (:name current-key)))))
+          (fn [option]
+            (let [key-sig {:pitch (:pitch option)
+                           :name (:name option)}]
+              (re-frame/dispatch [::events/update-node-data id {:key-signature key-sig}])))]]
 
         ;; Display mode toggle
         [:div {:class "flex items-center space-x-2"}
@@ -221,7 +239,7 @@
            [:option {:value "chord"} "Chord (stacked)"]]]]
 
         ;; Staff component
-        [staff-component id @data
+        [staff id @data
          (fn [note]
            (let [current-notes (or (:notes @data) #{})
                  new-notes (if (contains? current-notes note)

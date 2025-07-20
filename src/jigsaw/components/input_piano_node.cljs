@@ -16,7 +16,7 @@
            :data @data
            :handles [{:type "source" :position "right"}]}
      [:div {:class "flex flex-col gap-2"}
-      [:div {:class "flex justify-between font-semibold"}
+      [:div {:class "flex justify-between font-semibold text-xl"}
        [:button
         {:class "px-2 py-1 bg-gray-200 hover:bg-gray-100 cursor-pointer text-black rounded border cursor-pointer!"
          :title "Click to play"

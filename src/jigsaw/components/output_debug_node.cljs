@@ -4,5 +4,5 @@
    [reagent.core :as r]))
 
 (defn output-debug-view [props]
-  [:pre (r/merge-props {:class "text-left"} (dissoc props :data))
+  [:pre (r/merge-props {:class "text-left text-xl"} (dissoc props :data))
    (with-out-str (pprint/pprint (:data props)))])
