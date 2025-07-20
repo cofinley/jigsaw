@@ -33,6 +33,7 @@
    :input-chord [:function-chord-scales :function-find-shape]
    :input-scale [:function-scale-chords :function-find-shape]
    :input-piano [:function-find-shape]
+   :input-music-staff [:function-find-shape]
    :function-chord-scales [:function-scale-chords :function-find-shape]
    :function-scale-chords [:function-chord-scales :function-find-shape]
    :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape]

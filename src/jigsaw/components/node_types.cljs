@@ -6,7 +6,8 @@
    [jigsaw.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
    [jigsaw.components.function-fit-shape-node :refer [function-fit-shape-node]]
    [jigsaw.components.input-piano-node :refer [input-piano-node]]
-   [jigsaw.components.input-shape-node :refer [input-shape-node]]))
+   [jigsaw.components.input-shape-node :refer [input-shape-node]]
+   [jigsaw.components.input-music-staff-node :refer [input-music-staff-node]]))
 
 (def node-categories
   {:input "Input"
@@ -25,6 +26,10 @@
     :category :input
     :label "Input Scale"
     :component input-shape-node}
+   {:type :input-music-staff
+    :category :input
+    :label "Input Music Staff"
+    :component input-music-staff-node}
    {:type :function-scale-chords
     :category :function
     :label "Find Chords (from scale)"
