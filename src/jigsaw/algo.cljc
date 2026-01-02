@@ -234,6 +234,7 @@
                             (->shape (or (:note x) (:pitch x)) (:name x)))))
   ([x shape-name]
    ; {:pre [(specs/pitch-or-note? x)]}
+   ; TODO: if :bass provided, reorder pitches and include lower note?
    (let [{:keys [pitch note]} (parts x)
          shape (get specs/name->shape shape-name)
          intervals (:intervals shape)
@@ -327,15 +328,6 @@
         (utils/in? intervals :d5) "°"
         (= :7 chord-name) "7"
         :else "")))))
-
-;; TODO
-;;  - Chord progressions/cadences (i.e. shape of shapes)
-;;  - Preview scales on top of chord (progression)
-;;    - With different licks/melody rhythm patterns
-;;  - Key signature, proper accidentals on music staff
-;;  - slash chords
-;;  - voicings/inversions/closest voicing
-;;  - factor in context more
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap
@@ -495,6 +487,15 @@
                       :E# "^e"
                       :B# "^B")]
     (string/join " " (map pitch->abc accidental-pitches))))
+
+;; TODO
+;;  - Chord progressions/cadences from scales (i.e. shape of shapes)
+;;  - Preview scales on top of chord (progression)
+;;    - With different licks/melody rhythm patterns
+;;  - Key signature, proper accidentals on music staff
+;;  - factor in context more
+;;  - highlight overlapping nodes
+;;  - mood identification, scale and progression, add colors
 
 (comment
   (take 3 (cycle '(:G :A)))

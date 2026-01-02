@@ -34,7 +34,6 @@
                         (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {:highlighted? highlighted?}}])))))}
    [:p
     {:title (when-let [bass (:bass found)]
-              (prn found)
               (if-let [inversion (search/bass->inversion found bass)]
                 (case inversion
                   1 "1st inversion"
