@@ -7,13 +7,13 @@
    [jigsaw.spec :as specs]
    [jigsaw.utils :as utils]))
 
-; Based on chroma
+; Based on PCI
 (defn- resolve-all-shapes [shape-type]
   (for [pitch specs/simple-pitch-keys
         shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))]
     (let [shape (algo/->shape {:note (algo/pitch->note pitch) :name shape-name})
-          chromas (map specs/pitches (:pitches shape))]
-      (assoc shape :chromas chromas))))
+          pcis (map specs/pitches (:pitches shape))]
+      (assoc shape :pcis pcis))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -70,35 +70,35 @@
       bass-pitch)))
 
 (defn- find-enharomic-equivalent
-  "Find enharmonic patches of a source-pitch among target-pitches, based on chroma"
+  "Find enharmonic patches of a source-pitch among target-pitches, based on PCI"
   [source-pitch target-pitches]
-  (let [source-chroma (specs/pitches source-pitch)
-        target-chromas->pitches (reduce (fn [m pitch]
-                                          (let [chroma (specs/pitches pitch)]
-                                            (assoc m chroma pitch))) {} target-pitches)]
-    (target-chromas->pitches source-chroma)))
+  (let [source-pci (specs/pitches source-pitch)
+        target-pcis->pitches (reduce (fn [m pitch]
+                                       (let [pci (specs/pitches pitch)]
+                                         (assoc m pci pitch))) {} target-pitches)]
+    (target-pcis->pitches source-pci)))
 
 (defn notes->shapes
-  "Fuzzy-find any shape from notes and their chromas
-   Match on chromas instead of...
-    - pitches because chromas capture enharmonic equivalents
+  "Fuzzy-find any shape from notes and their PCIs
+   Match on PCIs instead of...
+    - pitches because PCIs capture enharmonic equivalents
        - Best for input notes, not input chord/scales
-    - intervals because chromas account for missing notes better
+    - intervals because PCIs account for missing notes better
        - Intervals would have to account for all possible intervals just in case the root isn't played
          - i.e. is it really :P1?"
   [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
                        :or {heuristic :overlap
                             max-shapes 10
                             selected-pitch nil}}]
-  (let [chromas (map #(-> % algo/parts :pitch specs/pitches) notes)
+  (let [pcis (map #(-> % algo/parts :pci) notes)
         shapes (if (= shape-type :chord) all-chords all-scales)
         bass-pitch (identify-bass-pitch notes)]
     (->> shapes
          (into []
                (comp
                 (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
-                (map #(assoc % :heuristics (calculate-heuristics chromas (:chromas %))))
-                (map #(dissoc % :chromas))
+                (map #(assoc % :heuristics (calculate-heuristics pcis (:pcis %))))
+                (map #(dissoc % :pcis))
                 ; Add bass note for chords if not in root position; try to align it with chord enharmonics if possible
                 (map #(if (and (= shape-type :chord)
                                bass-pitch
@@ -260,7 +260,7 @@
    :post [(specs/shape-ref? %)]}
   (let [pitches (utils/rotate (:pitches scale) n)
         rotated-intervals (rotate-intervals (:intervals scale) n)]
-    (when-let [new-scale-name (get specs/intervals->scales rotated-intervals)]
+    (when-let [new-scale-name (specs/intervals->scales rotated-intervals)]
       {:pitch (first pitches)
        :name new-scale-name})))
 
@@ -277,7 +277,7 @@
   Addresses extra shapes one doesn't know what to do with or how they fit
   I.e. target-shape of Cmajor and candidate-notes of Cm notes => [Cmaj, ...]
 
-  Cmajor (scale, target shape) pitches and chromas
+  Cmajor (scale, target shape) pitches and PCIs
   C D E F G A B
   0 2 4 5 7 9 11
 
@@ -285,7 +285,7 @@
   C4 Eb4 G4
   0   3  7
 
-  Intersection of chromas: #{0 7}
+  Intersection of PCIs: #{0 7}
 
   Disjoint #{3}
   Nearest #{2 4}
@@ -298,34 +298,34 @@
   (let [comp-shape-type (if (specs/chord? target-shape) :scale :chord)
         shapes (if (= :chord comp-shape-type) all-chords all-scales)
         target-pitches (:pitches target-shape)
-        target-chromas (map specs/pitches target-pitches)
-        ; target-chromas->pitches (zipmap target-chromas target-pitches)
-        target-set (set target-chromas)
+        target-pcis (map specs/pitches target-pitches)
+        ; target-pcis->pitches (zipmap target-pcis target-pitches)
+        target-set (set target-pcis)
         candidate-set (set (map #(mod (algo/note->midi %) 12) candidate-notes))
         ; intersection (set/intersection candidate-set target-set)
         difference-set (set/difference candidate-set target-set)
-        chroma->replacements (into {}
-                                   (for [diff-chroma difference-set
-                                         :let [closest-offset (first (sort (map #(Math/abs (- diff-chroma %)) target-set)))
-                                               nearest (set (filter (fn [chroma]
-                                                                      (= (Math/abs (- diff-chroma chroma)) closest-offset))
-                                                                    target-set))]]
-                                     [diff-chroma nearest]))
+        pci->replacements (into {}
+                                (for [diff-pci difference-set
+                                      :let [closest-offset (first (sort (map #(Math/abs (- diff-pci %)) target-set)))
+                                            nearest (set (filter (fn [pci]
+                                                                   (= (Math/abs (- diff-pci pci)) closest-offset))
+                                                                 target-set))]]
+                                  [diff-pci nearest]))
         combinations (apply utils/cartesian-product (map #(if (set? %)
                                                             (seq %)
                                                             (list %))
-                                                         (replace chroma->replacements candidate-set)))]
+                                                         (replace pci->replacements candidate-set)))]
     (utils/distinct-by
      (juxt :pitch :name)
      (flatten (for [combination combinations
                     :let [new-set (set combination)]]
                 (->> shapes
                      (filter (fn [shape]
-                               (let [shape-chroma-set (set (:chromas shape))
-                                     smaller (if (< (count shape-chroma-set) (count new-set)) shape-chroma-set new-set)]
-                                 (= (set/intersection shape-chroma-set new-set) smaller))))
-                     (map #(assoc % :heuristics (calculate-heuristics new-set (:chromas %))))
-                     (sort-by (juxt #(Math/abs (- (count (:chromas %)) (count new-set)))
+                               (let [shape-pci-set (set (:pcis shape))
+                                     smaller (if (< (count shape-pci-set) (count new-set)) shape-pci-set new-set)]
+                                 (= (set/intersection shape-pci-set new-set) smaller))))
+                     (map #(assoc % :heuristics (calculate-heuristics new-set (:pcis %))))
+                     (sort-by (juxt #(Math/abs (- (count (:pcis %)) (count new-set)))
                                     #(- (get-in % [:heuristics :overlap]))))
                      (take max-shapes)))))))
 

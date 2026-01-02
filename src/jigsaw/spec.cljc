@@ -2,28 +2,33 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]))
 
-;; Chroma: semitones cycling in one octave, where :C is 0, :C# is 1, :Db is 1, :B is 11, and B# is 0
-(s/def ::chroma (s/and int? #(<= 0 % 11)))
+;; Pitch class index (PCI): semitones cycling in one octave, where :C is 0, :C# is 1, :Db is 1, :B is 11, and B# is 0
+(s/def ::pci (s/and int? #(<= 0 % 11)))
 
 ;; Semitone: 0, 1, .., 21 (21 == thirteenth)
 (s/def ::semitones (s/and int? #(<= 0 % 21)))
 
-(def letters->chroma {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11})
-;; Pitch (class): C, C#, Db, etc.
+(def letters->pci {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11})
+
+;; Pitch: C, C#, Db, etc.
 ;;   Has different enharmonic representations (e.g. C#, Db) depending on preference (and relation to tonic, if in a scale, e.g. Gbb)
-;;   Maps to absolute-do (AKA abdo, i.e. starting at C or "do" in solfege) integer 
+;;   Maps to absolute/fixed do (AKA abdo, i.e. starting at C or "do" in solfege) integer 
+;;      https://en.wikipedia.org/wiki/Solf%C3%A8ge#Chromatic_variants
 (def pitches
   (reduce-kv
-   (fn [m letter chroma]
+   (fn [m letter pci]
      (assoc
       m
-      (keyword (str letter "bb")) (mod (- chroma 2) 12)   ; Double-flat
-      (keyword (str letter "b")) (mod (- chroma 1) 12)    ; Flat
-      (keyword (str letter)) chroma                       ; Natural
-      (keyword (str letter "#")) (mod (+ chroma 1) 12)    ; Sharp
-      (keyword (str letter "##")) (mod (+ chroma 2) 12))) ; Double-sharp
+      (keyword (str letter "bb")) (mod (- pci 2) 12)   ; Double-flat
+      (keyword (str letter "b")) (mod (- pci 1) 12)    ; Flat
+      (keyword (str letter)) pci                       ; Natural
+      (keyword (str letter "#")) (mod (+ pci 1) 12)    ; Sharp
+      (keyword (str letter "##")) (mod (+ pci 2) 12))) ; Double-sharp
    {}
-   letters->chroma))
+   letters->pci))
+
+(comment
+  (pitches :D))
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
@@ -34,10 +39,10 @@
                 (not (string/includes? (name %) "##")))
           (keys (sort-by val < pitches))))
 
-(def chroma->pitches
-  (reduce-kv (fn [m pitch chroma] (update m chroma conj pitch)) {} pitches))
+(def pci->pitches
+  (reduce-kv (fn [m pitch pci] (update m pci conj pitch)) {} pitches))
 
-(def chroma->default-pitch
+(def pci->default-pitch
   {0 :C
    1 :C#
    2 :D

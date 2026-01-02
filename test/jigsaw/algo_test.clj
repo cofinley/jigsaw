@@ -2,24 +2,23 @@
   (:require
    [clojure.test :refer [deftest testing]]
    [jigsaw.test-utils :refer [are+]]
-   [jigsaw.algo :as algo]
-   [jigsaw.spec :as specs]))
+   [jigsaw.algo :as algo]))
 
 (deftest algo-test
   (testing "Algo"
     (testing "parts"
       (testing "starting from a pitch"
         (are+ [p m] (= m (algo/parts p))
-          :C   {:pitch :C   :letter \C :accidental ""}
-          :C#  {:pitch :C#  :letter \C :accidental "#"}
-          :C## {:pitch :C## :letter \C :accidental "##"}
-          :Dbb {:pitch :Dbb :letter \D :accidental "bb"}))
+          :C   {:pitch :C   :letter \C :accidental "" :pci 0}
+          :C#  {:pitch :C#  :letter \C :accidental "#" :pci 1}
+          :C## {:pitch :C## :letter \C :accidental "##" :pci 2}
+          :Dbb {:pitch :Dbb :letter \D :accidental "bb" :pci 0}))
       (testing "starting from a note"
         (are+ [n m] (= m (algo/parts n))
-          :C4   {:pitch :C   :letter \C :accidental ""   :octave 4 :note :C4}
-          :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4 :note :C#4}
-          :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4 :note :C##4}
-          :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4 :note :Dbb4})))
+          :C4   {:pitch :C   :letter \C :accidental ""   :octave 4 :note :C4 :pci 0}
+          :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4 :note :C#4 :pci 1}
+          :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4 :note :C##4 :pci 2}
+          :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4 :note :Dbb4 :pci 0})))
     (testing "with fold-notes"
       (are+ [notes want] (= want (algo/fold-notes notes))
         [:C4] [:C4]

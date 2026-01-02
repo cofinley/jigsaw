@@ -8,8 +8,10 @@
 (defn parts
   [x]
   {:pre [(specs/pitch-or-note? x)]}
-  (let [[_ pitch-str letter-str accidental-str octave-str] (re-find specs/pitch-or-note-pattern (name x))]
-    (-> {:pitch (keyword pitch-str)
+  (let [[_ pitch-str letter-str accidental-str octave-str] (re-find specs/pitch-or-note-pattern (name x))
+        pitch (keyword pitch-str)]
+    (-> {:pitch pitch
+         :pci (specs/pitches pitch)
          :letter (first letter-str)
          :accidental accidental-str}
         (cond->
@@ -42,8 +44,8 @@
 (defn enharmonic
   [p notation]
   {:post [(specs/pitch? %)]}
-  (let [chroma (specs/pitches p)
-        equivalent-pitches (specs/chroma->pitches chroma)]
+  (let [pci (specs/pitches p)
+        equivalent-pitches (specs/pci->pitches pci)]
     (when (pos? (count equivalent-pitches))
       (if (= 1 (count equivalent-pitches))
         p
@@ -59,13 +61,13 @@
   {:pre [(specs/note? note)]
    :post [(specs/midi? %)]}
   (let [{:keys [pitch octave letter]} (parts note)
-        chroma (get specs/pitches pitch)
-        base-chroma (specs/letters->chroma letter)  ; Chroma without accidentals
+        pci (specs/pitches pitch)
+        base-pci (specs/letters->pci letter)  ; PCI without accidentals
         new-octave (cond  ; Adjust for crossing octave boundary
-                     (and (< chroma base-chroma) (not (string/includes? (name pitch) "b"))) (inc octave)  ; E.g. B#4 (0 < 11), only for sharps
-                     (and (> chroma base-chroma) (not (string/includes? (name pitch) "#"))) (dec octave)  ; E.g. Cb (11 > 0), only for flats
+                     (and (< pci base-pci) (not (string/includes? (name pitch) "b"))) (inc octave)  ; E.g. B#4 (0 < 11), only for sharps
+                     (and (> pci base-pci) (not (string/includes? (name pitch) "#"))) (dec octave)  ; E.g. Cb (11 > 0), only for flats
                      :else octave)]
-    (+ chroma (* 12 (inc new-octave)))))
+    (+ pci (* 12 (inc new-octave)))))
 
 (defn midi->note
   "Convert midi integer to note, optionally specifying the target pitch (otherwise uses default flats/sharps)"
@@ -73,13 +75,13 @@
   {:pre [(specs/midi? midi)]
    :post [(specs/note? %)]}
   (let [octave (dec (quot midi 12))
-        chroma (mod midi 12)
-        p (or pitch (get specs/chroma->default-pitch chroma))
+        pci (mod midi 12)
+        p (or pitch (specs/pci->default-pitch pci))
         {:keys [letter]} (parts p)
-        base-chroma (specs/letters->chroma letter)  ; Chroma without accidentals
+        base-pci (specs/letters->pci letter)  ; PCI without accidentals
         new-octave (cond  ; Adjust for crossing octave boundary
-                     (and (< chroma base-chroma) (not (string/includes? (name p) "b"))) (dec octave)  ; E.g. B#4 (0 < 11), only for sharps
-                     (and (> chroma base-chroma) (not (string/includes? (name p) "#"))) (inc octave)  ; E.g. Cb (11 > 0), only for flats
+                     (and (< pci base-pci) (not (string/includes? (name p) "b"))) (dec octave)  ; E.g. B#4 (0 < 11), only for sharps
+                     (and (> pci base-pci) (not (string/includes? (name p) "#"))) (inc octave)  ; E.g. Cb (11 > 0), only for flats
                      :else octave)]
     (keyword (str (name p) new-octave))))
 
@@ -175,14 +177,14 @@
   (if (some? (#{:P1 :P8} interval))
     p
     (let [{:keys [letter]} (parts p)
-          pitch-chroma (specs/pitches p)
+          pitch-pci (specs/pitches p)
           staff-distance (utils/parse-int interval)
           new-letter (letter+ letter staff-distance multiplier)
-          new-letter-chroma (specs/pitches (keyword (str new-letter)))
+          new-letter-pci (specs/pitches (keyword (str new-letter)))
           interval-semitones (get-in specs/intervals [interval :semitones])
-          new-pitch-chroma (mod ((if (= multiplier -1) - +) pitch-chroma interval-semitones) 12)
+          new-pitch-pci (mod ((if (= multiplier -1) - +) pitch-pci interval-semitones) 12)
           difference (* (or multiplier 1)
-                        (- new-pitch-chroma new-letter-chroma))
+                        (- new-pitch-pci new-letter-pci))
           new-difference (cond
                            (< difference -3) (+ difference 12)
                            (< 3 difference) (- difference 12)
@@ -236,7 +238,7 @@
    ; {:pre [(specs/pitch-or-note? x)]}
    ; TODO: if :bass provided, reorder pitches and include lower note?
    (let [{:keys [pitch note]} (parts x)
-         shape (get specs/name->shape shape-name)
+         shape (specs/name->shape shape-name)
          intervals (:intervals shape)
          pitches (mapv (partial +interval-memo pitch) intervals)]
      (cond-> shape
