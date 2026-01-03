@@ -1,26 +1,181 @@
-(ns jigsaw.algo-test
+(ns jigsaw.theory-test
   (:require
-   [clojure.test :refer [deftest testing]]
-   [jigsaw.test-utils :refer [are+]]
-   [jigsaw.algo :as algo]))
+   [clojure.test :refer [deftest testing are]]
+   [clojure.spec.alpha :as s]
+   [jigsaw.theory :as theory]
+   [jigsaw.test-utils :refer [are+]]))
 
-(deftest algo-test
-  (testing "Algo"
+(deftest theory-test
+  (testing "specifications"
+    (testing "with semitones"
+      (are [value valid] (= valid (s/valid? ::theory/semitones value))
+        -1 false
+        0 true
+        21 true
+        22 false
+        :C  false)))
+  (testing "with pitch"
+    (are [value valid] (= valid (s/valid? ::theory/pitch value))
+      1 false
+      "a" false
+      :C true
+      :c false
+      :C# true
+      :C## true
+      :Db true
+      :Dbb true))
+  (testing "with pci"
+    (are [p1 p2] (= (theory/pitches p1) (theory/pitches p2))
+      :C :C
+      :C :Dbb
+      :C :B#)
+    (are [p pci] (= pci (theory/pitches p))
+      :C 0
+      :C# 1
+      :C## 2
+      :D 2
+      :Ebb 2
+      :Eb 3))
+  (testing "with interval"
+    (are [value valid] (= valid (s/valid? ::theory/interval value))
+      :P1 true
+      :13 false
+      :M13 true))
+  (testing "with note"
+    (are [value valid] (= valid (s/valid? ::theory/note value))
+      :C false
+      :C2 true
+      :c2 false
+      :C#2 true
+      :C##2 true
+      :Db2 true
+      :D11 false
+      :T2 false))
+  (testing "with shape-ref"
+    (are+ [m valid] (= valid (s/valid? ::theory/shape-ref m))
+      {:pitch :C :name :maj} true
+      {:pitch :C :name :major} true
+      {:note :C4 :name :major} true
+      {:name :major} false
+      {:pitch :C} false
+      {:pitch :C :name :maj} true))
+  (testing "with shape-blueprint"
+    (are+ [m valid] (= valid (s/valid? ::theory/shape-blueprint m))
+      {:name :maj :intervals [:P1 :M3 :P5]} true
+      {:name :maj} false))
+  (testing "with shape"
+    (are+ [m valid] (= valid (s/valid? ::theory/shape m))
+      {:pitch :C :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} true
+      {:note :C4 :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C4 :E4 :G4]} true
+      {:name :maj} false))
+  (testing "with chord"
+    (are+ [m valid] (= valid (s/valid? ::theory/chord m))
+      {:pitch :C :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} true
+      {:pitch :C :name :major :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7] :pitches [:C :D :E :F :G :A :B]} false))
+  (testing "with scale"
+    (are+ [m valid] (= valid (s/valid? ::theory/scale m))
+      {:pitch :C :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} false
+      {:pitch :C :name :major :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7] :pitches [:C :D :E :F :G :A :B]} true))
+  (testing "with context"
+    (are+ [m valid] (= valid (s/valid? ::theory/context m))
+        ; Single context link; i.e. current shape (not shown) came from this
+      {:pitch :C
+       :name :maj
+       :intervals [:P1 :M3 :P5]
+       :pitches [:C :E :G]
+         ; Original shape not shown, degree of 1 is random here
+       :degree :I} true
+        ; Context chain, two links; i.e. current shape came from this which came from another shape
+      {:pitch :C
+       :name :maj
+       :intervals [:P1 :M3 :P5]
+       :pitches [:C :E :G]
+       :degree :I  ; Cmaj = first degree of the C major scale
+       :context {:pitch :C
+                 :name :major
+                 :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                 :pitches [:C :D :E :F :G :A :B]
+                 :degrees [:1 :2 :3 :4 :5 :6 :7]
+                   ; Original shape not shown, degree of 2 is random here
+                 :degree :ii}} true
+        ; Context chain, three links; i.e. current shape came from this which came from another shape
+      {:pitch :C
+       :name :maj
+       :intervals [:P1 :M3 :P5]
+       :pitches [:C :E :G]
+       :degree :I  ; Cmaj is the first degree of the C major scale
+       :context {:pitch :C
+                 :name :major
+                 :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                 :pitches [:C :D :E :F :G :A :B]
+                 :degrees [:1 :2 :3 :4 :5 :6 :7]
+                 :degree :ii  ; Dm is the second degree of the C major scale (:degree is always the chord's degree, even if the current context is a scale)
+                 :context {:pitch :D
+                           :name :m
+                           :intervals [:P1 :m3 :P5]
+                           :pitches [:D :F :A]
+                             ; Original shape not shown, degree of 3 is random here
+                           :degree :iii}}} true))
+  (testing "with scale-chord"
+    (are+ [m valid] (= valid (s/valid? ::theory/scale-chord m))
+        ; Single context; no scale origin
+      {:pitch :C
+       :name :maj
+       :intervals [:P1 :M3 :P5]
+       :pitches [:C :E :G]
+         ; Original shape not shown, degree of 1 is random here
+       :degree :I} false
+        ; Context chain; chord with scale origin
+      {:pitch :C
+       :name :maj
+       :intervals [:P1 :M3 :P5]
+       :pitches [:C :E :G]
+       :degree :I
+       :context {:pitch :C
+                 :name :major
+                 :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                 :pitches [:C :D :E :F :G :A :B]
+                 :degrees [:1 :2 :3 :4 :5 :6 :7]
+                   ; Original shape not shown, degree of 2 is random here
+                 :degree :ii}} true))
+  (testing "with chord-scale"
+    (are+ [m valid] (= valid (s/valid? ::theory/chord-scale m))
+        ; Single context; no scale origin
+      {:pitch :C
+       :name :major
+       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+       :pitches [:C :D :E :F :G :A :B]
+       :degrees [:1 :2 :3 :4 :5 :6 :7]
+         ; Random degree
+       :degree :I} false
+        ; Context chain; scale with chord origin
+      {:pitch :C
+       :name :major
+       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+       :pitches [:C :D :E :F :G :A :B]
+       :degrees [:1 :2 :3 :4 :5 :6 :7]
+       :degree :I
+       :context {:pitch :C
+                 :name :maj
+                 :intervals [:P1 :M3 :P5]
+                 :pitches [:C :E :G]
+                 :degree :ii}} true))
+  (testing "arithmetic"
     (testing "parts"
       (testing "starting from a pitch"
-        (are+ [p m] (= m (algo/parts p))
+        (are+ [p m] (= m (theory/parts p))
           :C   {:pitch :C   :letter \C :accidental "" :pci 0}
           :C#  {:pitch :C#  :letter \C :accidental "#" :pci 1}
           :C## {:pitch :C## :letter \C :accidental "##" :pci 2}
           :Dbb {:pitch :Dbb :letter \D :accidental "bb" :pci 0}))
       (testing "starting from a note"
-        (are+ [n m] (= m (algo/parts n))
+        (are+ [n m] (= m (theory/parts n))
           :C4   {:pitch :C   :letter \C :accidental ""   :octave 4 :note :C4 :pci 0}
           :C#4  {:pitch :C#  :letter \C :accidental "#"  :octave 4 :note :C#4 :pci 1}
           :C##4 {:pitch :C## :letter \C :accidental "##" :octave 4 :note :C##4 :pci 2}
           :Dbb4 {:pitch :Dbb :letter \D :accidental "bb" :octave 4 :note :Dbb4 :pci 0})))
     (testing "with fold-notes"
-      (are+ [notes want] (= want (algo/fold-notes notes))
+      (are+ [notes want] (= want (theory/fold-notes notes))
         [:C4] [:C4]
         [:C4 :C5] [:C4 :C5]
         [:C4 :C5 :C6] [:C4 :C5]
@@ -31,7 +186,7 @@
         [:C4 :Bb5] [:C4 :Bb4]))
     (testing "with semitone-distance"
       (testing "with pitches"
-        (are+ [p1 p2 want] (= want (algo/semitone-distance p1 p2))
+        (are+ [p1 p2 want] (= want (theory/semitone-distance p1 p2))
           :C :C 12
           :C :Db 1
           :C :C# 1
@@ -39,7 +194,7 @@
           :C :B 11
           :C :B# 12))
       (testing "with notes"
-        (are+ [n1 n2 want] (= want (algo/semitone-distance n1 n2))
+        (are+ [n1 n2 want] (= want (theory/semitone-distance n1 n2))
           :C4 :C4 0
           :C4 :Db4 1
           :C4 :C#4 1
@@ -52,25 +207,25 @@
           :C4 :A5 21
           :C4 :A#5 22)))
     (testing "with flat?"
-      (are+ [p want] (= want (algo/flat? p))
+      (are+ [p want] (= want (theory/flat? p))
         :C  false
         :C# false
         :Db true
         :Ab true))
     (testing "with natural?"
-      (are+ [p want] (= want (algo/natural? p))
+      (are+ [p want] (= want (theory/natural? p))
         :C  true
         :C# false
         :Db false
         :A  true))
     (testing "with sharp?"
-      (are+ [p want] (= want (algo/sharp? p))
+      (are+ [p want] (= want (theory/sharp? p))
         :C  false
         :C# true
         :Db false
         :Ab false))
     (testing "with enharmonic"
-      (are+ [p notation want] (= want (algo/enharmonic p notation))
+      (are+ [p notation want] (= want (theory/enharmonic p notation))
         :C :flat   :C
         :C :sharp  :B#
         :Dbb :natural :C
@@ -78,7 +233,7 @@
         :C# :flat  :Db))
     (testing "with ->interval"
       (testing "starting with a pitch"
-        (are+ [p1 p2 want] (= want (algo/->interval p1 p2))
+        (are+ [p1 p2 want] (= want (theory/->interval p1 p2))
           :C :C# :m2
           :C :Db :m2
           :C :D  :M2
@@ -103,7 +258,7 @@
           :B :E :P4
           :B :F :d5))
       (testing "starting from a note"
-        (are+ [n1 n2 want] (= want (algo/->interval n1 n2))
+        (are+ [n1 n2 want] (= want (theory/->interval n1 n2))
           :C4 :C4 :P1
           :C4 :C#4 :m2
           :C4 :Db4 :m2
@@ -133,14 +288,14 @@
           ; First note higher than second, bump second note's octave up
           :D4 :C4 :m7)))
     (testing "with note->midi"
-      (are+ [note want] (= want (algo/note->midi note))
+      (are+ [note want] (= want (theory/note->midi note))
         :C4  60
         :C#4 61
         :Db4 61
         :Cb4 59 ; In octave 4, but Cb4 is enharmonically equivalent to B3
         :C0  12))
     (testing "with midi->note"
-      (are+ [midi want] (= want (algo/midi->note midi nil))
+      (are+ [midi want] (= want (theory/midi->note midi nil))
         60 :C4
         61 :C#4
         62 :D4
@@ -149,7 +304,7 @@
     (testing "with +interval"
       (testing "starting from a pitch"
         (testing "adding"
-          (are+ [p interval want] (= want (algo/+interval p interval))
+          (are+ [p interval want] (= want (theory/+interval p interval))
             :C :P1  :C
             :C :d2  :Dbb
             :C :m2  :Db
@@ -210,7 +365,7 @@
             :B# :A7 :B#  ; technically A###
             :B# :A8 :B##))
         (testing "subtracting"
-          (are+ [p interval want] (= want (algo/+interval p interval -1))
+          (are+ [p interval want] (= want (theory/+interval p interval -1))
             :C :d2  :B#
             :C :m2  :B
             :C :M2  :Bb
@@ -261,7 +416,7 @@
             :C# :P8 :C#)))
       (testing "starting from a note"
         (testing "adding"
-          (are+ [n interval want] (= want (algo/+interval n interval))
+          (are+ [n interval want] (= want (theory/+interval n interval))
             :C4 :P1  :C4
             :C4 :P8  :C5
             :C4 :P11 :F5
@@ -270,13 +425,13 @@
             :F#4 :A5 :C##5
             :B#4 :M3 :D##5))
         (testing "subtracting"
-          (are+ [n interval want] (= want (algo/+interval n interval -1))
+          (are+ [n interval want] (= want (theory/+interval n interval -1))
             :C4 :P1  :C4
             :C4 :P8  :C3
             :C4 :P11 :G2
             :D##5 :M3 :B#4))))
     (testing "with clamp-pitch"
-      (are+ [p want] (= want (algo/clamp-pitch p))
+      (are+ [p want] (= want (theory/clamp-pitch p))
         :C      :C
         :C#     :C#
         :C##    :C##
@@ -291,18 +446,18 @@
     (testing "with ->shape"
       (testing "starting from a chord"
         (testing "starting from a pitch"
-          (are+ [pitch chord-name want] (= want (algo/->shape pitch chord-name))
+          (are+ [pitch chord-name want] (= want (theory/->shape pitch chord-name))
             :C  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :aliases ["M" "major"]}
             :C# :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#] :aliases ["min" "-" "minor"]}
             :F# :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##] :aliases ["+" "+5" "^#5" "augmented"]}))
         (testing "starting from a note"
-          (are+ [note chord-name want] (= want (algo/->shape note chord-name))
+          (are+ [note chord-name want] (= want (theory/->shape note chord-name))
             :C3  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3] :aliases ["M" "major"]}
             :C#4 :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4] :aliases ["min" "-" "minor"]}
             :F#5 :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6] :aliases ["+" "+5" "^#5" "augmented"]})))
       (testing "starting from a scale"
         (testing "starting from a pitch"
-          (are+ [pitch scale-name want] (= want (algo/->shape pitch scale-name))
+          (are+ [pitch scale-name want] (= want (theory/->shape pitch scale-name))
             :C :major {:name :major
                        :pitch :C
                        :aliases ["ionian"]
@@ -333,7 +488,7 @@
                         :degrees [:1 :2 :3 :4 :5 :6 :7]
                         :pitches [:F# :G# :A# :B :C# :D# :E#]}))
         (testing "starting from a note"
-          (are+ [note scale-name want] (= want (algo/->shape note scale-name))
+          (are+ [note scale-name want] (= want (theory/->shape note scale-name))
             :C4 :major {:name :major
                         :pitch :C
                         :aliases ["ionian"]
@@ -363,14 +518,14 @@
                          :pitches [:F# :G# :A# :B :C# :D# :E#]
                          :notes [:F#4 :G#4 :A#4 :B4 :C#5 :D#5 :E#5]})))
       (testing "with shape-ref (map) input"
-        (are+ [shape-ref want] (= want (algo/->shape shape-ref))
+        (are+ [shape-ref want] (= want (theory/->shape shape-ref))
           {:pitch :C :name :maj} {:pitch :C
                                   :name :maj
                                   :intervals [:P1 :M3 :P5]
                                   :pitches [:C :E :G]
                                   :aliases ["M" "major"]}))
       (testing "with keyword input"
-        (are+ [k want] (= want (algo/->shape k))
+        (are+ [k want] (= want (theory/->shape k))
           ; Pitch-based
           :C_maj {:pitch :C
                   :name :maj
@@ -390,7 +545,7 @@
                       :pitch :Eb,
                       :pitches [:Eb :Ab :Bb :Db :F :C]})))
     (testing "with interval->degree"
-      (are+ [interval want] (= want (algo/interval->degree interval))
+      (are+ [interval want] (= want (theory/interval->degree interval))
         :P1 :1
         :d2 :b2
         :m2 :b2
@@ -414,7 +569,7 @@
         :A6 :#6
         :M7 :7))
     (testing "with degree-chord->roman-numeral"
-      (are+ [degree chord-name want] (= want (algo/degree-chord->roman-numeral degree chord-name))
+      (are+ [degree chord-name want] (= want (theory/degree-chord->roman-numeral degree chord-name))
         :1 :maj :I
         :1 :maj7 :I
         :2 :min :ii
@@ -426,7 +581,7 @@
         :2 :dim :ii°
         :b3 :aug :bIII+))
     (testing "with note->abc"
-      (are+ [note want] (= want (algo/note->abc note))
+      (are+ [note want] (= want (theory/note->abc note))
         :C4 "C"
         :C#4 "^C"
         :C##4 "^^C"
@@ -441,7 +596,7 @@
         :C1 "C,,,"
         :C0 "C,,,,"))
     (testing "with shape->abc"
-      (are+ [shape-ref want] (= want (algo/shape->abc (algo/->shape shape-ref)))
+      (are+ [shape-ref want] (= want (theory/shape->abc (theory/->shape shape-ref)))
         :C4_maj "X:1
 K:C exp C D E F G A B
 L:1/4

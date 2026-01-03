@@ -1,7 +1,7 @@
 (ns jigsaw.search-test
   (:require
    [clojure.test :refer [deftest testing]]
-   [jigsaw.algo :as algo]
+   [jigsaw.theory :as theory]
    [jigsaw.search :as search]
    [jigsaw.test-utils :refer [are+]]))
 
@@ -52,7 +52,7 @@
                          :overlap (float (/ 1 3))
                          :shares-root? 1}))
     (testing "scale->chords"
-      (are+ [pitch scale-name expected] (= expected (search/scale->chords (algo/->shape pitch scale-name)))
+      (are+ [pitch scale-name expected] (= expected (search/scale->chords (theory/->shape pitch scale-name)))
         :C :major '({:pitch :C, :name :maj, :degree :I}
                     {:pitch :C, :name :maj7, :degree :I}
                     {:pitch :C, :name :maj9, :degree :I}
@@ -204,7 +204,7 @@
                          {:pitch :B, :name :dim7, :degree :vii°}
                          {:pitch :B, :name :m7b5, :degree :vii°})))
     (testing "chord->scales"
-      (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (search/chord->scales (algo/->shape pitch chord-name)))))
+      (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (search/chord->scales (theory/->shape pitch chord-name)))))
         :C :maj [{:pitch :C, :name :lydian-dominant-pentatonic, :degree :I}
                  {:pitch :C, :name :bebop-major, :degree :I}
                  {:pitch :C, :name :lydian, :degree :I}
@@ -412,7 +412,7 @@
                     {:pitch :D, :name :minor, :degree :bvii}
                     {:pitch :D, :name :spanish-heptatonic, :degree :bvii}]))
     (testing "with scale->mode"
-      (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (search/scale->mode (algo/->shape :C base-scale-name) mode-num)))
+      (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (search/scale->mode (theory/->shape :C base-scale-name) mode-num)))
         :major 0 :major
         :major 1 :dorian
         :major 2 :phrygian
@@ -429,13 +429,13 @@
         :melodic-minor 6 :altered))
     (testing "with scale->modes"
       (are+ [base-scale modes] (= modes (map #(select-keys % [:pitch :name]) (search/scale->modes base-scale)))
-        (algo/->shape :C :major) '({:pitch :C, :name :major}
-                                   {:pitch :D, :name :dorian}
-                                   {:pitch :E, :name :phrygian}
-                                   {:pitch :F, :name :lydian}
-                                   {:pitch :G, :name :mixolydian}
-                                   {:pitch :A, :name :minor}
-                                   {:pitch :B, :name :locrian})))
+        (theory/->shape :C :major) '({:pitch :C, :name :major}
+                                     {:pitch :D, :name :dorian}
+                                     {:pitch :E, :name :phrygian}
+                                     {:pitch :F, :name :lydian}
+                                     {:pitch :G, :name :mixolydian}
+                                     {:pitch :A, :name :minor}
+                                     {:pitch :B, :name :locrian})))
     (testing "notes->shapes with bass/inversions"
       (testing "basic inversions"
         (are+ [notes expected-pitch expected-name expected-bass]
@@ -484,9 +484,9 @@
           ; G7 in third inversion
           [:F4 :G4 :B4 :D5] :G :7 :F))))
   (testing "bass/inversion helper functions"
-    (let [c-maj (algo/->shape :C :maj)   ; C E G
-          c-maj7 (algo/->shape :C :maj7) ; C E G B
-          f-maj (algo/->shape :F :maj)]  ; F A C
+    (let [c-maj (theory/->shape :C :maj)   ; C E G
+          c-maj7 (theory/->shape :C :maj7) ; C E G B
+          f-maj (theory/->shape :F :maj)]  ; F A C
       (testing "bass->inversion"
         (are+ [chord bass expected] (= expected (search/bass->inversion chord bass))
           c-maj :C nil   ; root position; not considered an inversion here

@@ -3,16 +3,15 @@
 (ns jigsaw.search
   (:require
    [clojure.set :as set]
-   [jigsaw.algo :as algo]
-   [jigsaw.spec :as specs]
+   [jigsaw.theory :as theory]
    [jigsaw.utils :as utils]))
 
 ; Based on PCI
 (defn- resolve-all-shapes [shape-type]
-  (for [pitch specs/simple-pitch-keys
-        shape-name (keys (if (= shape-type :chord) specs/chords specs/scales))]
-    (let [shape (algo/->shape {:note (algo/pitch->note pitch) :name shape-name})
-          pcis (map specs/pitches (:pitches shape))]
+  (for [pitch theory/simple-pitch-keys
+        shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
+    (let [shape (theory/->shape {:note (theory/pitch->note pitch) :name shape-name})
+          pcis (map theory/pitches (:pitches shape))]
       (assoc shape :pcis pcis))))
 
 (def all-chords (resolve-all-shapes :chord))
@@ -54,27 +53,27 @@
   "If input-shape is a chord, find degree in candidate-shape (scale)
    If input-shape is a scale, find the candidate-shape's (chord) degree"
   [input-shape candidate-shape]
-  {:pre [(every? specs/shape? [input-shape candidate-shape])]}
-  (let [scale (if (specs/scale? input-shape) input-shape candidate-shape)
+  {:pre [(every? theory/shape? [input-shape candidate-shape])]}
+  (let [scale (if (theory/scale? input-shape) input-shape candidate-shape)
         chord (if (= scale input-shape) candidate-shape input-shape)
         degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
-    (algo/degree-chord->roman-numeral degree (:name chord))))
+    (theory/degree-chord->roman-numeral degree (:name chord))))
 
 (defn- identify-bass-pitch
   "Identify the bass note (lowest pitch) from a collection of notes"
   [notes]
   (when (seq notes)
-    (let [sorted-notes (sort-by algo/note->midi notes)
+    (let [sorted-notes (sort-by theory/note->midi notes)
           lowest-note (first sorted-notes)
-          bass-pitch (-> lowest-note algo/parts :pitch)]
+          bass-pitch (-> lowest-note theory/parts :pitch)]
       bass-pitch)))
 
 (defn- find-enharomic-equivalent
   "Find enharmonic patches of a source-pitch among target-pitches, based on PCI"
   [source-pitch target-pitches]
-  (let [source-pci (specs/pitches source-pitch)
+  (let [source-pci (theory/pitches source-pitch)
         target-pcis->pitches (reduce (fn [m pitch]
-                                       (let [pci (specs/pitches pitch)]
+                                       (let [pci (theory/pitches pitch)]
                                          (assoc m pci pitch))) {} target-pitches)]
     (target-pcis->pitches source-pci)))
 
@@ -90,20 +89,20 @@
                        :or {heuristic :overlap
                             max-shapes 10
                             selected-pitch nil}}]
-  (let [pcis (map #(-> % algo/parts :pci) notes)
+  (let [pcis (map #(-> % theory/parts :pci) notes)
         shapes (if (= shape-type :chord) all-chords all-scales)
         bass-pitch (identify-bass-pitch notes)]
     (->> shapes
          (into []
                (comp
-                (filter #(if (specs/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
+                (filter #(if (theory/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
                 (map #(assoc % :heuristics (calculate-heuristics pcis (:pcis %))))
                 (map #(dissoc % :pcis))
                 ; Add bass note for chords if not in root position; try to align it with chord enharmonics if possible
                 (map #(if (and (= shape-type :chord)
                                bass-pitch
                                (not= (:pitch %) bass-pitch)  ; bass isn't root
-                               (not= (specs/pitches (:pitch %)) (specs/pitches bass-pitch)))  ; bass isn't root with different enharmonic (e.g. E and Fb)
+                               (not= (theory/pitches (:pitch %)) (theory/pitches bass-pitch)))  ; bass isn't root with different enharmonic (e.g. E and Fb)
                         (assoc % :bass (or (find-enharomic-equivalent bass-pitch (:pitches %)) bass-pitch))
                         %))
                 (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))))
@@ -122,7 +121,7 @@
    - etc.
    - nil if bass note is not a chord tone (slash chord)"
   [chord-ref bass-pitch]
-  (let [chord (algo/->shape chord-ref)
+  (let [chord (theory/->shape chord-ref)
         chord-pitches (:pitches chord)
         bass-index (.indexOf chord-pitches bass-pitch)]
     (when (> bass-index 0)
@@ -146,7 +145,7 @@
 (defn scale->chords
   "Find chords which are diatonic to the scale (i.e. pitch subsets)"
   [{:keys [pitches] :as scale}]
-  {:post [(every? specs/shape-ref? %)]}
+  {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
     (for [chord all-chords
           :when (set/subset? (set (:pitches chord)) pitch-set)]
@@ -161,13 +160,13 @@
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
   [{:keys [pitches] :as chord} & {:keys [degree] :or {degree nil}}]
-  {:post [(every? specs/shape-ref? %)]}
+  {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
-    (sort-by #(algo/roman-numeral->int (name (:degree %)))
+    (sort-by #(theory/roman-numeral->int (name (:degree %)))
              (for [scale all-scales
                    :when (set/subset? pitch-set (set (:pitches scale)))
                    :let [chord-degree (contextualize chord scale)]
-                   :when (if (some? degree) (= degree (algo/roman-numeral->int (name chord-degree))) true)]
+                   :when (if (some? degree) (= degree (theory/roman-numeral->int (name chord-degree))) true)]
                {:pitch (:pitch scale)
                 :name (:name scale)
                 :degree chord-degree}))))
@@ -177,15 +176,15 @@
 (defn shape->shapes
   "Get complementary shapes (e.g. chord->scales or scale->chords) without specifying input shape type"
   [shape]
-  {:pre (specs/shape? shape)
-   :post (every? specs/shape-ref? %)}
-  ((if (specs/chord? shape)
+  {:pre (theory/shape? shape)
+   :post (every? theory/shape-ref? %)}
+  ((if (theory/chord? shape)
      chord->scales
      scale->chords) shape))
 
 (defn connect-shapes
   [shapes]
-  {:pre [(every? specs/shape? shapes)]}
+  {:pre [(every? theory/shape? shapes)]}
   (let [shape->comp-shapes (reduce (fn [m shape]
                                      (assoc m shape
                                             (set (remove (comp nil? :name)
@@ -198,11 +197,11 @@
      {}
      (for [[comp-shape matched-shapes] comp-shape->shapes
            :when (= (count shapes) (count matched-shapes))]
-       [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
+       [comp-shape (sort-by #(theory/roman-numeral->int (name (:context %)))
                             (map (fn [shape]
                                    {:found shape
-                                    :context (contextualize (algo/->shape shape)
-                                                            (algo/->shape comp-shape))})
+                                    :context (contextualize (theory/->shape shape)
+                                                            (theory/->shape comp-shape))})
                                  matched-shapes))]))))
 
 (defn connect
@@ -223,7 +222,7 @@
                                      (assoc m shape
                                             (set (remove (comp nil? :name)
                                                          (map #(select-keys % [:pitch :name])
-                                                              (shape->shapes (algo/->shape shape)))))))
+                                                              (shape->shapes (theory/->shape shape)))))))
                                    {} (keys shape->note-seqs))
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
@@ -235,12 +234,12 @@
                                                set)]
            :when (or (= (count note-seq-sets) (count note-seqs-for-comp-shape))
                      (>= (count shapes) 2))]
-       [comp-shape (sort-by #(algo/roman-numeral->int (name (:context %)))
+       [comp-shape (sort-by #(theory/roman-numeral->int (name (:context %)))
                             (map (fn [shape]
                                    {:input (shape->note-seqs shape)
                                     :found shape
-                                    :context (contextualize (algo/->shape shape)
-                                                            (algo/->shape comp-shape))})
+                                    :context (contextualize (theory/->shape shape)
+                                                            (theory/->shape comp-shape))})
                                  shapes))]))))
 
 (def memoize-connect (memoize connect))
@@ -249,25 +248,25 @@
 (defn rotate-intervals
   "Recontextualize intervals by rotating/inverting them"
   [intervals n]
-  (let [pitches (map #(algo/+interval :C %) intervals)
+  (let [pitches (map #(theory/+interval :C %) intervals)
         rotated-pitches (utils/rotate pitches n)
-        rotated-intervals (algo/->intervals rotated-pitches)]
+        rotated-intervals (theory/->intervals rotated-pitches)]
     rotated-intervals))
 
 (defn scale->mode
   [scale n]
-  {:pre [(specs/scale? scale)]
-   :post [(specs/shape-ref? %)]}
+  {:pre [(theory/scale? scale)]
+   :post [(theory/shape-ref? %)]}
   (let [pitches (utils/rotate (:pitches scale) n)
         rotated-intervals (rotate-intervals (:intervals scale) n)]
-    (when-let [new-scale-name (specs/intervals->scales rotated-intervals)]
+    (when-let [new-scale-name (theory/intervals->scales rotated-intervals)]
       {:pitch (first pitches)
        :name new-scale-name})))
 
 (defn scale->modes
   [scale]
-  {:pre [(specs/scale? scale)]
-   :post [(every? specs/shape-ref? %)]}
+  {:pre [(theory/scale? scale)]
+   :post [(every? theory/shape-ref? %)]}
   (for [n (range (count (:pitches scale)))]
     (scale->mode scale n)))
 
@@ -293,15 +292,15 @@
   Test combinations: #{0 2 7} AKA Csus2, #{0 4 7} AKA Cmaj
   "
   [target-shape candidate-notes & {:keys [max-shapes] :or {max-shapes 1}}]
-  ; {:pre [(specs/shape? target-shape) (every? specs/note? candidate-notes)]
-  ;  :post [(every? specs/shape-ref? %)]}
-  (let [comp-shape-type (if (specs/chord? target-shape) :scale :chord)
+  ; {:pre [(theory/shape? target-shape) (every? theory/note? candidate-notes)]
+  ;  :post [(every? theory/shape-ref? %)]}
+  (let [comp-shape-type (if (theory/chord? target-shape) :scale :chord)
         shapes (if (= :chord comp-shape-type) all-chords all-scales)
         target-pitches (:pitches target-shape)
-        target-pcis (map specs/pitches target-pitches)
+        target-pcis (map theory/pitches target-pitches)
         ; target-pcis->pitches (zipmap target-pcis target-pitches)
         target-set (set target-pcis)
-        candidate-set (set (map #(mod (algo/note->midi %) 12) candidate-notes))
+        candidate-set (set (map #(mod (theory/note->midi %) 12) candidate-notes))
         ; intersection (set/intersection candidate-set target-set)
         difference-set (set/difference candidate-set target-set)
         pci->replacements (into {}
@@ -330,22 +329,22 @@
                      (take max-shapes)))))))
 
 (comment
-  (let [scale (algo/->shape :E :harmonic-minor)]
+  (let [scale (theory/->shape :E :harmonic-minor)]
     (scale->chords scale))
-  (notes->shapes (:notes (algo/->shape :C4 :maj)) :scale)
-  (shape->shapes (algo/->shape :Cmajor))
-  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones specs/intervals) (algo/->intervals [:Gb :G :B :Db :D]))))
-  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones specs/intervals) [:P1 :M2 :m3 :P5 :m6])))
-  (map #(specs/intervals (algo/+interval :Gb %)) [:P1 :M2 :m3 :P5 :m6])
-  (chord->scales (algo/->shape :Eb6add9))
-  (scale->chords (algo/->shape :C_diminished))
-  (algo/->shape :Db_diminished)
-  (contextualize (algo/->shape :B_maj) (algo/->shape :C_major))
+  (notes->shapes (:notes (theory/->shape :C4 :maj)) :scale)
+  (shape->shapes (theory/->shape :Cmajor))
+  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones theory/intervals) (theory/->intervals [:Gb :G :B :Db :D]))))
+  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones theory/intervals) [:P1 :M2 :m3 :P5 :m6])))
+  (map #(theory/intervals (theory/+interval :Gb %)) [:P1 :M2 :m3 :P5 :m6])
+  (chord->scales (theory/->shape :Eb6add9))
+  (scale->chords (theory/->shape :C_diminished))
+  (theory/->shape :Db_diminished)
+  (contextualize (theory/->shape :B_maj) (theory/->shape :C_major))
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect-shapes [(algo/->shape :Cmaj) (algo/->shape :Dm) (algo/->shape :Em)])
-  (connect [(:notes (algo/->shape :C4 :maj)) (:notes (algo/->shape :D4 :m))] :chord)
+  (connect-shapes [(theory/->shape :Cmaj) (theory/->shape :Dm) (theory/->shape :Em)])
+  (connect [(:notes (theory/->shape :C4 :maj)) (:notes (theory/->shape :D4 :m))] :chord)
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
   (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
-  (scale->modes (algo/->shape :G_lydian-pentatonic))
-  (fit (algo/->shape :C4 :major) (:notes (algo/->shape :C4 :m))))
+  (scale->modes (theory/->shape :G_lydian-pentatonic))
+  (fit (theory/->shape :C4 :major) (:notes (theory/->shape :C4 :m))))

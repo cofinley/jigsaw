@@ -1,6 +1,6 @@
 (ns jigsaw.utils
   (:require
-   [clojure.string :as s]
+   [clojure.string :as str]
    [clojure.set :as set]
    [clojure.walk :as walk]))
 
@@ -43,7 +43,7 @@
 
 (defn pprint-aliases [shape]
   (let [aliases (:aliases shape)]
-    (when (seq aliases) (str "Aliases:\n" (s/join "\n" (map #(str "- " %) aliases))))))
+    (when (seq aliases) (str "Aliases:\n" (str/join "\n" (map #(str "- " %) aliases))))))
 
 (defmacro prm [& more]
   `(prn ~(reduce #(assoc %1 (keyword (str %2)) %2) {} more)))

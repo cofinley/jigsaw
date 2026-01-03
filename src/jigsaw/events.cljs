@@ -1,10 +1,9 @@
 (ns jigsaw.events
   (:require
    ["soundfont-player" :as soundfont]
-   [jigsaw.algo :as algo]
+   [jigsaw.theory :as theory]
    [jigsaw.db :as db]
    [jigsaw.search :as search]
-   [jigsaw.spec :as specs]
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-fx
@@ -152,7 +151,7 @@
 (defn calculate-shape [node]
   (let [{:keys [pitch name]} node]
     (when (and (some? pitch) (some? name))
-      (algo/->shape (algo/pitch->note pitch) (keyword name)))))
+      (theory/->shape (theory/pitch->note pitch) (keyword name)))))
 
 (re-frame/reg-event-fx
  ::calculate-shape
@@ -165,13 +164,13 @@
 (defn compute-scale-chords [parent-data data]
   (when (and parent-data (contains? parent-data :degrees))
     (let [shape-refs (search/scale->chords parent-data)]
-      (map #(merge % (algo/->shape (assoc % :note (algo/pitch->note (:pitch %))))) shape-refs))))
+      (map #(merge % (theory/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-chord-scales [parent-data data]
   (when (and parent-data (contains? parent-data :intervals))
     (let [selected-degree (:selected-degree data)
-          shape-refs (search/chord->scales (algo/->shape parent-data) :degree selected-degree)]
-      (map #(merge % (algo/->shape (assoc % :note (algo/pitch->note (:pitch %))))) shape-refs))))
+          shape-refs (search/chord->scales (theory/->shape parent-data) :degree selected-degree)]
+      (map #(merge % (theory/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-closest-shapes [parent-data data]
   (when-let [notes (seq (get-in parent-data [:notes]))]
@@ -188,7 +187,7 @@
                                             :max-shapes max-shapes
                                             :heuristic (keyword heuristic)
                                             :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
-          resolved-shapes (map #(merge % (algo/->shape (algo/pitch->note (:pitch %)) (:name %))) shapes)]
+          resolved-shapes (map #(merge % (theory/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
       resolved-shapes)))
 
 (defn compute-shape-connections [parent-data data]
@@ -204,7 +203,7 @@
           candidate-input (first (filter #(not= % target-shape) parent-data))
           max-shapes (or (:max-shapes data) 1)
           shapes (search/fit target-shape (:notes candidate-input) :max-shapes max-shapes)
-          resolved-shapes (map #(merge % (algo/->shape (algo/pitch->note (:pitch %)) (:name %))) shapes)]
+          resolved-shapes (map #(merge % (theory/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
       resolved-shapes)))
 
 (defn get-child-nodes [db parent-id]
@@ -294,7 +293,7 @@
          (doseq [[i note] (map-indexed vector notes)]
            (js/setTimeout
             (fn []
-              (.play instrument (algo/note->midi note)))
+              (.play instrument (theory/note->midi note)))
             (* i note-offset-ms)))))
      100) ; Small delay to ensure instrument is loaded
     {}))
@@ -302,7 +301,7 @@
 (re-frame/reg-event-fx
  ::play-shape
  (fn [{:keys [_]} [_ shape]]
-   (let [note-offset-ms (if (specs/chord? shape) 30 300)]
+   (let [note-offset-ms (if (theory/chord? shape) 30 300)]
      (play-notes (:notes shape) note-offset-ms))))
 
 (re-frame/reg-event-fx
@@ -315,12 +314,12 @@
 (re-frame/reg-event-db
  ::create-node-from-drag
  (fn [db [_ shape-data position]]
-   (when (specs/shape-ref? shape-data)
+   (when (theory/shape-ref? shape-data)
      (let [node-type (cond
-                       (contains? specs/chords (:name shape-data)) :input-chord
-                       (contains? specs/scales (:name shape-data)) :input-scale
+                       (contains? theory/chords (:name shape-data)) :input-chord
+                       (contains? theory/scales (:name shape-data)) :input-scale
                        :else nil)
-           shape (algo/->shape (algo/pitch->note (:pitch shape-data)) (:name shape-data))]
+           shape (theory/->shape (theory/pitch->note (:pitch shape-data)) (:name shape-data))]
        (if node-type
          (second (create-node db {:type node-type
                                   :position position
