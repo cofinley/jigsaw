@@ -1,7 +1,7 @@
 (ns jigsaw.components.input-piano-node
   (:require
    [re-frame.core :as re-frame]
-   [jigsaw.algo :as algo]
+   [jigsaw.theory :as theory]
    [jigsaw.subs :as subs]
    [jigsaw.events :as events]
    [jigsaw.components.node :refer [node]]
@@ -37,11 +37,11 @@
            :noteRange {:first first-midi :last last-midi}
            :playNote (fn [midi] midi)
            :stopNote #()
-           :activeNotes (map (comp algo/note->midi keyword) (:notes @data))
+           :activeNotes (map (comp theory/note->midi keyword) (:notes @data))
            :onPlayNoteInput (fn [midi prev]
                               (let [midis (set (js->clj prev))
                                     new-midis ((if (some? (some #{midi} midis)) disj conj) midis midi)
-                                    notes (set (map algo/midi->note new-midis))]
+                                    notes (set (map theory/midi->note new-midis))]
                                 (re-frame/dispatch [::events/update-node-data id {:notes notes}])))
            :onStopNoteInput #()
            :width width}])]]]))

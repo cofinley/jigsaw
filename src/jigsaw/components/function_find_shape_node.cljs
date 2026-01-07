@@ -6,7 +6,7 @@
    [jigsaw.components.table :refer [table]]
    [jigsaw.events :as events]
    [jigsaw.search :as search]
-   [jigsaw.spec :as specs]
+   [jigsaw.theory :as theory]
    [jigsaw.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
@@ -54,7 +54,7 @@
                       :on-change #(re-frame/dispatch [::events/update-node-data id {:selected-pitch (keyword (-> % .-target .-value))}])
                       :value selected-pitch}
               (cons [:option {:value "all"} "(Show all)"]
-                    (for [pitch specs/simple-pitch-keys]
+                    (for [pitch theory/simple-pitch-keys]
                       [:option {:value pitch} (name pitch)]))]]
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Max shapes"]

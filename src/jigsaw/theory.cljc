@@ -833,7 +833,7 @@
 
 (defn abc-pitch->note
   "
-  Convert abc notation pitch to :jigsaw.spec/note format
+  Convert abc notation pitch to :jigsaw.theory/note format
   \"C\" :C4
   \"^C\" :C#4
   \"^^C\" :C##4

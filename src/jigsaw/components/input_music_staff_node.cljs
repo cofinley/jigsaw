@@ -3,10 +3,9 @@
    [clojure.string :as string]
    [reagent.core :as r]
    [re-frame.core :as re-frame]
-   [jigsaw.spec :as specs]
+   [jigsaw.theory :as theory]
    [jigsaw.events :as events]
    [jigsaw.subs :as subs]
-   [jigsaw.algo :as algo]
    [jigsaw.components.node :refer [node]]
    [jigsaw.components.select :refer [select]]
    ["abcjs" :as abcjs]))
@@ -25,7 +24,7 @@
                       :add_classes true})
 
 (defn- key-signature-impl [dom-id key-ref]
-  (let [key-abc (algo/key-signature->abc key-ref)
+  (let [key-abc (theory/key-signature->abc key-ref)
         syntax (string/join "\n"
                             ["X:1"
                              (str "K:" key-abc)
@@ -51,7 +50,7 @@
                :class "inline-block"}])})))
 
 (defn key-signature-options []
-  (for [pitch specs/simple-pitch-keys
+  (for [pitch theory/simple-pitch-keys
         key-type [:major :minor]]
     {:pitch pitch
      :name key-type
@@ -98,22 +97,22 @@
         all-notes (if (and hover-note-val (not (contains? notes hover-note-val)))
                     (conj notes hover-note-val)
                     notes)
-        key-abc (algo/key-signature->abc key-ref)
-        sorted-notes (sort-by algo/note->midi all-notes)
+        key-abc (theory/key-signature->abc key-ref)
+        sorted-notes (sort-by theory/note->midi all-notes)
         ;; Separate notes into treble (C4 and above) and bass (below C4)
-        treble-notes (filter #(>= (algo/note->midi %) (algo/note->midi :C4)) sorted-notes)
-        bass-notes (filter #(< (algo/note->midi %) (algo/note->midi :C4)) sorted-notes)
+        treble-notes (filter #(>= (theory/note->midi %) (theory/note->midi :C4)) sorted-notes)
+        bass-notes (filter #(< (theory/note->midi %) (theory/note->midi :C4)) sorted-notes)
         display-mode (or (:display-mode data) :melody)
         ;; Handle chord vs melody display
         treble-abc (if (seq treble-notes)
                      (if (= display-mode :chord)
-                       (str "[" (string/join "" (map algo/note->abc treble-notes)) "]")
-                       (string/join " " (map algo/note->abc treble-notes)))
+                       (str "[" (string/join "" (map theory/note->abc treble-notes)) "]")
+                       (string/join " " (map theory/note->abc treble-notes)))
                      "yyyy")
         bass-abc (if (seq bass-notes)
                    (if (= display-mode :chord)
-                     (str "[" (string/join "" (map algo/note->abc bass-notes)) "]")
-                     (string/join " " (map algo/note->abc bass-notes)))
+                     (str "[" (string/join "" (map theory/note->abc bass-notes)) "]")
+                     (string/join " " (map theory/note->abc bass-notes)))
                    "yyyy")
         syntax (string/join "\n"
                             ["X:1"
@@ -149,12 +148,12 @@
                                                 .-absEl
                                                 .-abcelem
                                                 .-pitches
-                                                (filter #(= (name (algo/abc-pitch->note (.-name %))) note-name))
+                                                (filter #(= (name (theory/abc-pitch->note (.-name %))) note-name))
                                                 first))
                      note-elem-name (if (= :chord display-mode)
-                                      (name (algo/abc-pitch->note (.-name (.-dataset note-elem))))
+                                      (name (theory/abc-pitch->note (.-name (.-dataset note-elem))))
                                       (when note-elem-pitch-obj
-                                        (name (algo/abc-pitch->note (.-name note-elem-pitch-obj)))))]
+                                        (name (theory/abc-pitch->note (.-name note-elem-pitch-obj)))))]
                  (when (and note-elem-name note-name (= note-name note-elem-name))
                    (if (get-in data [:hover-state :exists?])
                      (.setAttribute note-elem "fill" "red")

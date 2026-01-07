@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as s]
    [re-frame.core :as re-frame]
-   [jigsaw.spec :as specs]
+   [jigsaw.theory :as theory]
    [jigsaw.events :as events]
    [jigsaw.utils :as utils]
    [jigsaw.subs :as subs]
@@ -10,14 +10,13 @@
    [jigsaw.components.select :refer [select]]
    [jigsaw.components.table :refer [table]]
    [jigsaw.components.output-piano-node :refer [piano-preview]]
-   [reagent.core :as r]
-   [jigsaw.algo :as algo]))
+   [reagent.core :as r]))
 
 (defn input-shape-node [{:keys [id type]}]
   (let [data (re-frame/subscribe [::subs/data id])
         shape-type (if (= :input-chord (keyword type)) :chord :scale)
         shapes (map #(assoc (second %) :name (first %))
-                    (if (= shape-type :chord) specs/chords specs/scales))
+                    (if (= shape-type :chord) theory/chords theory/scales))
         title (if (= shape-type :chord) "Chord" "Scale")
         search (r/atom "")]
     (fn [{:keys [id]}]
@@ -37,7 +36,7 @@
                   :placeholder "Pitch"}
           (cons
            [:option {:disabled true :value ""} "Pitch"]
-           (for [pitch specs/simple-pitch-keys]
+           (for [pitch theory/simple-pitch-keys]
              [:option {:value pitch} (name pitch)]))]]
         [:label {:class "space-x-4"}
          [:span {:class "font-semibold"} "Search"]
@@ -45,7 +44,7 @@
                   :on-change #(reset! search (-> % .-target .-value))}]]
         ;; Shape names
         [table {:ms (cond->> shapes
-                      (some? (:pitch @data)) (map #(algo/->shape (algo/pitch->note (:pitch @data)) (:name %))))
+                      (some? (:pitch @data)) (map #(theory/->shape (theory/pitch->note (:pitch @data)) (:name %))))
                 :row-render {"Name" :name
                              "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))
                              "Piano" (fn [shape]

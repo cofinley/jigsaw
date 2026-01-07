@@ -1,12 +1,12 @@
 (ns jigsaw.components.output-circle-of-fifths-node
   (:require
-   [jigsaw.spec :as specs]))
+   [jigsaw.theory :as theory]))
 
 (def circle-of-fifths-order
   [:C :G :D :A :E :B :F# :C# :G# :D# :A# :F])
 
 (defn enharmonic-eq? [pitch1 pitch2]
-  (= (specs/pitches pitch1) (specs/pitches pitch2)))
+  (= (theory/pitches pitch1) (theory/pitches pitch2)))
 
 (defn pitch-matches-circle-position? [pitch circle-pitch]
   (enharmonic-eq? pitch circle-pitch))

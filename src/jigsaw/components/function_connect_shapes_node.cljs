@@ -1,6 +1,6 @@
 (ns jigsaw.components.function-connect-shapes-node
   (:require
-   [jigsaw.algo :as algo]
+   [jigsaw.theory :as theory]
    [jigsaw.components.node :refer [node]]
    [jigsaw.components.output-piano-node :refer [piano-preview]]
    [jigsaw.components.table :refer [table]]
@@ -84,7 +84,7 @@
                               "Inputs" #(->> %
                                              second
                                              (map (partial matched-shape @parent-data id)))}
-                 :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (algo/->shape (algo/pitch->note (:pitch comp-shape)) (:name comp-shape))]))
+                 :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (theory/->shape (theory/pitch->note (:pitch comp-shape)) (:name comp-shape))]))
                  :row-selected? (fn [[comp-shape _]] (and (= (:pitch @data) (:pitch comp-shape))
                                                           (= (:name @data) (:name comp-shape))))}])
        [:p {:class "text-lg"} "Connect more than one"])]))

@@ -1,12 +1,12 @@
 (ns jigsaw.components.table
   (:require
    [clojure.string :as string]
-   [jigsaw.spec :as specs]
+   [jigsaw.theory :as theory]
    ["react" :refer [useEffect useRef]]))
 
 (defn is-draggable-row? [x]
   (cond
-    (map? x) (specs/shape-ref? x)
+    (map? x) (theory/shape-ref? x)
     (vector? x) (is-draggable-row? (first x))  ; connect-shapes row
     :else false))
 

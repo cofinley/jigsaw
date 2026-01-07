@@ -2,13 +2,12 @@
   (:require
    ["react-piano" :refer [Piano]]
    [clojure.set :as set]
-   [jigsaw.algo :as algo]
    [jigsaw.components.select :refer [select]]
    [jigsaw.events :as events]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]
    [reagent.core :as r]
-   [jigsaw.spec :as specs]))
+   [jigsaw.theory :as theory]))
 
 (defn output-piano-view [props]
   (let [selected-label (r/atom :pitches)
@@ -21,8 +20,8 @@
             key-width (or (:key-width props) 30)
             display-label-options? (if-some [a (:display-label-options? props)] a true)]
         (if (seq notes)
-          (let [midis (map algo/note->midi notes)
-                ; parent-midis (map algo/note->midi parent-notes)
+          (let [midis (map theory/note->midi notes)
+                ; parent-midis (map theory/note->midi parent-notes)
                 midi->label (zipmap midis (get data @selected-label))
                 first-midi (first midis)
                 midi-range-start (- first-midi (mod first-midi 12))
@@ -85,12 +84,12 @@
                               :or {parent-notes []}}]
   (let [full-shape (if (contains? shape :notes)
                      shape
-                     (algo/->shape (assoc shape :note (algo/pitch->note (:pitch shape)))))
+                     (theory/->shape (assoc shape :note (theory/pitch->note (:pitch shape)))))
         notes (:notes full-shape)
-        chromas (map specs/pitches (:pitches full-shape))
-        midis (map algo/note->midi notes)
-        parent-midis (map algo/note->midi parent-notes)
-        parent-chromas (map #(-> % algo/parts :pitch specs/pitches) parent-notes)
+        chromas (map theory/pitches (:pitches full-shape))
+        midis (map theory/note->midi notes)
+        parent-midis (map theory/note->midi parent-notes)
+        parent-chromas (map #(-> % theory/parts :pitch theory/pitches) parent-notes)
         white-key-width 20
         first-midi (first midis)
         midi-range-start (- first-midi (mod first-midi 12))
@@ -118,7 +117,7 @@
                   (re-frame/dispatch [::events/play-shape full-shape]))}
      (for [key piano-key-span
            :let [pitch (:pitch key)
-                 chroma (specs/pitches pitch)
+                 chroma (theory/pitches pitch)
                  white? (= :w (:color key))
                  highlighted? (utils/in? (if (seq parent-midis) parent-midis midis) (:midi key))
                  parent-specific-note? (utils/in? parent-specific-notes (:midi key))
