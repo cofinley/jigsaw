@@ -580,6 +580,18 @@
         :7 :dim :vii°
         :2 :dim :ii°
         :b3 :aug :bIII+))
+    (testing "with roman-numeral->int"
+      (are+ [degree want] (= want (theory/roman-numeral->int degree))
+        :I 1
+        :i 1
+        :I7 1
+        :ii 2
+        :bii 2
+        :#ii 2
+        :iii 3
+        :vii° 7
+        :ii° 2
+        :bIII+ 3))
     (testing "with note->abc"
       (are+ [note want] (= want (theory/note->abc note))
         :C4 "C"

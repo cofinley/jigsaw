@@ -1,9 +1,13 @@
 (ns jigsaw.theory
   (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as gen]
             [clojure.string :as str]
             [jigsaw.utils :as utils]))
 
 ; Specifications, music theory constants
+
+(s/def ::alias string?)
+(s/def ::aliases (s/coll-of ::alias))
 
 ;; Pitch class index (PCI): semitones cycling in one octave, where :C is 0, :C# is 1, :Db is 1, :B is 11, and B# is 0
 (s/def ::pci (s/and int? #(<= 0 % 11)))
@@ -106,14 +110,19 @@
 (defn interval? [interval] (s/valid? ::interval interval))
 (s/def ::intervals (s/coll-of ::interval))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
+;; Possible intervals for a given semitone value
 (def semitones->intervals
   (reduce-kv (fn [m interval {:keys [semitones]}] (update m semitones conj interval)) {} intervals))
 
-;; Chord and scales are composition of pitch, name, intervals
+;; Chord and scales are composition of a pitch, name, and intervals
 ;;  e.g. a pitch with intervals is a chord or a scale (think ECS)
 ;;    maybe use degrees instead of intervals for scale to be able to differentiate
 
-;; Note: pitch+octave
+;; Note: pitch and an octave
+;;   This is different depending on who you ask.
+;;   For this project, a note keyword of :Gb4 means a pitch of Gb and an octave of 4.
+;;   One could argue Gb is a note name or pitch class, or that a note has timing information (e.g. quarter note).
+;;   For now, this is what's used and its baked into the spec for consistency.
 (def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
 (def pitch-or-note-pattern (re-pattern (str "^" note-pattern-str "?" "$")))
@@ -128,7 +137,6 @@
 (s/def ::midi (s/and int? #(<= 0 % 127)))
 (defn midi? [x] (s/valid? ::midi x))
 
-; TODO: namespace with chord/
 (def chords
   (array-map
    ;; Major
@@ -262,7 +270,6 @@
 ;;   Tonic (1) is the key
 ;;   Chords can be derived from a scale
 
-; TODO: namespace with scale/
 (def scales
   (array-map
    ;; Basic
@@ -381,8 +388,8 @@
 ;;   Can be arabic (5, 6), roman numerals (V, VI)
 ;;   Can be flattened/sharpened (e.g. a mode formula relative to the base scale), but minor/major/aug/dim not applicable, that's for chords ('quality'), the degree is just the relative pitch
 
-; Roman numeral degree with chord quality
-(def chord-degree-pattern #"[#b]?[ivIV]+[+°7]?")
+; Roman (or arabic) numeral degree with chord quality
+(def chord-degree-pattern #"[#b]?[ivIV0-9]+[+°7]?")
 (s/def ::degree (s/and keyword? #(re-find chord-degree-pattern (name %))))
 
 (def name->shape (merge chords scales))
@@ -428,6 +435,44 @@
 (s/def ::chord-scale (s/and ::scale
                             ::context
                             #(s/valid? ::chord (:context %))))
+
+(s/def ::degrees (s/coll-of ::degree))
+
+(s/def ::chord-progression (s/keys :req-un [::name ::degrees]))
+
+(def chord-progressions
+  (array-map
+   "50s progression" {:degrees [:I :vi :IV :V] :quality :major}
+   "IV-V-I-vi" {:degrees [:IV :V :I :vi] :quality :major}
+   "I–V–vi–IV" {:degrees [:I :V :vi :IV] :quality :major}
+   "I–IV–bVII–IV" {:degrees [:I :IV :bVII :IV] :quality :mixolydian}
+   "ii–V–I" {:degrees [:ii :V :I] :quality :major}
+   "ii–V–I with tritone substitution" {:degrees [:ii :bII :I] :quality :major}
+   "ii-V-I with bIII+ as dominant substitute" {:degrees [:ii :bIII+ :I] :quality :mixolydian}
+   "viio7/V–V–I" {:degrees [:viio7/V :V :I] :quality :major}
+   "Andalusian cadence" {:degrees [:iv :III :bII :I] :quality :phrygian-dominant}
+   "Backdoor progression" {:degrees [:ii :bVII :I] :quality :major}
+   "Bird changes" {:degrees [:I :viiø :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
+   "Chromatic descending 5–6 sequence" {:degrees [:I :V :bVII :IV] :quality :mixolydian}
+   "Circle progression" {:degrees [:vi :ii :V :I] :quality :major}
+   "Coltrane changes" {:degrees [:I :V/bVI :bVI–V/III :III–V :I] :quality :major}
+   "Eight-bar blues" {:degrees [:I :V :IV :IV :I :V :I :V] :quality :major}
+   "Folia" {:degrees [:i :V :i :bVII :bIII :bVII :i :V :i :V :i :bVII :bIII :bVII :i :V :i] :quality :minor}
+   "Irregular resolution" {:degrees [:V7 :III7] :quality :major}
+   "Montgomery–Ward bridge" {:degrees [:I :IV :ii :V] :quality :major}
+   "Passamezzo antico" {:degrees [:i :VII :i :V :III :VII :i :V :i] :quality :minor}
+   "Passamezzo moderno" {:degrees [:I :IV :I :V :I :IV :I :V :I] :quality :major}
+   "I–V–vi–IV" {:degrees [:I :V :vi :IV] :quality :major}
+   "Ragtime" {:degrees [:III7 :VI7 :II7 :V7] :quality :major}
+   "Romanesca" {:degrees [:III :VII :i :V :III :VII :i :V :i] :quality :major}
+   "Sixteen-bar blues" {:degrees [:I :I :I :I :I :I :I :I :IV :IV :I :I :V :IV :I :I] :quality :major}
+   "Twelve-bar blues" {:degrees [:I :I :I :I :IV :IV :I :I :V :IV :I :V] :quality :major}
+   "I−vi−ii−V" {:degrees [:I :vi :ii :V] :quality :major}
+   "bVII–V7 cadence" {:degrees [:bVII :V :I] :quality :mixolydian}
+   "V–IV–I turnaround" {:degrees [:V :IV :I] :quality :major}
+   "I–bVII–bVI–bVII" {:degrees [:I :bVII :bVI :bVII] :quality :minor}
+   "IVM7–V7–iii7–vi" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
+   "bVI-bVII-I" {:degrees [:bVI :bVII :I] :quality :major}))
 
 ; Arithmetic
 
@@ -725,19 +770,14 @@
   (nth ["I" "II" "III" "IV" "V" "VI" "VII"] (dec n)))
 
 (defn roman-numeral->int
-  [numeral-string]
+  [numeral-keyword]
   (let [m (into {}
                 (map-indexed (fn [idx numeral]
                                [numeral (inc idx)])
                              ["I" "II" "III" "IV" "V" "VI" "VII"]))]
-    (second (first (filter
-                    #(= (str/upper-case
-                         (-> numeral-string
-                             (str/replace  "b" "")
-                             (str/replace  "#" "")
-                             (str/replace  "°" "")
-                             (str/replace  "+" "")
-                             (str/replace  "7" ""))) (first %)) m)))))
+    (second (first (filter #(= (str/upper-case (str/replace (name numeral-keyword) #"[b#°+7]" ""))
+                               (first %))
+                           m)))))
 
 (defn degree-chord->roman-numeral
   [degree chord-name]

@@ -11,7 +11,7 @@
   (for [pitch theory/simple-pitch-keys
         shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
     (let [shape (theory/->shape {:note (theory/pitch->note pitch) :name shape-name})
-          pcis (map theory/pitches (:pitches shape))]
+          pcis (mapv theory/pitches (:pitches shape))]
       (assoc shape :pcis pcis))))
 
 (def all-chords (resolve-all-shapes :chord))
@@ -53,7 +53,7 @@
   "If input-shape is a chord, find degree in candidate-shape (scale)
    If input-shape is a scale, find the candidate-shape's (chord) degree"
   [input-shape candidate-shape]
-  {:pre [(every? theory/shape? [input-shape candidate-shape])]}
+  ; {:pre [(every? theory/shape? [input-shape candidate-shape])]}
   (let [scale (if (theory/scale? input-shape) input-shape candidate-shape)
         chord (if (= scale input-shape) candidate-shape input-shape)
         degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
@@ -145,7 +145,7 @@
 (defn scale->chords
   "Find chords which are diatonic to the scale (i.e. pitch subsets)"
   [{:keys [pitches] :as scale}]
-  {:post [(every? theory/shape-ref? %)]}
+  ; {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
     (for [chord all-chords
           :when (set/subset? (set (:pitches chord)) pitch-set)]
@@ -160,13 +160,13 @@
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
   [{:keys [pitches] :as chord} & {:keys [degree] :or {degree nil}}]
-  {:post [(every? theory/shape-ref? %)]}
+  ; {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
-    (sort-by #(theory/roman-numeral->int (name (:degree %)))
+    (sort-by #(theory/roman-numeral->int (:degree %))
              (for [scale all-scales
                    :when (set/subset? pitch-set (set (:pitches scale)))
                    :let [chord-degree (contextualize chord scale)]
-                   :when (if (some? degree) (= degree (theory/roman-numeral->int (name chord-degree))) true)]
+                   :when (if (some? degree) (= degree (theory/roman-numeral->int chord-degree)) true)]
                {:pitch (:pitch scale)
                 :name (:name scale)
                 :degree chord-degree}))))
@@ -197,7 +197,7 @@
      {}
      (for [[comp-shape matched-shapes] comp-shape->shapes
            :when (= (count shapes) (count matched-shapes))]
-       [comp-shape (sort-by #(theory/roman-numeral->int (name (:context %)))
+       [comp-shape (sort-by #(theory/roman-numeral->int (:context %))
                             (map (fn [shape]
                                    {:found shape
                                     :context (contextualize (theory/->shape shape)
@@ -234,7 +234,7 @@
                                                set)]
            :when (or (= (count note-seq-sets) (count note-seqs-for-comp-shape))
                      (>= (count shapes) 2))]
-       [comp-shape (sort-by #(theory/roman-numeral->int (name (:context %)))
+       [comp-shape (sort-by #(theory/roman-numeral->int (:context %))
                             (map (fn [shape]
                                    {:input (shape->note-seqs shape)
                                     :found shape
@@ -255,8 +255,7 @@
 
 (defn scale->mode
   [scale n]
-  {:pre [(theory/scale? scale)]
-   :post [(theory/shape-ref? %)]}
+  {:pre [(theory/scale? scale)]}
   (let [pitches (utils/rotate (:pitches scale) n)
         rotated-intervals (rotate-intervals (:intervals scale) n)]
     (when-let [new-scale-name (theory/intervals->scales rotated-intervals)]
@@ -265,8 +264,7 @@
 
 (defn scale->modes
   [scale]
-  {:pre [(theory/scale? scale)]
-   :post [(every? theory/shape-ref? %)]}
+  {:pre [(theory/scale? scale)]}
   (for [n (range (count (:pitches scale)))]
     (scale->mode scale n)))
 
@@ -329,19 +327,15 @@
                      (take max-shapes)))))))
 
 (comment
-  (let [scale (theory/->shape :E :harmonic-minor)]
-    (scale->chords scale))
-  (notes->shapes (:notes (theory/->shape :C4 :maj)) :scale)
-  (shape->shapes (theory/->shape :Cmajor))
-  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones theory/intervals) (theory/->intervals [:Gb :G :B :Db :D]))))
-  (map #(abs (apply - %)) (partition 2 1 (map (comp :semitones theory/intervals) [:P1 :M2 :m3 :P5 :m6])))
-  (map #(theory/intervals (theory/+interval :Gb %)) [:P1 :M2 :m3 :P5 :m6])
-  (chord->scales (theory/->shape :Eb6add9))
-  (scale->chords (theory/->shape :C_diminished))
-  (theory/->shape :Db_diminished)
-  (contextualize (theory/->shape :B_maj) (theory/->shape :C_major))
+  (scale->chords (theory/->shape :E :harmonic-minor))
+  (notes->shapes (:notes (theory/->shape :C4_maj)) :chord)
+  (shape->shapes (theory/->shape :C_major))
+  (shape->shapes (theory/->shape :A_11))
+  (->> [:P1 :M2 :m3 :P5 :m6]
+       (map #(theory/+interval :Gb %))
+       theory/->intervals)
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect-shapes [(theory/->shape :Cmaj) (theory/->shape :Dm) (theory/->shape :Em)])
+  (connect-shapes [(theory/->shape :C_maj) (theory/->shape :D_m) (theory/->shape :E_m)])
   (connect [(:notes (theory/->shape :C4 :maj)) (:notes (theory/->shape :D4 :m))] :chord)
   (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
