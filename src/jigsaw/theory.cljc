@@ -1,6 +1,5 @@
 (ns jigsaw.theory
   (:require [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]
             [clojure.string :as str]
             [jigsaw.utils :as utils]))
 
@@ -389,8 +388,8 @@
 ;;   Can be flattened/sharpened (e.g. a mode formula relative to the base scale), but minor/major/aug/dim not applicable, that's for chords ('quality'), the degree is just the relative pitch
 
 ; Roman (or arabic) numeral degree with chord quality
-(def chord-degree-pattern #"[#b]?[ivIV0-9]+[+°7]?")
-(s/def ::degree (s/and keyword? #(re-find chord-degree-pattern (name %))))
+(def degree-pattern #"[#b]?[ivIV0-9]+[+°o%Mm7]?")
+(s/def ::degree (s/and keyword? #(re-find degree-pattern (name %))))
 
 (def name->shape (merge chords scales))
 (s/def ::name (set (concat (keys chords) (keys scales))))
@@ -449,13 +448,16 @@
    "ii–V–I" {:degrees [:ii :V :I] :quality :major}
    "ii–V–I with tritone substitution" {:degrees [:ii :bII :I] :quality :major}
    "ii-V-I with bIII+ as dominant substitute" {:degrees [:ii :bIII+ :I] :quality :mixolydian}
-   "viio7/V–V–I" {:degrees [:viio7/V :V :I] :quality :major}
+   ; Diminished represented as 'o' for easier typing
+   ; Secondary dominant; represent / with _ for Clojure keyword reader compatibility
+   "viio7/V–V–I" {:degrees [:viio7_V :V :I] :quality :major}
    "Andalusian cadence" {:degrees [:iv :III :bII :I] :quality :phrygian-dominant}
    "Backdoor progression" {:degrees [:ii :bVII :I] :quality :major}
-   "Bird changes" {:degrees [:I :viiø :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
+   ; Half-diminished represented as % for easier typing
+   "Bird changes" {:degrees [:I :vii% :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
    "Chromatic descending 5–6 sequence" {:degrees [:I :V :bVII :IV] :quality :mixolydian}
    "Circle progression" {:degrees [:vi :ii :V :I] :quality :major}
-   "Coltrane changes" {:degrees [:I :V/bVI :bVI–V/III :III–V :I] :quality :major}
+   "Coltrane changes" {:degrees [:I :V_bVI :bVI :V_III :III :V :I] :quality :major}
    "Eight-bar blues" {:degrees [:I :V :IV :IV :I :V :I :V] :quality :major}
    "Folia" {:degrees [:i :V :i :bVII :bIII :bVII :i :V :i :V :i :bVII :bIII :bVII :i :V :i] :quality :minor}
    "Irregular resolution" {:degrees [:V7 :III7] :quality :major}
@@ -471,7 +473,8 @@
    "bVII–V7 cadence" {:degrees [:bVII :V :I] :quality :mixolydian}
    "V–IV–I turnaround" {:degrees [:V :IV :I] :quality :major}
    "I–bVII–bVI–bVII" {:degrees [:I :bVII :bVI :bVII] :quality :minor}
-   "IVM7–V7–iii7–vi" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
+   ; Major 7th chord; represent with M7 for Clojure keyword reader compatibility
+   "Royal road" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
    "bVI-bVII-I" {:degrees [:bVI :bVII :I] :quality :major}))
 
 ; Arithmetic
@@ -775,7 +778,7 @@
                 (map-indexed (fn [idx numeral]
                                [numeral (inc idx)])
                              ["I" "II" "III" "IV" "V" "VI" "VII"]))]
-    (second (first (filter #(= (str/upper-case (str/replace (name numeral-keyword) #"[b#°+7]" ""))
+    (second (first (filter #(= (str/upper-case (str/replace (name numeral-keyword) #"[b#°o%+mM7]" ""))
                                (first %))
                            m)))))
 
@@ -796,6 +799,29 @@
         (utils/in? intervals :d5) "°"
         (= :7 chord-name) "7"
         :else "")))))
+
+(defn chord-degree->chord-name
+  "
+  Major    I
+  Minor    i
+  Dim      io
+
+  Major 7th    ...M7
+  Minor 7th    ...m7
+  Dom. 7th     ...7
+  Dim 7th      ...o7
+  Half-dim 7th ...%7
+  "
+  [chord-degree]
+  (condp #(some? (re-find %1 %2)) (name chord-degree)
+    #"%7" :m7b5
+    #"o7" :dim7
+    #"o" :dim
+    #"M7" :maj7
+    #"m7" :m7
+    #"7" :7
+    #"[IV]" :maj
+    #"[iv]" :m))
 
 (defn- circle-of-fifths [major-or-minor]
   (zipmap
@@ -956,6 +982,48 @@
                       :B# "^B")]
     (str/join " " (map pitch->abc accidental-pitches))))
 
+(defn- scale-degree->int [scale-degree]
+  (utils/parse-int (name scale-degree)))
+
+(defn- chord-degree->int [chord-degree]
+  (utils/parse-int (roman-numeral->int chord-degree)))
+
+(defn- scale-chord-degree->chord
+  "
+  prefix:
+    #
+    b
+
+  chord:
+    [IiVv]+
+
+  suffix:
+    M7
+    7
+    m7
+    o7
+    %7
+  "
+  [scale chord-degree]
+  (let [chord-name (chord-degree->chord-name chord-degree)
+        scale-degree-int->pitch (reduce (fn [m [scale-degree pitch]]
+                                          (assoc m (scale-degree->int scale-degree) pitch))
+                                        {}
+                                        (zipmap (:degrees scale) (:pitches scale)))
+        chord-degree-int (chord-degree->int chord-degree)
+        pitch (scale-degree-int->pitch chord-degree-int)
+        new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
+    (->shape new-pitch chord-name)))
+
+(defn ->progression
+  "
+  :C_major [:ii :V :I] -> [<D_m chord> <G_maj chord> <C_maj chord>]
+  :C_major [:ii :bII7 :I] -> [<D_m chord> <Db_7 chord> <C_maj chord>]
+  "
+  [scale-def chord-degrees]
+  (let [scale (->shape scale-def)]
+    (map #(scale-chord-degree->chord scale %) chord-degrees)))
+
 ;; TODO
 ;;  - Chord progressions/cadences from scales (i.e. shape of shapes)
 ;;  - Preview scales on top of chord (progression)
@@ -966,11 +1034,18 @@
 ;;  - mood identification, scale and progression, add colors
 
 (comment
-  (take 3 (cycle '(:G :A)))
-  (utils/rotate [:G :A :C :F] 3)
+  ; :C (pitch)
+  ; :C4 (note)
+  ; :P5 (interval)
+  ; [:P1 :M3 :P5] (shape based on intervals)
+  ; [:1 :b3 :#5] (scale degrees, relating to harmonic function)
+  ; [:I :iii :bIV :bIII+ :viio7] (chord degrees; like scale degrees, but with chord information like major/minor/dominant/diminished/augmented)
+  ; :C_maj (chord (shape) based on pitch)
+  ; :C4_maj (chord (shape) based on note)
+  ; :C4_major (scale (shape) based on note)
+  ; [:C_maj :E_m :G_maj] (progression based on chords)
+  ; [:I :ii :V] (progression based on scale degrees)
   (->> :F
        (iterate (partial #(+interval % :P5)))  ; Fifths
        (take 7))
-  (circle-of-fifths :minor)
-  (key-signature-accidentals {:pitch :Db :name :minor})
-  (key-signature->abc {:pitch :Cb :name :major}))
+  (->progression :C_major (get-in chord-progressions ["Royal road" :degrees])))

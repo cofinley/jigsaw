@@ -580,6 +580,13 @@
         :7 :dim :vii°
         :2 :dim :ii°
         :b3 :aug :bIII+))
+    (testing "with chord-degree->chord-name"
+      (are+ [chord-degree want] (= want (theory/chord-degree->chord-name chord-degree))
+        :I :maj
+        :iii :m
+        :bIV :maj
+        :bIII+ :maj
+        :viio7 :dim7))
     (testing "with roman-numeral->int"
       (are+ [degree want] (= want (theory/roman-numeral->int degree))
         :I 1
@@ -624,4 +631,9 @@ L:1/4
         :C0_dim "X:1
 K:C exp C D E F G A B
 L:1/4
-\"Cdim\" [C,,,, _E,,,, _G,,,,]"))))
+\"Cdim\" [C,,,, _E,,,, _G,,,,]"))
+    (testing "with ->progression"
+      (are+ [tonic chord-degrees want] (= want (theory/->progression tonic chord-degrees))
+        :C_major [:ii :V :I] [(theory/->shape :D_m) (theory/->shape :G_maj) (theory/->shape :C_maj)]
+        :C_major [:bii :V :I] [(theory/->shape :Db_m) (theory/->shape :G_maj) (theory/->shape :C_maj)]
+        :C_major [:iim7 :V7 :IM7] [(theory/->shape :D_m7) (theory/->shape :G_7) (theory/->shape :C_maj7)]))))
