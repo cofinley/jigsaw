@@ -1,4 +1,4 @@
-(ns jigsaw.components.output-debug-node
+(ns jigsaw.ui.components.output-debug-node
   (:require
    [cljs.pprint :as pprint]
    [reagent.core :as r]))

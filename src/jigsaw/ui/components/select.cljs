@@ -1,4 +1,4 @@
-(ns jigsaw.components.select
+(ns jigsaw.ui.components.select
   (:require
    [reagent.core :as r]))
 

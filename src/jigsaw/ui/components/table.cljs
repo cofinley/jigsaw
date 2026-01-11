@@ -1,7 +1,7 @@
-(ns jigsaw.components.table
+(ns jigsaw.ui.components.table
   (:require
    [clojure.string :as string]
-   [jigsaw.theory :as theory]
+   [jigsaw.impl.theory :as theory]
    ["react" :refer [useEffect useRef]]))
 
 (defn is-draggable-row? [x]

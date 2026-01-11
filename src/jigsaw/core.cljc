@@ -1,81 +1,94 @@
-"Functions to find and test compatibility between shapes (intervals) in the entire search space"
-
-(ns jigsaw.search
+(ns jigsaw.core
   (:require
+   [clojure.string :as str]
    [clojure.set :as set]
-   [jigsaw.theory :as theory]
+   [jigsaw.impl.theory :as theory]
    [jigsaw.utils :as utils]))
 
-; Based on PCI
-(defn- resolve-all-shapes [shape-type]
-  (for [pitch theory/simple-pitch-keys
-        shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
-    (let [shape (theory/->shape {:note (theory/pitch->note pitch) :name shape-name})
-          pcis (mapv theory/pitches (:pitches shape))]
-      (assoc shape :pcis pcis))))
-
-(def all-chords (resolve-all-shapes :chord))
-(def all-scales (resolve-all-shapes :scale))
-
-(defn- jaccard-index [set1 set2]
-  (let [intersection (count (set/intersection set1 set2))
-        union (count (set/union set1 set2))]
-    (if (zero? union)
-      0.0
-      (float (/ intersection union)))))
-
-(def heuristic-labels
-  {:contains? "partially contains"
-   :fully-contains? "fully contains"
-   :contained-in? "is partially contained by"
-   :fully-contained-in? "is fully contained by"
-   :overlap "overlaps with"})
-
-(defn- heuristic->float [x]
-  (case x
-    false 0
-    true 1
-    x))
-
-(defn calculate-heuristics
-  "Read as '<input> <heurstic> <possible shape>'"
-  [input candidate]
-  (let [input-set (set input)
-        candidate-set (set candidate)]
-    {:contains? (heuristic->float (set/superset? input-set candidate-set))
-     :fully-contains? (heuristic->float (and (set/superset? input-set candidate-set) (not= input-set candidate-set)))
-     :contained-in? (heuristic->float (set/subset? input-set candidate-set))
-     :fully-contained-in? (heuristic->float (and (set/subset? input-set candidate-set) (not= input-set candidate-set)))
-     :overlap (heuristic->float (jaccard-index input-set candidate-set))
-     :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
+(defn ->shape
+  "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
+  ([x]
+   ; Different notations
+   (cond
+     ; E.g. :C_maj, C4_maj
+     (keyword? x) (let [[pitch-or-note-str shape-name-str] (str/split (name x) #"_")
+                        pitch-or-note (keyword pitch-or-note-str)
+                        shape-name (keyword shape-name-str)]
+                    (->shape pitch-or-note shape-name))
+     ; E.g. {:pitch :C :name :maj}
+     (theory/shape-ref? x) (if (or (contains? x :pitches) (contains? x :notes))
+                             x
+                             (->shape (or (:note x) (:pitch x)) (:name x)))))
+  ([x shape-name]
+   ; {:pre [(impl/pitch-or-note? x)]}
+   ; TODO: if :bass provided, reorder pitches and include lower note?
+   (let [{:keys [pitch note]} (theory/parts x)
+         shape (theory/name->shape shape-name)
+         intervals (:intervals shape)
+         pitches (mapv (partial theory/+interval-memo pitch) intervals)]
+     (cond-> shape
+       true (merge {:pitch pitch
+                    :name shape-name
+                    :pitches pitches})
+       (theory/note? x) (assoc :notes (mapv (partial theory/+interval-memo note) intervals))))))
 
 (defn contextualize
   "If input-shape is a chord, find degree in candidate-shape (scale)
    If input-shape is a scale, find the candidate-shape's (chord) degree"
   [input-shape candidate-shape]
-  ; {:pre [(every? theory/shape? [input-shape candidate-shape])]}
+  ; {:pre [(every? impl/shape? [input-shape candidate-shape])]}
   (let [scale (if (theory/scale? input-shape) input-shape candidate-shape)
         chord (if (= scale input-shape) candidate-shape input-shape)
         degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
     (theory/degree-chord->roman-numeral degree (:name chord))))
 
-(defn- identify-bass-pitch
-  "Identify the bass note (lowest pitch) from a collection of notes"
-  [notes]
-  (when (seq notes)
-    (let [sorted-notes (sort-by theory/note->midi notes)
-          lowest-note (first sorted-notes)
-          bass-pitch (-> lowest-note theory/parts :pitch)]
-      bass-pitch)))
+(defn shape->abc
+  [shape & {:keys [note-length selected-key]
+            :or {note-length "1/4"}}]
+  {:pre [(theory/shape? shape)]}
+  (let [notes (set (:notes shape))
+        scale? (theory/scale? shape)
+        pitch (:pitch shape)
+        shape-name (:name shape)
+        key-ref (cond
+                  (some? selected-key) selected-key
+                  :else {:pitch :C :name :major})
+        key-shape (->shape (assoc key-ref :note (theory/pitch->note (:pitch key-ref))))
+        key-abc (str (name (:pitch key-shape))
+                     " exp "
+                     (str/join " " (map theory/note->abc (:notes key-shape))))
+        sorted-notes (sort-by theory/note->midi notes)
+        pitches-str (str/join " " (map theory/note->abc sorted-notes))]
+    (str/join "\n"
+              ["X:1"
+               (str "K:" key-abc)
+               (str "L:" note-length)
+               (str/join " "
+                         [(when-not scale?
+                            (str "\"" (name pitch) (name shape-name) "\""))
+                          (if scale?
+                            pitches-str
+                            (str "[" pitches-str "]"))])])))
 
-(defn- find-enharomic-equivalent
-  "Find enharmonic patches of a source-pitch among target-pitches, based on PCI"
-  [source-pitch target-pitches]
-  (let [source-pci (theory/pitches source-pitch)
-        target-pcis->pitches (reduce (fn [m pitch]
-                                       (let [pci (theory/pitches pitch)]
-                                         (assoc m pci pitch))) {} target-pitches)]
-    (target-pcis->pitches source-pci)))
+(defn ->progression
+  "
+  :C_major [:ii :V :I] -> [<D_m chord> <G_maj chord> <C_maj chord>]
+  :C_major [:ii :bII7 :I] -> [<D_m chord> <Db_7 chord> <C_maj chord>]
+  "
+  [scale-def chord-degrees]
+  (let [scale (->shape scale-def)]
+    (mapv #(theory/scale-chord-degree->chord scale %) chord-degrees)))
+
+; Based on PCI
+(defn resolve-all-shapes [shape-type]
+  (for [pitch theory/simple-pitch-keys
+        shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
+    (let [shape (->shape {:note (theory/pitch->note pitch) :name shape-name})
+          pcis (mapv theory/pitches (:pitches shape))]
+      (assoc shape :pcis pcis))))
+
+(def all-chords (resolve-all-shapes :chord))
+(def all-scales (resolve-all-shapes :scale))
 
 (defn notes->shapes
   "Fuzzy-find any shape from notes and their PCIs
@@ -91,61 +104,30 @@
                             selected-pitch nil}}]
   (let [pcis (map #(-> % theory/parts :pci) notes)
         shapes (if (= shape-type :chord) all-chords all-scales)
-        bass-pitch (identify-bass-pitch notes)]
+        bass-pitch (theory/identify-bass-pitch notes)]
     (->> shapes
          (into []
                (comp
                 (filter #(if (theory/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
-                (map #(assoc % :heuristics (calculate-heuristics pcis (:pcis %))))
-                (map #(dissoc % :pcis))
+                (map #(assoc % :heuristics (theory/calculate-heuristics pcis (:pcis %))))
                 ; Add bass note for chords if not in root position; try to align it with chord enharmonics if possible
                 (map #(if (and (= shape-type :chord)
                                bass-pitch
                                (not= (:pitch %) bass-pitch)  ; bass isn't root
                                (not= (theory/pitches (:pitch %)) (theory/pitches bass-pitch)))  ; bass isn't root with different enharmonic (e.g. E and Fb)
-                        (assoc % :bass (or (find-enharomic-equivalent bass-pitch (:pitches %)) bass-pitch))
+                        (assoc % :bass (or (theory/find-enharomic-equivalent bass-pitch (:pitches %)) bass-pitch))
                         %))
                 (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))))
          (sort-by (comp heuristic :heuristics) >)
-         (take max-shapes))))
-
-(def notes->shapes-memo (memoize notes->shapes))
-
-; Helper functions for bass/inversion analysis
-
-(defn bass->inversion
-  "Determine inversion number from bass note and chord.
-   Returns:
-   - 1 for first inversion (bass is third)
-   - 2 for second inversion (bass is fifth)
-   - etc.
-   - nil if bass note is not a chord tone (slash chord)"
-  [chord-ref bass-pitch]
-  (let [chord (theory/->shape chord-ref)
-        chord-pitches (:pitches chord)
-        bass-index (.indexOf chord-pitches bass-pitch)]
-    (when (> bass-index 0)
-      bass-index)))
-
-(defn inversion?
-  "Check if the chord with bass note represents an inversion
-   (bass note is a chord tone)"
-  [chord bass-pitch]
-  (some? (bass->inversion chord bass-pitch)))
-
-(defn slash-chord?
-  "Check if the chord with bass note represents a slash chord
-   (bass note is NOT a chord tone)"
-  [chord bass-pitch]
-  (and (not= (:pitch chord) bass-pitch)
-       (not (inversion? chord bass-pitch))))
+         (take max-shapes)
+         (map #(select-keys % [:pitch :name :bass :heuristics])))))
 
 ; Find chords from scales (via matching pitches)
 
 (defn scale->chords
   "Find chords which are diatonic to the scale (i.e. pitch subsets)"
   [{:keys [pitches] :as scale}]
-  ; {:post [(every? theory/shape-ref? %)]}
+  ; {:post [(every? impl/shape-ref? %)]}
   (let [pitch-set (set pitches)]
     (for [chord all-chords
           :when (set/subset? (set (:pitches chord)) pitch-set)]
@@ -160,7 +142,7 @@
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
   [{:keys [pitches] :as chord} & {:keys [degree] :or {degree nil}}]
-  ; {:post [(every? theory/shape-ref? %)]}
+  ; {:post [(every? impl/shape-ref? %)]}
   (let [pitch-set (set pitches)]
     (sort-by #(theory/roman-numeral->int (:degree %))
              (for [scale all-scales
@@ -186,7 +168,7 @@
   [shapes]
   {:pre [(every? theory/shape? shapes)]}
   (let [shape->comp-shapes (reduce (fn [m shape]
-                                     (assoc m shape
+                                     (assoc m (select-keys shape [:pitch :name :heuristics :bass])
                                             (set (remove (comp nil? :name)
                                                          ; Keep comp-shape reusable by removing :degree (added back later)
                                                          (map #(select-keys % [:pitch :name])
@@ -200,8 +182,8 @@
        [comp-shape (sort-by #(theory/roman-numeral->int (:context %))
                             (map (fn [shape]
                                    {:found shape
-                                    :context (contextualize (theory/->shape shape)
-                                                            (theory/->shape comp-shape))})
+                                    :context (contextualize (->shape shape)
+                                                            (->shape comp-shape))})
                                  matched-shapes))]))))
 
 (defn connect
@@ -213,7 +195,7 @@
   (let [note-seq-sets (set note-seqs)
         note-seq->shapes (reduce (fn [m note-seq]
                                    (assoc m note-seq
-                                          (set (map #(select-keys % [:pitch :name :heuristics :bass])
+                                          (set (map #(select-keys % [:pitch :name :bass :heuristics])
                                                     (notes->shapes note-seq input-shape-type :max-shapes max-shapes)))))
                                  {}
                                  note-seqs)
@@ -222,7 +204,7 @@
                                      (assoc m shape
                                             (set (remove (comp nil? :name)
                                                          (map #(select-keys % [:pitch :name])
-                                                              (shape->shapes (theory/->shape shape)))))))
+                                                              (shape->shapes (->shape shape)))))))
                                    {} (keys shape->note-seqs))
         comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
     (into
@@ -238,35 +220,15 @@
                             (map (fn [shape]
                                    {:input (shape->note-seqs shape)
                                     :found shape
-                                    :context (contextualize (theory/->shape shape)
-                                                            (theory/->shape comp-shape))})
+                                    :context (contextualize (->shape shape)
+                                                            (->shape comp-shape))})
                                  shapes))]))))
-
-(def memoize-connect (memoize connect))
-(def memoize-connect-shapes (memoize connect-shapes))
-
-(defn rotate-intervals
-  "Recontextualize intervals by rotating/inverting them"
-  [intervals n]
-  (let [pitches (map #(theory/+interval :C %) intervals)
-        rotated-pitches (utils/rotate pitches n)
-        rotated-intervals (theory/->intervals rotated-pitches)]
-    rotated-intervals))
-
-(defn scale->mode
-  [scale n]
-  {:pre [(theory/scale? scale)]}
-  (let [pitches (utils/rotate (:pitches scale) n)
-        rotated-intervals (rotate-intervals (:intervals scale) n)]
-    (when-let [new-scale-name (theory/intervals->scales rotated-intervals)]
-      {:pitch (first pitches)
-       :name new-scale-name})))
 
 (defn scale->modes
   [scale]
   {:pre [(theory/scale? scale)]}
   (for [n (range (count (:pitches scale)))]
-    (scale->mode scale n)))
+    (theory/scale->mode scale n)))
 
 (defn fit
   "
@@ -290,8 +252,8 @@
   Test combinations: #{0 2 7} AKA Csus2, #{0 4 7} AKA Cmaj
   "
   [target-shape candidate-notes & {:keys [max-shapes] :or {max-shapes 1}}]
-  ; {:pre [(theory/shape? target-shape) (every? theory/note? candidate-notes)]
-  ;  :post [(every? theory/shape-ref? %)]}
+  ; {:pre [(impl/shape? target-shape) (every? impl/note? candidate-notes)]
+  ;  :post [(every? impl/shape-ref? %)]}
   (let [comp-shape-type (if (theory/chord? target-shape) :scale :chord)
         shapes (if (= :chord comp-shape-type) all-chords all-scales)
         target-pitches (:pitches target-shape)
@@ -321,24 +283,46 @@
                                (let [shape-pci-set (set (:pcis shape))
                                      smaller (if (< (count shape-pci-set) (count new-set)) shape-pci-set new-set)]
                                  (= (set/intersection shape-pci-set new-set) smaller))))
-                     (map #(assoc % :heuristics (calculate-heuristics new-set (:pcis %))))
+                     (map #(assoc % :heuristics (theory/calculate-heuristics new-set (:pcis %))))
                      (sort-by (juxt #(Math/abs (- (count (:pcis %)) (count new-set)))
                                     #(- (get-in % [:heuristics :overlap]))))
-                     (take max-shapes)))))))
+                     (take max-shapes)
+                     (map #(select-keys % [:pitch :name :heuristics]))))))))
+
+(def notes->shapes-memo (memoize notes->shapes))
+(def connect-memo (memoize connect))
+(def connect-shapes-memo (memoize connect-shapes))
+
+;; TODO
+;;  - Chord progressions/cadences from scales (i.e. shape of shapes)
+;;  - Preview scales on top of chord (progression)
+;;    - With different licks/melody rhythm patterns
+;;  - Key signature, proper accidentals on music staff
+;;  - factor in context more
+;;  - highlight overlapping nodes
+;;  - mood identification, scale and progression, add colors
 
 (comment
-  (scale->chords (theory/->shape :E :harmonic-minor))
-  (notes->shapes (:notes (theory/->shape :C4_maj)) :chord)
-  (shape->shapes (theory/->shape :C_major))
-  (shape->shapes (theory/->shape :A_11))
-  (->> [:P1 :M2 :m3 :P5 :m6]
-       (map #(theory/+interval :Gb %))
-       theory/->intervals)
+  ;; Resolve a shape
+  (->shape :C_maj)
+  (->shape :C_major)
+  ;; Shape of shapes
+  (->progression :C_major [:ii :V :I])
+  ;; Shape -> shapes
+  (chord->scales (->shape :C :maj))
+  (scale->chords (->shape :C :major))
+  (scale->modes (->shape :G_lydian-pentatonic))
+  (notes->shapes (:notes (->shape :C4_maj)) :chord)
+  ;; Generalized shape -> shapes
+  (shape->shapes (->shape :C_maj))
+  (shape->shapes (->shape :C_major))
+  ;; Shapes -> parent shape
+  (connect-shapes [(->shape :C_maj) (->shape :D_m) (->shape :E_m)])
+  ;;; From notes; more generalized; allows args from notes->shapes
   (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect-shapes [(theory/->shape :C_maj) (theory/->shape :D_m) (theory/->shape :E_m)])
-  (connect [(:notes (theory/->shape :C4 :maj)) (:notes (theory/->shape :D4 :m))] :chord)
-  (connect [[:Gb4 :A4 :C#5 :E5] [:Gb4 :A4 :B4 :Eb5] [:E4 :G#4 :B4]] :chord)
+  (connect [(:notes (->shape :C4 :maj)) (:notes (->shape :D4 :m))] :chord)
   (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
   (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
-  (scale->modes (theory/->shape :G_lydian-pentatonic))
-  (fit (theory/->shape :C4 :major) (:notes (theory/->shape :C4 :m))))
+  ;; Shape -> ? -> shape
+  (fit (->shape :C4 :major) (:notes (->shape :C4 :m))))
+

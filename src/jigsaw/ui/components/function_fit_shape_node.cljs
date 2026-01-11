@@ -1,10 +1,10 @@
-(ns jigsaw.components.function-fit-shape-node
+(ns jigsaw.ui.components.function-fit-shape-node
   (:require
-   [jigsaw.components.node :refer [node]]
-   [jigsaw.components.output-piano-node :refer [piano-preview]]
-   [jigsaw.components.table :refer [table]]
-   [jigsaw.events :as events]
-   [jigsaw.subs :as subs]
+   [jigsaw.ui.components.node :refer [node]]
+   [jigsaw.ui.components.output-piano-node :refer [piano-preview]]
+   [jigsaw.ui.components.table :refer [table]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 

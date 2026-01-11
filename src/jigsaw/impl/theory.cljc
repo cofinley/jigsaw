@@ -1,18 +1,19 @@
-(ns jigsaw.theory
-  (:require [clojure.spec.alpha :as s]
-            [clojure.string :as str]
-            [jigsaw.utils :as utils]))
+(ns jigsaw.impl.theory
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.set :as set]
+   [jigsaw.utils :as utils]))
 
 ; Specifications, music theory constants
 
 (s/def ::alias string?)
 (s/def ::aliases (s/coll-of ::alias))
 
+;;;; PITCHES ;;;;
+
 ;; Pitch class index (PCI): semitones cycling in one octave, where :C is 0, :C# is 1, :Db is 1, :B is 11, and B# is 0
 (s/def ::pci (s/and int? #(<= 0 % 11)))
-
-;; Semitone: 0, 1, .., 21 (21 == thirteenth)
-(s/def ::semitones (s/and int? #(<= 0 % 21)))
 
 (def letters->pci {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11})
 
@@ -33,18 +34,15 @@
    {}
    letters->pci))
 
-(def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
-(def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
-(s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
-(defn pitch? [p] (s/valid? ::pitch p))
-
 (def simple-pitch-keys
   (filter #(and (not (str/includes? (name %) "bb"))
                 (not (str/includes? (name %) "##")))
           (keys (sort-by val < pitches))))
 
-(def pci->pitches
-  (reduce-kv (fn [m pitch pci] (update m pci conj pitch)) {} pitches))
+(def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
+(def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
+(s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
+(defn pitch? [p] (s/valid? ::pitch p))
 
 (def pci->default-pitch
   {0 :C
@@ -59,6 +57,35 @@
    9 :A
    10 :Bb
    11 :B})
+
+;;;; NOTES ;;;;
+
+;; Note: pitch and an octave
+;;   This is different depending on who you ask.
+;;   For this project, a note keyword of :Gb4 means a pitch of Gb and an octave of 4.
+;;   One could argue Gb is a note name or pitch class, or that a note has timing information (e.g. quarter note).
+;;   For now, this is what's used and its baked into the spec for consistency.
+(def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
+(def note-pattern (re-pattern (str "^" note-pattern-str "$")))
+(def pitch-or-note-pattern (re-pattern (str "^" note-pattern-str "?" "$")))
+(s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
+(defn note? [n] (s/valid? ::note n))
+
+(defn pitch-or-note? [x]
+  (or (pitch? x) (note? x)))
+
+;; Midi: position of a note on the keyboard
+;;   Represented as an integer
+;;   Probably applicable only to piano?
+(s/def ::midi (s/and int? #(<= 0 % 127)))
+(defn midi? [x] (s/valid? ::midi x))
+
+;;;; SEMITONES ;;;;
+
+;; Semitone: 0, 1, .., 21 (21 == thirteenth)
+(s/def ::semitones (s/and int? #(<= 0 % 21)))
+
+;;;; INTERVALS ;;;
 
 ;; Interval: 1, m3, M3, A5, d5, 5, etc.
 ;;   Distance between two pitches
@@ -113,28 +140,41 @@
 (def semitones->intervals
   (reduce-kv (fn [m interval {:keys [semitones]}] (update m semitones conj interval)) {} intervals))
 
+;;;; DEGREES ;;;;
+
+;; Derived: (scale) degree(s), inversions (based on notes and chord intervals)
+;; Degree: I, II, III,, bIII, V, #V, VII, etc.
+;;   Can be represented by semitones
+;;   Can be named as dominant, subdominant, etc.
+;;   Can be arabic (5, 6), roman numerals (V, VI)
+;;   Can be flattened/sharpened (e.g. a mode formula relative to the base scale), but minor/major/aug/dim not applicable, that's for chords ('quality'), the degree is just the relative pitch
+
+; Roman (or arabic) numeral degree with chord quality
+(def degree-pattern #"[#b]?[ivIV0-9]+[+°o%Mm7]?")
+(s/def ::degree (s/and keyword? #(re-find degree-pattern (name %))))
+(s/def ::degrees (s/coll-of ::degree))
+
+;;;; SHAPES ;;;;
+
 ;; Chord and scales are composition of a pitch, name, and intervals
 ;;  e.g. a pitch with intervals is a chord or a scale (think ECS)
 ;;    maybe use degrees instead of intervals for scale to be able to differentiate
 
-;; Note: pitch and an octave
-;;   This is different depending on who you ask.
-;;   For this project, a note keyword of :Gb4 means a pitch of Gb and an octave of 4.
-;;   One could argue Gb is a note name or pitch class, or that a note has timing information (e.g. quarter note).
-;;   For now, this is what's used and its baked into the spec for consistency.
-(def note-pattern-str (str pitch-pattern-str "(\\d{1})"))
-(def note-pattern (re-pattern (str "^" note-pattern-str "$")))
-(def pitch-or-note-pattern (re-pattern (str "^" note-pattern-str "?" "$")))
-(s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
-(defn note? [n] (s/valid? ::note n))
-(s/def ::pitch-or-note (s/or :pitch pitch? :note note?))
-(defn pitch-or-note? [x] (s/valid? ::pitch-or-note x))
+; Base chord/scale shapes
+(s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
+                                 :opt-un [::aliases ::degrees]))
+; Lookup info for ->shape, enough to resolve final pitches/notes
+(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]))
+; Resolved, with intervals converted into pitches/notes
+(s/def ::shape (s/merge ::shape-blueprint
+                        (s/keys :req-un [::name
+                                         (or ::pitch ::note)
+                                         (or ::pitches ::notes)])))
 
-;; Midi: position of a note on the keyboard
-;;   Represented as an integer
-;;   Probably applicable only to piano?
-(s/def ::midi (s/and int? #(<= 0 % 127)))
-(defn midi? [x] (s/valid? ::midi x))
+(defn shape-ref? [x] (s/valid? ::shape-ref x))
+(defn shape? [x] (s/valid? ::shape x))
+
+(s/def ::bass ::pitch)
 
 (def chords
   (array-map
@@ -253,9 +293,6 @@
    :7sus4b9b13 {:intervals [:P1 :P4 :P5 :m7 :m9 :m13]       :aliases ["7b9b13sus4"]}
    :q          {:intervals [:P1 :P4 :m7 :m10]               :aliases ["quartal"]}
    :11b9       {:intervals [:P1 :P5 :m7 :m9 :P11]}))
-
-(def intervals->chords
-  (reduce-kv (fn [m chord {:keys [:intervals]}] (assoc m (set intervals) chord)) {} chords))
 
 ;; Derived
 ;; Chord: Maj, Maj7, min7, minMaj7
@@ -380,36 +417,6 @@
 (def intervals->scales
   (reduce-kv (fn [m scale-name {:keys [:intervals]}] (assoc m intervals scale-name)) {} scales))
 
-;; Derived: (scale) degree(s), inversions (based on notes and chord intervals)
-;; Degree: I, II, III,, bIII, V, #V, VII, etc.
-;;   Can be represented by semitones
-;;   Can be named as dominant, subdominant, etc.
-;;   Can be arabic (5, 6), roman numerals (V, VI)
-;;   Can be flattened/sharpened (e.g. a mode formula relative to the base scale), but minor/major/aug/dim not applicable, that's for chords ('quality'), the degree is just the relative pitch
-
-; Roman (or arabic) numeral degree with chord quality
-(def degree-pattern #"[#b]?[ivIV0-9]+[+°o%Mm7]?")
-(s/def ::degree (s/and keyword? #(re-find degree-pattern (name %))))
-
-(def name->shape (merge chords scales))
-(s/def ::name (set (concat (keys chords) (keys scales))))
-
-; Base chord/scale shapes
-(s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
-                                 :opt-un [::aliases ::degrees]))
-; Lookup info for ->shape, enough to resolve final pitches/notes
-(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]))
-; Resolved, with intervals converted into pitches/notes
-(s/def ::shape (s/merge ::shape-blueprint
-                        (s/keys :req-un [::name
-                                         (or ::pitch ::note)
-                                         (or ::pitches ::notes)])))
-
-(defn shape-ref? [x] (s/valid? ::shape-ref x))
-(defn shape? [x] (s/valid? ::shape x))
-
-(s/def ::bass ::pitch)
-
 (s/def ::chord (s/and ::shape
                       #(contains? chords (:name %))
                       (s/keys :opt-un [::bass])))
@@ -419,6 +426,11 @@
 
 (defn chord? [x] (s/valid? ::chord x))
 (defn scale? [x] (s/valid? ::scale x))
+
+(def name->shape (merge chords scales))
+(s/def ::name (set (concat (keys chords) (keys scales))))
+
+;;;; CONTEXTUAL SHAPES ;;;;
 
 ; Shapes coming from other shapes; recursive; denotes chord degree relationship
 (s/def ::context (s/merge ::shape
@@ -435,9 +447,8 @@
                             ::context
                             #(s/valid? ::chord (:context %))))
 
-(s/def ::degrees (s/coll-of ::degree))
-
-(s/def ::chord-progression (s/keys :req-un [::name ::degrees]))
+(s/def ::progression-ref (s/keys :req-un [::degrees]))
+(s/def ::progression (s/coll-of ::chord))
 
 (def chord-progressions
   (array-map
@@ -477,7 +488,17 @@
    "Royal road" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
    "bVI-bVII-I" {:degrees [:bVI :bVII :I] :quality :major}))
 
-; Arithmetic
+; :C (pitch)
+; :C4 (note)
+; :P5 (interval)
+; [:P1 :M3 :P5] (shape based on intervals)
+; [:1 :b3 :#5] (scale degrees, relating to harmonic function)
+; [:I :iii :bIV :bIII+ :viio7] (chord degrees; like scale degrees, but with chord information like major/minor/dominant/diminished/augmented)
+; :C_maj (chord (shape) based on pitch)
+; :C4_maj (chord (shape) based on note)
+; :C4_major (scale (shape) based on note)
+; [:C_maj :E_m :G_maj] (progression based on chords)
+; [:I :ii :V] (progression based on scale degrees)
 
 (defn parts
   [x]
@@ -492,11 +513,7 @@
          (some? octave-str) (assoc :octave (utils/parse-int octave-str)
                                    :note (keyword (str pitch-str octave-str)))))))
 
-(defn pitch->note
-  [p & [octave]]
-  (keyword (str (name p) (or octave 4))))
-
-(defn- staff-distance
+(defn staff-distance
   [x1 x2]
   {:pre [(every? pitch-or-note? [x1 x2])]}
   (let [{letter1 :letter} (parts x1)
@@ -505,109 +522,7 @@
         i2 (#?(:clj int :cljs .charCodeAt) letter2)]
     (inc (mod (- i2 i1) 7))))
 
-(defn- lesser? [s] (some (partial str/includes? s) ["d" "m"]))
-
-(defn- accidental-match? [accidental-string]
-  (fn [p]
-    (let [{:keys [accidental]} (parts p)]
-      (= accidental accidental-string))))
-(def flat? (accidental-match? "b"))
-(def natural? (accidental-match? ""))
-(def sharp? (accidental-match? "#"))
-
-(defn enharmonic
-  [p notation]
-  {:post [(pitch? %)]}
-  (let [pci (pitches p)
-        equivalent-pitches (pci->pitches pci)]
-    (when (pos? (count equivalent-pitches))
-      (if (= 1 (count equivalent-pitches))
-        p
-        (let [equivalents (case notation
-                            :flat (filter flat? equivalent-pitches)
-                            :natural (filter natural? equivalent-pitches)
-                            :sharp (filter sharp? equivalent-pitches))]
-          (if (= 1 (count equivalents))
-            (first equivalents)
-            p))))))
-
-(defn note->midi [note]
-  {:pre [(note? note)]
-   :post [(midi? %)]}
-  (let [{:keys [pitch octave letter]} (parts note)
-        pci (pitches pitch)
-        base-pci (letters->pci letter)  ; PCI without accidentals
-        new-octave (cond  ; Adjust for crossing octave boundary
-                     (and (< pci base-pci) (not (str/includes? (name pitch) "b"))) (inc octave)  ; E.g. B#4 (0 < 11), only for sharps
-                     (and (> pci base-pci) (not (str/includes? (name pitch) "#"))) (dec octave)  ; E.g. Cb (11 > 0), only for flats
-                     :else octave)]
-    (+ pci (* 12 (inc new-octave)))))
-
-(defn midi->note
-  "Convert midi integer to note, optionally specifying the target pitch (otherwise uses default flats/sharps)"
-  [midi & [pitch]]
-  {:pre [(midi? midi)]
-   :post [(note? %)]}
-  (let [octave (dec (quot midi 12))
-        pci (mod midi 12)
-        p (or pitch (pci->default-pitch pci))
-        {:keys [letter]} (parts p)
-        base-pci (letters->pci letter)  ; PCI without accidentals
-        new-octave (cond  ; Adjust for crossing octave boundary
-                     (and (< pci base-pci) (not (str/includes? (name p) "b"))) (dec octave)  ; E.g. B#4 (0 < 11), only for sharps
-                     (and (> pci base-pci) (not (str/includes? (name p) "#"))) (inc octave)  ; E.g. Cb (11 > 0), only for flats
-                     :else octave)]
-    (keyword (str (name p) new-octave))))
-
-(defn fold-notes
-  "Fold notes into a 21 semitone range so the highest interval is a 13th (by default)"
-  [notes & {:keys [max-semitones] :or {max-semitones 21}}]
-  {:pre [(every? note? notes)]}
-  (let [notes->midis (zipmap notes (map note->midi notes))
-        [_ low-midi] (apply min-key val notes->midis)
-        [high-note high-midi] (apply max-key val notes->midis)]
-    (if (<= (- high-midi low-midi) max-semitones)
-      notes
-      (let [{:keys [pitch octave]} (parts high-note)
-            new-note (keyword (str (name pitch) (dec octave)))]
-        (fold-notes (vec (sort-by note->midi (set (replace {high-note new-note} notes)))))))))
-
-(defn- pitch-semitone-distance
-  "Semitone distance, preserving 12, but modulo 12 otherwise"
-  [p1 p2]
-  {:pre [(every? pitch? [p1 p2])]}
-  (inc (mod (dec (- (pitches p2) (pitches p1))) 12)))
-
-(defn- note-semitone-distance
-  [n1 n2 & {:keys [fold?] :or {fold? false}}]
-  {:pre [(every? note? [n1 n2])]}
-  (abs (apply - (map note->midi (if fold? (fold-notes [n1 n2]) [n1 n2])))))
-
-(defn semitone-distance
-  [x1 x2 & {:keys [fold?] :or {fold? false}}]
-  (if (pitch? x1)
-    (pitch-semitone-distance x1 x2)
-    (note-semitone-distance x1 x2 :fold? fold?)))
-
-(defn ->interval
-  "Find interval between two pitches/notes
-   Start with semitone distance, and use staff distance if needed to split hairs between augmented/diminished"
-  [x1 x2]
-  {:pre [(every? pitch-or-note? [x1 x2])]
-   :post [(or (interval? %) (nil? %))]}
-  (if (and (note? x1) (< (note->midi x2) (note->midi x1)))
-    (let [{:keys [pitch octave]} (parts x2)]
-      (->interval x1 (pitch->note pitch (inc octave))))
-    (let [semitone-distance (semitone-distance x1 x2 :fold? true)
-          matching-intervals (semitones->intervals semitone-distance)]
-      (if (= (count matching-intervals) 1)
-        (first matching-intervals)
-        (let [distance (staff-distance x1 x2)]
-          (first (filter #(or (str/includes? (name %) (str distance))
-                              (str/includes? (name %) (str (+ 7 distance))))
-                         matching-intervals)))))))
-
-(defn- letter+
+(defn letter+
   "Given a letter (as a capital character, like \\A) and an interval to move
    up, returns the resulting letter (A-G), ignoring accidentals.
 
@@ -646,7 +561,127 @@
           new-pitch
           (recur (letter+ letter 2 multiplier) (subs accidental 2)))))))
 
-(defn- pitch+interval
+(defn lesser? [s] (some (partial str/includes? s) ["d" "m"]))
+
+(defn accidental-match? [accidental-string]
+  (fn [p]
+    (let [{:keys [accidental]} (parts p)]
+      (= accidental accidental-string))))
+(def flat? (accidental-match? "b"))
+(def natural? (accidental-match? ""))
+(def sharp? (accidental-match? "#"))
+
+(defn enharmonic-equivalent
+  "Get enharmonic equivalent of pitch, given a notation. Returns equivalent or original pitch."
+  [p notation]
+  {:post [(pitch? %)]}
+  (let [pci (pitches p)
+        pci->pitches (reduce-kv (fn [m pitch pci] (update m pci conj pitch)) {} pitches)
+        equivalent-pitches (pci->pitches pci)]
+    (when (pos? (count equivalent-pitches))
+      (if (= 1 (count equivalent-pitches))
+        p
+        (let [equivalents (case notation
+                            :flat (filter flat? equivalent-pitches)
+                            :natural (filter natural? equivalent-pitches)
+                            :sharp (filter sharp? equivalent-pitches))]
+          (if (= 1 (count equivalents))
+            (first equivalents)
+            p))))))
+
+(defn find-enharomic-equivalent
+  "Find enharmonic patches of a source-pitch among target-pitches, based on PCI"
+  [source-pitch target-pitches]
+  (let [source-pci (pitches source-pitch)
+        target-pcis->pitches (reduce (fn [m pitch]
+                                       (let [pci (pitches pitch)]
+                                         (assoc m pci pitch))) {} target-pitches)]
+    (target-pcis->pitches source-pci)))
+
+(defn note->midi [note]
+  {:pre [(note? note)]
+   :post [(midi? %)]}
+  (let [{:keys [pitch octave letter]} (parts note)
+        pci (pitches pitch)
+        base-pci (letters->pci letter)  ; PCI without accidentals
+        new-octave (cond  ; Adjust for crossing octave boundary
+                     (and (< pci base-pci) (not (str/includes? (name pitch) "b"))) (inc octave)  ; E.g. B#4 (0 < 11), only for sharps
+                     (and (> pci base-pci) (not (str/includes? (name pitch) "#"))) (dec octave)  ; E.g. Cb (11 > 0), only for flats
+                     :else octave)]
+    (+ pci (* 12 (inc new-octave)))))
+
+(defn midi->note
+  "Convert midi integer to note, optionally specifying the target pitch (otherwise uses default flats/sharps)"
+  [midi & [pitch]]
+  {:pre [(midi? midi)]
+   :post [(note? %)]}
+  (let [octave (dec (quot midi 12))
+        pci (mod midi 12)
+        p (or pitch (pci->default-pitch pci))
+        {:keys [letter]} (parts p)
+        base-pci (letters->pci letter)  ; PCI without accidentals
+        new-octave (cond  ; Adjust for crossing octave boundary
+                     (and (< pci base-pci) (not (str/includes? (name p) "b"))) (dec octave)  ; E.g. B#4 (0 < 11), only for sharps
+                     (and (> pci base-pci) (not (str/includes? (name p) "#"))) (inc octave)  ; E.g. Cb (11 > 0), only for flats
+                     :else octave)]
+    (keyword (str (name p) new-octave))))
+
+(defn pitch->note
+  [p & [octave]]
+  (keyword (str (name p) (or octave 4))))
+
+(defn pitches->notes
+  "Convert one or more pitches to notes, incrementing octaves as needed"
+  [pitches]
+  (loop [pitches pitches
+         notes []
+         octave 4]
+    (if (seq pitches)
+      (let [note (pitch->note (first pitches) octave)]
+        (if (seq notes)
+          (let [midi (note->midi note)
+                last-note (last notes)
+                last-midi (note->midi last-note)
+                {:keys [pitch octave]} (parts note)]
+            (if (< midi last-midi)
+              (recur (rest pitches)
+                     (conj notes (keyword (str (name pitch) (inc octave))))
+                     (inc octave))
+              (recur (rest pitches) (conj notes note) octave)))
+          (recur (rest pitches) (conj notes note) octave)))
+      notes)))
+
+(defn fold-notes
+  "Fold notes into a 21 semitone range so the highest interval is a 13th (by default)"
+  [notes & {:keys [max-semitones] :or {max-semitones 21}}]
+  {:pre [(every? note? notes)]}
+  (let [notes->midis (zipmap notes (map note->midi notes))
+        [_ low-midi] (apply min-key val notes->midis)
+        [high-note high-midi] (apply max-key val notes->midis)]
+    (if (<= (- high-midi low-midi) max-semitones)
+      notes
+      (let [{:keys [pitch octave]} (parts high-note)
+            new-note (keyword (str (name pitch) (dec octave)))]
+        (fold-notes (vec (sort-by note->midi (set (replace {high-note new-note} notes)))))))))
+
+(defn pitch-semitone-distance
+  "Semitone distance, preserving 12, but modulo 12 otherwise"
+  [p1 p2]
+  {:pre [(every? pitch? [p1 p2])]}
+  (inc (mod (dec (- (pitches p2) (pitches p1))) 12)))
+
+(defn note-semitone-distance
+  [n1 n2 & {:keys [fold?] :or {fold? false}}]
+  {:pre [(every? note? [n1 n2])]}
+  (abs (apply - (map note->midi (if fold? (fold-notes [n1 n2]) [n1 n2])))))
+
+(defn semitone-distance
+  [x1 x2 & {:keys [fold?] :or {fold? false}}]
+  (if (pitch? x1)
+    (pitch-semitone-distance x1 x2)
+    (note-semitone-distance x1 x2 :fold? fold?)))
+
+(defn pitch+interval
   [p interval & [multiplier]]
   (if (some? (#{:P1 :P8} interval))
     p
@@ -670,7 +705,7 @@
           new-pitch (keyword (str new-letter accidental-str))]
       (clamp-pitch new-pitch))))
 
-(defn- note+interval
+(defn note+interval
   [n interval & [multiplier]]
   (let [{:keys [pitch]} (parts n)
         interval-semitones (get-in intervals [interval :semitones])
@@ -679,6 +714,33 @@
         (note->midi)
         (+ (* (or multiplier 1) interval-semitones))
         (midi->note new-pitch))))
+
+(defn ->interval
+  "Find interval between two pitches/notes
+   Start with semitone distance, and use staff distance if needed to split hairs between augmented/diminished"
+  [x1 x2]
+  {:pre [(every? pitch-or-note? [x1 x2])]
+   :post [(or (interval? %) (nil? %))]}
+  (if (and (note? x1) (< (note->midi x2) (note->midi x1)))
+    (let [{:keys [pitch octave]} (parts x2)]
+      (->interval x1 (pitch->note pitch (inc octave))))
+    (let [semitone-distance (semitone-distance x1 x2 :fold? true)
+          matching-intervals (semitones->intervals semitone-distance)]
+      (if (= (count matching-intervals) 1)
+        (first matching-intervals)
+        (let [distance (staff-distance x1 x2)]
+          (first (filter #(or (str/includes? (name %) (str distance))
+                              (str/includes? (name %) (str (+ 7 distance))))
+                         matching-intervals)))))))
+
+(defn ->intervals
+  "Convert pitches to intervals, where the first pitch is :P1"
+  [xs]
+  {:pre [(every? pitch-or-note? xs)]
+   :post [(every? interval? %)]}
+  (if (pitch? (first xs))
+    (->intervals (pitches->notes xs))
+    (map (partial ->interval (first xs)) xs)))
 
 (defn +interval
   "Add/subtract interval to/from pitch or note"
@@ -694,63 +756,6 @@
 
 (def +interval-memo (memoize +interval))
 
-(defn ->shape
-  "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
-  ([x]
-   ; Different notations
-   (cond
-     ; E.g. :C_maj, C4_maj
-     (keyword? x) (let [[pitch-or-note-str shape-name-str] (str/split (name x) #"_")
-                        pitch-or-note (keyword pitch-or-note-str)
-                        shape-name (keyword shape-name-str)]
-                    (->shape pitch-or-note shape-name))
-     ; E.g. {:pitch :C :name :maj}
-     (shape-ref? x) (if (or (contains? x :pitches) (contains? x :notes))
-                      x
-                      (->shape (or (:note x) (:pitch x)) (:name x)))))
-  ([x shape-name]
-   ; {:pre [(pitch-or-note? x)]}
-   ; TODO: if :bass provided, reorder pitches and include lower note?
-   (let [{:keys [pitch note]} (parts x)
-         shape (name->shape shape-name)
-         intervals (:intervals shape)
-         pitches (mapv (partial +interval-memo pitch) intervals)]
-     (cond-> shape
-       true (merge {:pitch pitch
-                    :name shape-name
-                    :pitches pitches})
-       (note? x) (assoc :notes (mapv (partial +interval-memo note) intervals))))))
-
-(defn pitches->notes
-  "Convert one or more pitches to notes, incrementing octaves as needed"
-  [pitches]
-  (loop [pitches pitches
-         notes []
-         octave 4]
-    (if (seq pitches)
-      (let [note (pitch->note (first pitches) octave)]
-        (if (seq notes)
-          (let [midi (note->midi note)
-                last-note (last notes)
-                last-midi (note->midi last-note)
-                {:keys [pitch octave]} (parts note)]
-            (if (< midi last-midi)
-              (recur (rest pitches)
-                     (conj notes (keyword (str (name pitch) (inc octave))))
-                     (inc octave))
-              (recur (rest pitches) (conj notes note) octave)))
-          (recur (rest pitches) (conj notes note) octave)))
-      notes)))
-
-(defn ->intervals
-  "Convert pitches to intervals, where the first pitch is :P1"
-  [xs]
-  {:pre [(every? pitch-or-note? xs)]
-   :post [(every? interval? %)]}
-  (if (pitch? (first xs))
-    (->intervals (pitches->notes xs))
-    (map (partial ->interval (first xs)) xs)))
-
 (defn interval->degree [interval]
   {:pre [(interval? interval)]}
   (let [major-intervals (get-in scales [:major :intervals])
@@ -761,7 +766,7 @@
        (str (inc matching-idx))))))
 
 ;; Used for generating initial scale degrees
-; (defn- scales-with-degrees []
+; (defn scales-with-degrees []
 ;   (let [major-intervals (get-in scales [:major :intervals])]
 ;     (map (fn [[scale-name details]]
 ;            (let [{intervals :intervals} details
@@ -823,7 +828,7 @@
     #"[IV]" :maj
     #"[iv]" :m))
 
-(defn- circle-of-fifths [major-or-minor]
+(defn circle-of-fifths [major-or-minor]
   (zipmap
    (take 15 (iterate (partial #(+interval % :P5))
                      (case major-or-minor
@@ -842,64 +847,9 @@
       (map (comp keyword #(str % "#")) (take n "FCGDAEB"))
       (map (comp keyword #(str % "b")) (take (Math/abs n) "BEADGCF")))))
 
-(defn pitch->abc [p]
-  (let [{:keys [letter accidental]} (parts p)
-        abc-accidental (case accidental
-                         "bb" "__"
-                         "b" "_"
-                         "#" "^"
-                         "##" "^^"
-                         "")]
-    (str abc-accidental letter)))
-
-(defn note->abc [n]
-  (let [{:keys [letter octave accidental]} (parts n)
-        abc-accidental (case accidental
-                         "bb" "__"
-                         "b" "_"
-                         "#" "^"
-                         "##" "^^"
-                         "")
-        lowercase? (< 4 octave)
-        commas (if lowercase? 0 (- 4 octave))
-        apostrophes (if lowercase? (- octave 5) 0)]
-    (str
-     abc-accidental
-     ((if lowercase? str/lower-case str) letter)
-     (str/join (take commas (repeat ",")))
-     (str/join (take apostrophes (repeat "'"))))))
-
-(defn shape->abc
-  [shape & {:keys [note-length selected-key]
-            :or {note-length "1/4"}}]
-  {:pre [(shape? shape)]}
-  (let [notes (set (:notes shape))
-        scale? (scale? shape)
-        pitch (:pitch shape)
-        shape-name (:name shape)
-        key-ref (cond
-                  (some? selected-key) selected-key
-                  :else {:pitch :C :name :major})
-        key-shape (->shape (assoc key-ref :note (pitch->note (:pitch key-ref))))
-        key-abc (str (name (:pitch key-shape))
-                     " exp "
-                     (str/join " " (map note->abc (:notes key-shape))))
-        sorted-notes (sort-by note->midi notes)
-        pitches-str (str/join " " (map note->abc sorted-notes))]
-    (str/join "\n"
-              ["X:1"
-               (str "K:" key-abc)
-               (str "L:" note-length)
-               (str/join " "
-                         [(when-not scale?
-                            (str "\"" (name pitch) (name shape-name) "\""))
-                          (if scale?
-                            pitches-str
-                            (str "[" pitches-str "]"))])])))
-
 (defn abc-pitch->note
   "
-  Convert abc notation pitch to :jigsaw.theory/note format
+  Convert abc notation pitch to :jigsaw.note format
   \"C\" :C4
   \"^C\" :C#4
   \"^^C\" :C##4
@@ -982,13 +932,13 @@
                       :B# "^B")]
     (str/join " " (map pitch->abc accidental-pitches))))
 
-(defn- scale-degree->int [scale-degree]
+(defn scale-degree->int [scale-degree]
   (utils/parse-int (name scale-degree)))
 
-(defn- chord-degree->int [chord-degree]
+(defn chord-degree->int [chord-degree]
   (utils/parse-int (roman-numeral->int chord-degree)))
 
-(defn- scale-chord-degree->chord
+(defn scale-chord-degree->chord
   "
   prefix:
     #
@@ -1013,39 +963,126 @@
         chord-degree-int (chord-degree->int chord-degree)
         pitch (scale-degree-int->pitch chord-degree-int)
         new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
-    (->shape new-pitch chord-name)))
+    {:pitch new-pitch :name chord-name}))
 
-(defn ->progression
-  "
-  :C_major [:ii :V :I] -> [<D_m chord> <G_maj chord> <C_maj chord>]
-  :C_major [:ii :bII7 :I] -> [<D_m chord> <Db_7 chord> <C_maj chord>]
-  "
-  [scale-def chord-degrees]
-  (let [scale (->shape scale-def)]
-    (map #(scale-chord-degree->chord scale %) chord-degrees)))
+(defn pitch->abc [p]
+  (let [{:keys [letter accidental]} (parts p)
+        abc-accidental (case accidental
+                         "bb" "__"
+                         "b" "_"
+                         "#" "^"
+                         "##" "^^"
+                         "")]
+    (str abc-accidental letter)))
 
-;; TODO
-;;  - Chord progressions/cadences from scales (i.e. shape of shapes)
-;;  - Preview scales on top of chord (progression)
-;;    - With different licks/melody rhythm patterns
-;;  - Key signature, proper accidentals on music staff
-;;  - factor in context more
-;;  - highlight overlapping nodes
-;;  - mood identification, scale and progression, add colors
+(defn note->abc [n]
+  (let [{:keys [letter octave accidental]} (parts n)
+        abc-accidental (case accidental
+                         "bb" "__"
+                         "b" "_"
+                         "#" "^"
+                         "##" "^^"
+                         "")
+        lowercase? (< 4 octave)
+        commas (if lowercase? 0 (- 4 octave))
+        apostrophes (if lowercase? (- octave 5) 0)]
+    (str
+     abc-accidental
+     ((if lowercase? str/lower-case str) letter)
+     (str/join (take commas (repeat ",")))
+     (str/join (take apostrophes (repeat "'"))))))
+
+;;;; SEARCH ;;;;
+
+(defn jaccard-index [set1 set2]
+  (let [intersection (count (set/intersection set1 set2))
+        union (count (set/union set1 set2))]
+    (if (zero? union)
+      0.0
+      (float (/ intersection union)))))
+
+(def heuristic-labels
+  {:contains? "partially contains"
+   :fully-contains? "fully contains"
+   :contained-in? "is partially contained by"
+   :fully-contained-in? "is fully contained by"
+   :overlap "overlaps with"})
+
+(defn heuristic->float [x]
+  (case x
+    false 0
+    true 1
+    x))
+
+(defn calculate-heuristics
+  "Read as '<input> <heurstic> <possible shape>'"
+  [input candidate]
+  (let [input-set (set input)
+        candidate-set (set candidate)]
+    {:contains? (heuristic->float (set/superset? input-set candidate-set))
+     :fully-contains? (heuristic->float (and (set/superset? input-set candidate-set) (not= input-set candidate-set)))
+     :contained-in? (heuristic->float (set/subset? input-set candidate-set))
+     :fully-contained-in? (heuristic->float (and (set/subset? input-set candidate-set) (not= input-set candidate-set)))
+     :overlap (heuristic->float (jaccard-index input-set candidate-set))
+     :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
+
+; Helper functions for bass/inversion analysis
+
+(defn identify-bass-pitch
+  "Identify the bass note (lowest pitch) from a collection of notes"
+  [notes]
+  (when (seq notes)
+    (let [sorted-notes (sort-by note->midi notes)
+          lowest-note (first sorted-notes)
+          bass-pitch (-> lowest-note parts :pitch)]
+      bass-pitch)))
+
+(defn bass->inversion
+  "Determine inversion number from bass note and chord.
+   Returns:
+   - 1 for first inversion (bass is third)
+   - 2 for second inversion (bass is fifth)
+   - etc.
+   - nil if bass note is not a chord tone (slash chord)"
+  [chord bass-pitch]
+  (let [chord-pitches (:pitches chord)
+        bass-index (.indexOf chord-pitches bass-pitch)]
+    (when (> bass-index 0)
+      bass-index)))
+
+(defn inversion?
+  "Check if the chord with bass note represents an inversion
+   (bass note is a chord tone)"
+  [chord bass-pitch]
+  (some? (bass->inversion chord bass-pitch)))
+
+(defn slash-chord?
+  "Check if the chord with bass note represents a slash chord
+   (bass note is NOT a chord tone)"
+  [chord bass-pitch]
+  (and (not= (:pitch chord) bass-pitch)
+       (not (inversion? chord bass-pitch))))
+
+(defn rotate-intervals
+  "Recontextualize intervals by rotating/inverting them"
+  [intervals n]
+  (let [pitches (map #(+interval :C %) intervals)
+        rotated-pitches (utils/rotate pitches n)
+        rotated-intervals (->intervals rotated-pitches)]
+    rotated-intervals))
+
+(defn scale->mode
+  [scale n]
+  {:pre [(scale? scale)]}
+  (let [pitches (utils/rotate (:pitches scale) n)
+        rotated-intervals (rotate-intervals (:intervals scale) n)]
+    (when-let [new-scale-name (intervals->scales rotated-intervals)]
+      {:pitch (first pitches)
+       :name new-scale-name})))
 
 (comment
-  ; :C (pitch)
-  ; :C4 (note)
-  ; :P5 (interval)
-  ; [:P1 :M3 :P5] (shape based on intervals)
-  ; [:1 :b3 :#5] (scale degrees, relating to harmonic function)
-  ; [:I :iii :bIV :bIII+ :viio7] (chord degrees; like scale degrees, but with chord information like major/minor/dominant/diminished/augmented)
-  ; :C_maj (chord (shape) based on pitch)
-  ; :C4_maj (chord (shape) based on note)
-  ; :C4_major (scale (shape) based on note)
-  ; [:C_maj :E_m :G_maj] (progression based on chords)
-  ; [:I :ii :V] (progression based on scale degrees)
-  (->> :F
-       (iterate (partial #(+interval % :P5)))  ; Fifths
-       (take 7))
-  (->progression :C_major (get-in chord-progressions ["Royal road" :degrees])))
+  (assert (true? (pitch? :C)))
+  (assert (true? (note? :C4)))
+  (assert (true? (interval? :P5)))
+  (assert (true? (shape-ref? {:pitch :C :name :maj})))
+  (assert (true? (shape-ref? {:note :C4 :name :maj}))))

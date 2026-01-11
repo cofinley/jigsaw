@@ -1,11 +1,11 @@
-(ns jigsaw.components.input-piano-node
+(ns jigsaw.ui.components.input-piano-node
   (:require
-   [re-frame.core :as re-frame]
-   [jigsaw.theory :as theory]
-   [jigsaw.subs :as subs]
-   [jigsaw.events :as events]
-   [jigsaw.components.node :refer [node]]
-   ["react-piano" :refer [ControlledPiano]]))
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.components.node :refer [node]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
+   ["react-piano" :refer [ControlledPiano]]
+   [re-frame.core :as re-frame]))
 
 (def key-width 30)
 
@@ -41,8 +41,10 @@
            :onPlayNoteInput (fn [midi prev]
                               (let [midis (set (js->clj prev))
                                     new-midis ((if (some? (some #{midi} midis)) disj conj) midis midi)
-                                    notes (set (map theory/midi->note new-midis))]
-                                (re-frame/dispatch [::events/update-node-data id {:notes notes}])))
+                                    notes (set (map theory/midi->note new-midis))
+                                    pcis (set (map #(-> % theory/parts :pci) notes))]
+                                (re-frame/dispatch [::events/update-node-data id {:notes notes
+                                                                                  :pcis pcis}])))
            :onStopNoteInput #()
            :width width}])]]]))
 

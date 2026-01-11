@@ -1,10 +1,10 @@
-(ns jigsaw.components.context-menu
+(ns jigsaw.ui.components.context-menu
   (:require
+   [jigsaw.ui.components.node-types :refer [node-types]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.utils :as utils]
    [reagent.core :as r]
-   [re-frame.core :as re-frame]
-   [jigsaw.components.node-types :refer [node-types]]
-   [jigsaw.events :as events]
-   [jigsaw.utils :as utils]))
+   [re-frame.core :as re-frame]))
 
 (defn context-menu [{:keys [top right bottom left]} & body]
   [:div {:style {:top top :right right :bottom bottom :left left}

@@ -1,4 +1,4 @@
-(ns jigsaw.subs
+(ns jigsaw.ui.subs
   (:require
    [re-frame.core :as re-frame]))
 

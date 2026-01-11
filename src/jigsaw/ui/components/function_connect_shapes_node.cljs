@@ -1,12 +1,12 @@
-(ns jigsaw.components.function-connect-shapes-node
+(ns jigsaw.ui.components.function-connect-shapes-node
   (:require
-   [jigsaw.theory :as theory]
-   [jigsaw.components.node :refer [node]]
-   [jigsaw.components.output-piano-node :refer [piano-preview]]
-   [jigsaw.components.table :refer [table]]
-   [jigsaw.events :as events]
-   [jigsaw.search :as search]
-   [jigsaw.subs :as subs]
+   [jigsaw.core :as jigsaw]
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.components.node :refer [node]]
+   [jigsaw.ui.components.output-piano-node :refer [piano-preview]]
+   [jigsaw.ui.components.table :refer [table]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
@@ -34,7 +34,7 @@
                         (re-frame/dispatch [::events/update-edge-props edge-id {:data #js {:highlighted? highlighted?}}])))))}
    [:p
     {:title (when-let [bass (:bass found)]
-              (if-let [inversion (search/bass->inversion found bass)]
+              (if-let [inversion (theory/bass->inversion (jigsaw/->shape found) bass)]
                 (case inversion
                   1 "1st inversion"
                   2 "2nd inversion"
@@ -84,7 +84,7 @@
                               "Inputs" #(->> %
                                              second
                                              (map (partial matched-shape @parent-data id)))}
-                 :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (theory/->shape (theory/pitch->note (:pitch comp-shape)) (:name comp-shape))]))
+                 :on-row-click (fn [[comp-shape _]] (re-frame/dispatch [::events/update-node-data id (jigsaw/->shape (theory/pitch->note (:pitch comp-shape)) (:name comp-shape))]))
                  :row-selected? (fn [[comp-shape _]] (and (= (:pitch @data) (:pitch comp-shape))
                                                           (= (:name @data) (:name comp-shape))))}])
        [:p {:class "text-lg"} "Connect more than one"])]))

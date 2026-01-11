@@ -1,14 +1,14 @@
-(ns jigsaw.components.input-music-staff-node
+(ns jigsaw.ui.components.input-music-staff-node
   (:require
+   ["abcjs" :as abcjs]
    [clojure.string :as string]
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.components.node :refer [node]]
+   [jigsaw.ui.components.select :refer [select]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
    [reagent.core :as r]
-   [re-frame.core :as re-frame]
-   [jigsaw.theory :as theory]
-   [jigsaw.events :as events]
-   [jigsaw.subs :as subs]
-   [jigsaw.components.node :refer [node]]
-   [jigsaw.components.select :refer [select]]
-   ["abcjs" :as abcjs]))
+   [re-frame.core :as re-frame]))
 
 (def SCALE 2)
 (def mouse-height->note

@@ -1,13 +1,13 @@
-(ns jigsaw.components.flow
+(ns jigsaw.ui.components.flow
   (:require
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.components.select :refer [select]]
+   [jigsaw.ui.components.context-menu :refer [node-context-menu]]
+   [jigsaw.ui.components.node-types :refer [node-types node-categories]]
+   [jigsaw.ui.subs :as subs]
+   ["react" :refer [useMemo useState useRef useCallback]]
    [reagent.core :as r]
    [re-frame.core :as re-frame]
-   [jigsaw.subs :as subs]
-   [jigsaw.events :as events]
-   [jigsaw.components.select :refer [select]]
-   [jigsaw.components.context-menu :refer [node-context-menu]]
-   [jigsaw.components.node-types :refer [node-types node-categories]]
-   ["react" :refer [useMemo useState useRef useCallback]]
    ["@xyflow/react" :refer [ReactFlow
                             ReactFlowProvider
                             Background

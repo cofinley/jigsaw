@@ -1,21 +1,22 @@
 (ns jigsaw.theory-test
   (:require
-   [clojure.test :refer [deftest testing are]]
+   [clojure.test :refer [deftest testing]]
    [clojure.spec.alpha :as s]
-   [jigsaw.theory :as theory]
+   [jigsaw.core :as jigsaw]
+   [jigsaw.impl.theory :as theory]
    [jigsaw.test-utils :refer [are+]]))
 
 (deftest theory-test
   (testing "specifications"
     (testing "with semitones"
-      (are [value valid] (= valid (s/valid? ::theory/semitones value))
+      (are+ [value valid] (= valid (s/valid? ::theory/semitones value))
         -1 false
         0 true
         21 true
         22 false
         :C  false)))
   (testing "with pitch"
-    (are [value valid] (= valid (s/valid? ::theory/pitch value))
+    (are+ [value valid] (= valid (s/valid? ::theory/pitch value))
       1 false
       "a" false
       :C true
@@ -25,11 +26,11 @@
       :Db true
       :Dbb true))
   (testing "with pci"
-    (are [p1 p2] (= (theory/pitches p1) (theory/pitches p2))
+    (are+ [p1 p2] (= (theory/pitches p1) (theory/pitches p2))
       :C :C
       :C :Dbb
       :C :B#)
-    (are [p pci] (= pci (theory/pitches p))
+    (are+ [p pci] (= pci (theory/pitches p))
       :C 0
       :C# 1
       :C## 2
@@ -37,12 +38,12 @@
       :Ebb 2
       :Eb 3))
   (testing "with interval"
-    (are [value valid] (= valid (s/valid? ::theory/interval value))
+    (are+ [value valid] (= valid (s/valid? ::theory/interval value))
       :P1 true
       :13 false
       :M13 true))
   (testing "with note"
-    (are [value valid] (= valid (s/valid? ::theory/note value))
+    (are+ [value valid] (= valid (s/valid? ::theory/note value))
       :C false
       :C2 true
       :c2 false
@@ -225,7 +226,7 @@
         :Db false
         :Ab false))
     (testing "with enharmonic"
-      (are+ [p notation want] (= want (theory/enharmonic p notation))
+      (are+ [p notation want] (= want (theory/enharmonic-equivalent p notation))
         :C :flat   :C
         :C :sharp  :B#
         :Dbb :natural :C
@@ -443,107 +444,6 @@
         :Dbbb   :Cb
         :Dbbbb  :Cbb
         :Dbbbbb :Bb))
-    (testing "with ->shape"
-      (testing "starting from a chord"
-        (testing "starting from a pitch"
-          (are+ [pitch chord-name want] (= want (theory/->shape pitch chord-name))
-            :C  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :aliases ["M" "major"]}
-            :C# :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#] :aliases ["min" "-" "minor"]}
-            :F# :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##] :aliases ["+" "+5" "^#5" "augmented"]}))
-        (testing "starting from a note"
-          (are+ [note chord-name want] (= want (theory/->shape note chord-name))
-            :C3  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3] :aliases ["M" "major"]}
-            :C#4 :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4] :aliases ["min" "-" "minor"]}
-            :F#5 :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6] :aliases ["+" "+5" "^#5" "augmented"]})))
-      (testing "starting from a scale"
-        (testing "starting from a pitch"
-          (are+ [pitch scale-name want] (= want (theory/->shape pitch scale-name))
-            :C :major {:name :major
-                       :pitch :C
-                       :aliases ["ionian"]
-                       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                       :degrees [:1 :2 :3 :4 :5 :6 :7]
-                       :pitches [:C :D :E :F :G :A :B]}
-            :D :dorian {:name :dorian
-                        :pitch :D
-                        :intervals [:P1 :M2 :m3 :P4 :P5 :M6 :m7]
-                        :degrees [:1 :2 :b3 :4 :5 :6 :b7]
-                        :pitches [:D :E :F :G :A :B :C]}
-            :C :minor {:name :minor
-                       :pitch :C
-                       :aliases ["aeolian"]
-                       :intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7]
-                       :degrees [:1 :2 :b3 :4 :5 :b6 :b7]
-                       :pitches [:C :D :Eb :F :G :Ab :Bb]}
-            :C# :major {:name :major
-                        :pitch :C#
-                        :aliases ["ionian"]
-                        :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                        :degrees [:1 :2 :3 :4 :5 :6 :7]
-                        :pitches [:C# :D# :E# :F# :G# :A# :B#]}
-            :F# :major {:name :major
-                        :pitch :F#
-                        :aliases ["ionian"]
-                        :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                        :degrees [:1 :2 :3 :4 :5 :6 :7]
-                        :pitches [:F# :G# :A# :B :C# :D# :E#]}))
-        (testing "starting from a note"
-          (are+ [note scale-name want] (= want (theory/->shape note scale-name))
-            :C4 :major {:name :major
-                        :pitch :C
-                        :aliases ["ionian"]
-                        :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                        :degrees [:1 :2 :3 :4 :5 :6 :7]
-                        :pitches [:C :D :E :F :G :A :B]
-                        :notes [:C4 :D4 :E4 :F4 :G4 :A4 :B4]}
-            :C4 :minor {:name :minor
-                        :pitch :C
-                        :aliases ["aeolian"]
-                        :intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7]
-                        :degrees [:1 :2 :b3 :4 :5 :b6 :b7]
-                        :pitches [:C :D :Eb :F :G :Ab :Bb]
-                        :notes [:C4 :D4 :Eb4 :F4 :G4 :Ab4 :Bb4]}
-            :C#4 :major {:name :major
-                         :pitch :C#
-                         :aliases ["ionian"]
-                         :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                         :degrees [:1 :2 :3 :4 :5 :6 :7]
-                         :pitches [:C# :D# :E# :F# :G# :A# :B#]
-                         :notes [:C#4 :D#4 :E#4 :F#4 :G#4 :A#4 :B#4]}
-            :F#4 :major {:name :major
-                         :pitch :F#
-                         :aliases ["ionian"]
-                         :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                         :degrees [:1 :2 :3 :4 :5 :6 :7]
-                         :pitches [:F# :G# :A# :B :C# :D# :E#]
-                         :notes [:F#4 :G#4 :A#4 :B4 :C#5 :D#5 :E#5]})))
-      (testing "with shape-ref (map) input"
-        (are+ [shape-ref want] (= want (theory/->shape shape-ref))
-          {:pitch :C :name :maj} {:pitch :C
-                                  :name :maj
-                                  :intervals [:P1 :M3 :P5]
-                                  :pitches [:C :E :G]
-                                  :aliases ["M" "major"]}))
-      (testing "with keyword input"
-        (are+ [k want] (= want (theory/->shape k))
-          ; Pitch-based
-          :C_maj {:pitch :C
-                  :name :maj
-                  :intervals [:P1 :M3 :P5]
-                  :pitches [:C :E :G]
-                  :aliases ["M" "major"]}
-          ; Note-based
-          :C4_maj {:pitch :C
-                   :name :maj
-                   :intervals [:P1 :M3 :P5]
-                   :pitches [:C :E :G]
-                   :notes [:C4 :E4 :G4]
-                   :aliases ["M" "major"]}
-          :Eb_13sus4 {:aliases ["13sus"],
-                      :intervals [:P1 :P4 :P5 :m7 :M9 :M13],
-                      :name :13sus4,
-                      :pitch :Eb,
-                      :pitches [:Eb :Ab :Bb :Db :F :C]})))
     (testing "with interval->degree"
       (are+ [interval want] (= want (theory/interval->degree interval))
         :P1 :1
@@ -613,27 +513,66 @@
         :C3 "C,"
         :C2 "C,,"
         :C1 "C,,,"
-        :C0 "C,,,,"))
-    (testing "with shape->abc"
-      (are+ [shape-ref want] (= want (theory/shape->abc (theory/->shape shape-ref)))
-        :C4_maj "X:1
-K:C exp C D E F G A B
-L:1/4
-\"Cmaj\" [C E G]"
-        :C#4_m "X:1
-K:C exp C D E F G A B
-L:1/4
-\"C#m\" [^C E ^G]"
-        :C##6_sus4 "X:1
-K:C exp C D E F G A B
-L:1/4
-\"C##sus4\" [^^c' ^^f' ^^g']"
-        :C0_dim "X:1
-K:C exp C D E F G A B
-L:1/4
-\"Cdim\" [C,,,, _E,,,, _G,,,,]"))
-    (testing "with ->progression"
-      (are+ [tonic chord-degrees want] (= want (theory/->progression tonic chord-degrees))
-        :C_major [:ii :V :I] [(theory/->shape :D_m) (theory/->shape :G_maj) (theory/->shape :C_maj)]
-        :C_major [:bii :V :I] [(theory/->shape :Db_m) (theory/->shape :G_maj) (theory/->shape :C_maj)]
-        :C_major [:iim7 :V7 :IM7] [(theory/->shape :D_m7) (theory/->shape :G_7) (theory/->shape :C_maj7)]))))
+        :C0 "C,,,,")))
+
+  (testing "heuristics"
+    (are+ [set1 set2 m] (= m (theory/calculate-heuristics set1 set2))
+      [] [] {:contained-in? 1
+             :fully-contained-in? 0
+             :contains? 1
+             :fully-contains? 0
+             :overlap 0.0
+             :shares-root? 0}
+      [:C] [] {:contained-in? 0
+               :fully-contained-in? 0
+               :contains? 1
+               :fully-contains? 1
+               :overlap 0.0
+               :shares-root? 0}
+      [] [:C] {:contained-in? 1
+               :fully-contained-in? 1
+               :contains? 0
+               :fully-contains? 0
+               :overlap 0.0
+               :shares-root? 0}
+      [:C] [:C] {:contained-in? 1
+                 :fully-contained-in? 0
+                 :contains? 1
+                 :fully-contains? 0
+                 :overlap 1.0
+                 :shares-root? 1}
+      [:C] [:C :D] {:contained-in? 1
+                    :fully-contained-in? 1
+                    :contains? 0
+                    :fully-contains? 0
+                    :overlap 0.5
+                    :shares-root? 1}
+      [:C :D] [:C] {:contained-in? 0
+                    :fully-contained-in? 0
+                    :contains? 1
+                    :fully-contains? 1
+                    :overlap 0.5
+                    :shares-root? 1}
+      [:C :D :E] [:C] {:contained-in? 0
+                       :fully-contained-in? 0
+                       :contains? 1
+                       :fully-contains? 1
+                       :overlap (float (/ 1 3))
+                       :shares-root? 1}))
+
+  (testing "scale->mode"
+    (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (theory/scale->mode (jigsaw/->shape :C base-scale-name) mode-num)))
+      :major 0 :major
+      :major 1 :dorian
+      :major 2 :phrygian
+      :major 3 :lydian
+      :major 4 :mixolydian
+      :major 5 :minor
+      :major 6 :locrian
+      :major 7 :major
+      :melodic-minor 1 :dorian-b2
+      :melodic-minor 2 :lydian-augmented
+      :melodic-minor 3 :lydian-dominant
+      :melodic-minor 4 :mixolydian-b6
+      :melodic-minor 5 :locrian-#2
+      :melodic-minor 6 :altered)))

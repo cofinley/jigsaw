@@ -1,13 +1,14 @@
-(ns jigsaw.components.output-piano-node
+(ns jigsaw.ui.components.output-piano-node
   (:require
-   ["react-piano" :refer [Piano]]
    [clojure.set :as set]
-   [jigsaw.components.select :refer [select]]
-   [jigsaw.events :as events]
+   [jigsaw.core :as jigsaw]
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.components.select :refer [select]]
+   [jigsaw.ui.events :as events]
    [jigsaw.utils :as utils]
-   [re-frame.core :as re-frame]
+   ["react-piano" :refer [Piano]]
    [reagent.core :as r]
-   [jigsaw.theory :as theory]))
+   [re-frame.core :as re-frame]))
 
 (defn output-piano-view [props]
   (let [selected-label (r/atom :pitches)
@@ -84,7 +85,7 @@
                               :or {parent-notes []}}]
   (let [full-shape (if (contains? shape :notes)
                      shape
-                     (theory/->shape (assoc shape :note (theory/pitch->note (:pitch shape)))))
+                     (jigsaw/->shape (assoc shape :note (theory/pitch->note (:pitch shape)))))
         notes (:notes full-shape)
         chromas (map theory/pitches (:pitches full-shape))
         midis (map theory/note->midi notes)

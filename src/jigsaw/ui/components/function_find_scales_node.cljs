@@ -1,12 +1,13 @@
-(ns jigsaw.components.function-find-scales-node
+(ns jigsaw.ui.components.function-find-scales-node
   (:require
-   [jigsaw.components.node :refer [node]]
-   [jigsaw.components.output-piano-node :refer [piano-preview]]
-   [jigsaw.components.select :refer [select]]
-   [jigsaw.components.table :refer [table]]
-   [jigsaw.events :as events]
-   [jigsaw.theory :as theory]
-   [jigsaw.subs :as subs]
+   [jigsaw.core :as jigsaw]
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.components.node :refer [node]]
+   [jigsaw.ui.components.output-piano-node :refer [piano-preview]]
+   [jigsaw.ui.components.select :refer [select]]
+   [jigsaw.ui.components.table :refer [table]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
    [jigsaw.utils :as utils]
    [re-frame.core :as re-frame]))
 
@@ -49,6 +50,6 @@
                                                   (= (:name @data) (:name shape))))
                       :on-row-click (fn [shape]
                                       (re-frame/dispatch [::events/update-node-data id
-                                                          (theory/->shape (assoc shape :note (theory/pitch->note (:pitch shape))))]))}])])
+                                                          (jigsaw/->shape (assoc shape :note (theory/pitch->note (:pitch shape))))]))}])])
          [:p {:class "text-lg"} "Input is not a chord"])
        [:p {:class "text-lg"} "No input"])]))

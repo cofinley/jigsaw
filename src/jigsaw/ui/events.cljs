@@ -1,10 +1,10 @@
-(ns jigsaw.events
+(ns jigsaw.ui.events
   (:require
-   ["soundfont-player" :as soundfont]
-   [jigsaw.theory :as theory]
-   [jigsaw.db :as db]
-   [jigsaw.search :as search]
-   [re-frame.core :as re-frame]))
+   [jigsaw.core :as jigsaw]
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.db :as db]
+   [re-frame.core :as re-frame]
+   ["soundfont-player" :as soundfont]))
 
 (re-frame/reg-event-fx
  ::initialize-db
@@ -151,7 +151,7 @@
 (defn calculate-shape [node]
   (let [{:keys [pitch name]} node]
     (when (and (some? pitch) (some? name))
-      (theory/->shape (theory/pitch->note pitch) (keyword name)))))
+      (jigsaw/->shape (theory/pitch->note pitch) (keyword name)))))
 
 (re-frame/reg-event-fx
  ::calculate-shape
@@ -163,14 +163,14 @@
 ;; Function computation helpers
 (defn compute-scale-chords [parent-data data]
   (when (and parent-data (contains? parent-data :degrees))
-    (let [shape-refs (search/scale->chords parent-data)]
-      (map #(merge % (theory/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
+    (let [shape-refs (jigsaw/scale->chords parent-data)]
+      (map #(merge % (jigsaw/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-chord-scales [parent-data data]
   (when (and parent-data (contains? parent-data :intervals))
     (let [selected-degree (:selected-degree data)
-          shape-refs (search/chord->scales (theory/->shape parent-data) :degree selected-degree)]
-      (map #(merge % (theory/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
+          shape-refs (jigsaw/chord->scales (jigsaw/->shape parent-data) :degree selected-degree)]
+      (map #(merge % (jigsaw/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
 
 (defn compute-closest-shapes [parent-data data]
   (when-let [notes (seq (get-in parent-data [:notes]))]
@@ -182,28 +182,28 @@
           selected-pitch (or (:selected-pitch data) "")
           heuristic (or (:heuristic data) :overlap)
           max-shapes (or (:max-shapes data) 10)
-          shapes (search/notes->shapes-memo notes
+          shapes (jigsaw/notes->shapes-memo notes
                                             selected-shape-type
                                             :max-shapes max-shapes
                                             :heuristic (keyword heuristic)
                                             :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
-          resolved-shapes (map #(merge % (theory/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
+          resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
       resolved-shapes)))
 
 (defn compute-shape-connections [parent-data data]
   (when (> (count parent-data) 1)
     (let [max-shapes (or (:max-shapes data) 1)]
       (if (every? #(contains? % :name) parent-data)
-        (search/memoize-connect-shapes parent-data :chord)
-        (search/memoize-connect (map :notes parent-data) :chord :max-shapes max-shapes)))))
+        (jigsaw/connect-shapes-memo parent-data :chord)
+        (jigsaw/connect-memo (map :notes parent-data) :chord :max-shapes max-shapes)))))
 
 (defn compute-fitted-shapes [parent-data data]
   (when (= (count parent-data) 2)
     (let [target-shape (first (filter #(contains? % :name) parent-data))
           candidate-input (first (filter #(not= % target-shape) parent-data))
           max-shapes (or (:max-shapes data) 1)
-          shapes (search/fit target-shape (:notes candidate-input) :max-shapes max-shapes)
-          resolved-shapes (map #(merge % (theory/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
+          shapes (jigsaw/fit target-shape (:notes candidate-input) :max-shapes max-shapes)
+          resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
       resolved-shapes)))
 
 (defn get-child-nodes [db parent-id]
@@ -319,7 +319,7 @@
                        (contains? theory/chords (:name shape-data)) :input-chord
                        (contains? theory/scales (:name shape-data)) :input-scale
                        :else nil)
-           shape (theory/->shape (theory/pitch->note (:pitch shape-data)) (:name shape-data))]
+           shape (jigsaw/->shape (theory/pitch->note (:pitch shape-data)) (:name shape-data))]
        (if node-type
          (second (create-node db {:type node-type
                                   :position position

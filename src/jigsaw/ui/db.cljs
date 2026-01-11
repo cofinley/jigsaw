@@ -1,4 +1,4 @@
-(ns jigsaw.db)
+(ns jigsaw.ui.db)
 
 (def default-db
   {:nodes #js []

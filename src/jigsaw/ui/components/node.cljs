@@ -1,16 +1,16 @@
-(ns jigsaw.components.node
+(ns jigsaw.ui.components.node
   (:require
-   [reagent.core :as r]
    [goog.string :as gstr]
+   [jigsaw.ui.components.loading :refer [loading-indicator]]
+   [jigsaw.ui.components.output-piano-node :refer [output-piano-view]]
+   [jigsaw.ui.components.output-music-staff-node :refer [output-music-staff-view]]
+   [jigsaw.ui.components.output-debug-node :refer [output-debug-view]]
+   [jigsaw.ui.components.output-circle-of-fifths-node :refer [output-circle-of-fifths-view]]
+   [jigsaw.ui.components.select :refer [select]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
+   [reagent.core :as r]
    [re-frame.core :as re-frame]
-   [jigsaw.components.select :refer [select]]
-   [jigsaw.components.loading :refer [loading-indicator]]
-   [jigsaw.events :as events]
-   [jigsaw.subs :as subs]
-   [jigsaw.components.output-piano-node :refer [output-piano-view]]
-   [jigsaw.components.output-music-staff-node :refer [output-music-staff-view]]
-   [jigsaw.components.output-debug-node :refer [output-debug-view]]
-   [jigsaw.components.output-circle-of-fifths-node :refer [output-circle-of-fifths-view]]
    ["@xyflow/react" :refer [Handle]]))
 
 (def right-arrow "&#9658;")

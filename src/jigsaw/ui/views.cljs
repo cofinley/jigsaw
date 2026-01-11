@@ -1,6 +1,6 @@
-(ns jigsaw.views
+(ns jigsaw.ui.views
   (:require
-   [jigsaw.components.flow :refer [flow]]
+   [jigsaw.ui.components.flow :refer [flow]]
    ["react" :refer [StrictMode]]))
 
 (defn main-panel []

@@ -1,10 +1,10 @@
-(ns jigsaw.core
+(ns jigsaw.ui.core
   (:require
+   [jigsaw.ui.config :as config]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.views :as views]
    [reagent.dom :as rdom]
-   [re-frame.core :as re-frame]
-   [jigsaw.events :as events]
-   [jigsaw.views :as views]
-   [jigsaw.config :as config]))
+   [re-frame.core :as re-frame]))
 
 (defn dev-setup []
   (when config/debug?

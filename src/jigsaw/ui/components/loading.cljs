@@ -1,4 +1,4 @@
-(ns jigsaw.components.loading)
+(ns jigsaw.ui.components.loading)
 
 (defn spinner [{:keys [size class]}]
   [:div {:class (str "animate-spin rounded-full border-2 border-t-transparent "

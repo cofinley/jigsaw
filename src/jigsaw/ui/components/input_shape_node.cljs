@@ -1,16 +1,17 @@
-(ns jigsaw.components.input-shape-node
+(ns jigsaw.ui.components.input-shape-node
   (:require
    [clojure.string :as s]
-   [re-frame.core :as re-frame]
-   [jigsaw.theory :as theory]
-   [jigsaw.events :as events]
+   [jigsaw.core :as jig]
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.ui.components.node :refer [node]]
+   [jigsaw.ui.components.output-piano-node :refer [piano-preview]]
+   [jigsaw.ui.components.select :refer [select]]
+   [jigsaw.ui.components.table :refer [table]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.ui.subs :as subs]
    [jigsaw.utils :as utils]
-   [jigsaw.subs :as subs]
-   [jigsaw.components.node :refer [node]]
-   [jigsaw.components.select :refer [select]]
-   [jigsaw.components.table :refer [table]]
-   [jigsaw.components.output-piano-node :refer [piano-preview]]
-   [reagent.core :as r]))
+   [reagent.core :as r]
+   [re-frame.core :as re-frame]))
 
 (defn input-shape-node [{:keys [id type]}]
   (let [data (re-frame/subscribe [::subs/data id])
@@ -44,7 +45,7 @@
                   :on-change #(reset! search (-> % .-target .-value))}]]
         ;; Shape names
         [table {:ms (cond->> shapes
-                      (some? (:pitch @data)) (map #(theory/->shape (theory/pitch->note (:pitch @data)) (:name %))))
+                      (some? (:pitch @data)) (map #(jig/->shape (theory/pitch->note (:pitch @data)) (:name %))))
                 :row-render {"Name" :name
                              "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))
                              "Piano" (fn [shape]

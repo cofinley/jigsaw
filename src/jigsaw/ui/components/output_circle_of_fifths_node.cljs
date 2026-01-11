@@ -1,6 +1,6 @@
-(ns jigsaw.components.output-circle-of-fifths-node
+(ns jigsaw.ui.components.output-circle-of-fifths-node
   (:require
-   [jigsaw.theory :as theory]))
+   [jigsaw.impl.theory :as theory]))
 
 (def circle-of-fifths-order
   [:C :G :D :A :E :B :F# :C# :G# :D# :A# :F])

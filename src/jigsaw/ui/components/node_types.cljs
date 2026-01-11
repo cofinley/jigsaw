@@ -1,13 +1,13 @@
-(ns jigsaw.components.node-types
+(ns jigsaw.ui.components.node-types
   (:require
-   [jigsaw.components.function-find-chords-node :refer [function-find-chords-node]]
-   [jigsaw.components.function-find-scales-node :refer [function-find-scales-node]]
-   [jigsaw.components.function-find-shape-node :refer [function-find-shape-node]]
-   [jigsaw.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
-   [jigsaw.components.function-fit-shape-node :refer [function-fit-shape-node]]
-   [jigsaw.components.input-piano-node :refer [input-piano-node]]
-   [jigsaw.components.input-shape-node :refer [input-shape-node]]
-   [jigsaw.components.input-music-staff-node :refer [input-music-staff-node]]))
+   [jigsaw.ui.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
+   [jigsaw.ui.components.function-find-chords-node :refer [function-find-chords-node]]
+   [jigsaw.ui.components.function-find-scales-node :refer [function-find-scales-node]]
+   [jigsaw.ui.components.function-find-shape-node :refer [function-find-shape-node]]
+   [jigsaw.ui.components.function-fit-shape-node :refer [function-fit-shape-node]]
+   [jigsaw.ui.components.input-piano-node :refer [input-piano-node]]
+   [jigsaw.ui.components.input-music-staff-node :refer [input-music-staff-node]]
+   [jigsaw.ui.components.input-shape-node :refer [input-shape-node]]))
 
 (def node-categories
   {:input "Input"
