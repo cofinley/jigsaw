@@ -286,7 +286,8 @@ L:1/4
                        {:pitch :B, :name :m7b5, :degree :vii°})))
 
   (testing "chord->scales"
-    (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name]) (jigsaw/chord->scales (jigsaw/->shape pitch chord-name)))))
+    (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :degree :name])
+                                                                  (jigsaw/chord->scales (jigsaw/->shape pitch chord-name)))))
       :C :maj [{:pitch :C, :name :lydian-dominant-pentatonic, :degree :I}
                {:pitch :C, :name :bebop-major, :degree :I}
                {:pitch :C, :name :lydian, :degree :I}
