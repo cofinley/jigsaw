@@ -477,8 +477,8 @@
         :b2 :min :bii
         :#2 :min :#ii
         :3 :min :iii
-        :7 :dim :vii°
-        :2 :dim :ii°
+        :7 :dim :viio
+        :2 :dim :iio
         :b3 :aug :bIII+))
     (testing "with chord-degree->chord-name"
       (are+ [chord-degree want] (= want (theory/chord-degree->chord-name chord-degree))
@@ -496,8 +496,8 @@
         :bii 2
         :#ii 2
         :iii 3
-        :vii° 7
-        :ii° 2
+        :viio 7
+        :iio 2
         :bIII+ 3))
     (testing "with note->abc"
       (are+ [note want] (= want (theory/note->abc note))

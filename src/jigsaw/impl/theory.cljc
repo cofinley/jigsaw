@@ -733,7 +733,9 @@
                               (str/includes? (name %) (str (+ 7 distance))))
                          matching-intervals)))))))
 
-(defn ->intervals
+(declare ->intervals)
+
+(defn ->intervals-impl
   "Convert pitches to intervals, where the first pitch is :P1"
   [xs]
   {:pre [(every? pitch-or-note? xs)]
@@ -741,6 +743,8 @@
   (if (pitch? (first xs))
     (->intervals (pitches->notes xs))
     (map (partial ->interval (first xs)) xs)))
+
+(def ->intervals (memoize ->intervals-impl))
 
 (defn +interval
   "Add/subtract interval to/from pitch or note"
@@ -801,7 +805,7 @@
       ((if major? str/upper-case str/lower-case) roman-num)
       (cond
         (utils/in? intervals :A5) "+"
-        (utils/in? intervals :d5) "°"
+        (utils/in? intervals :d5) "o"
         (= :7 chord-name) "7"
         :else "")))))
 
@@ -846,6 +850,17 @@
     (if (pos? n)
       (map (comp keyword #(str % "#")) (take n "FCGDAEB"))
       (map (comp keyword #(str % "b")) (take (Math/abs n) "BEADGCF")))))
+
+(defn relative-staff-note [key-ref absolute-note]
+  (let [accidentals (key-signature-accidentals key-ref)
+        pitch->accidentals (reduce #(assoc %1
+                                           (keyword (str/replace (name %2) #"[b#]" ""))
+                                           %2)
+                                   {} accidentals)
+        {absolute-pitch :pitch octave :octave} (parts absolute-note)
+        relative-pitch (get pitch->accidentals absolute-pitch absolute-pitch)
+        relative-note (keyword (str (name relative-pitch) octave))]
+    relative-note))
 
 (defn abc-pitch->note
   "
@@ -932,11 +947,21 @@
                       :B# "^B")]
     (str/join " " (map pitch->abc accidental-pitches))))
 
+(comment (key-signature->abc {:pitch :C :name :minor}))
+
 (defn scale-degree->int [scale-degree]
   (utils/parse-int (name scale-degree)))
 
 (defn chord-degree->int [chord-degree]
   (utils/parse-int (roman-numeral->int chord-degree)))
+
+(defn scale-chord->degree [scale chord]
+  (let [scale-pitch-index (.indexOf (:pitches scale) (first (:pitches chord)))]
+    (when (<= 0 scale-pitch-index)
+      (let [scale-degree (nth (:degrees scale)
+                              scale-pitch-index)
+            chord-degree (degree-chord->roman-numeral scale-degree (:name chord))]
+        (keyword "chord-degree" (name chord-degree))))))
 
 (defn scale-chord-degree->chord
   "
@@ -1079,6 +1104,16 @@
     (when-let [new-scale-name (intervals->scales rotated-intervals)]
       {:pitch (first pitches)
        :name new-scale-name})))
+
+(defn scales->mode [src-scale dest-scale]
+  (let [src-pitch-set (set (:pitches src-scale))
+        dest-pitch-set (set (:pitches dest-scale))]
+    (when (= src-pitch-set dest-pitch-set)
+      (first
+       (for [rotation (range 1 (count (:pitches src-scale)))
+             :let [rotated-pitches (utils/rotate (:pitches src-scale) rotation)]
+             :when (= rotated-pitches (:pitches dest-scale))]
+         (keyword "mode" (roman-numeral (inc rotation))))))))
 
 (comment
   (assert (true? (pitch? :C)))

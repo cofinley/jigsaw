@@ -30,17 +30,6 @@
 
 (defn pairs [coll] (partition 2 1 coll))
 
-(defn strip-ns [m]
-  (let [strip-ns-key (fn [k]
-                       (if (keyword? k)
-                         (keyword (name k))
-                         k))]
-    (walk/postwalk (fn [x]
-                     (if (map? x)
-                       (into {} (map (fn [[k v]] [(strip-ns-key k) v]) x))
-                       x))
-                   m)))
-
 (defn pprint-aliases [shape]
   (let [aliases (:aliases shape)]
     (when (seq aliases) (str "Aliases:\n" (str/join "\n" (map #(str "- " %) aliases))))))

@@ -20,7 +20,7 @@
                              x
                              (->shape (or (:note x) (:pitch x)) (:name x)))))
   ([x shape-name]
-   ; {:pre [(impl/pitch-or-note? x)]}
+   ; {:pre [(theory/pitch-or-note? x)]}
    ; TODO: if :bass provided, reorder pitches and include lower note?
    (let [{:keys [pitch note]} (theory/parts x)
          shape (theory/name->shape shape-name)
@@ -33,14 +33,18 @@
        (theory/note? x) (assoc :notes (mapv (partial theory/+interval-memo note) intervals))))))
 
 (defn contextualize
-  "If input-shape is a chord, find degree in candidate-shape (scale)
-   If input-shape is a scale, find the candidate-shape's (chord) degree"
-  [input-shape candidate-shape]
-  ; {:pre [(every? impl/shape? [input-shape candidate-shape])]}
-  (let [scale (if (theory/scale? input-shape) input-shape candidate-shape)
-        chord (if (= scale input-shape) candidate-shape input-shape)
-        degree (nth (:degrees scale) (.indexOf (:pitches scale) (first (:pitches chord))))]
-    (theory/degree-chord->roman-numeral degree (:name chord))))
+  "If src-shape is a chord and dest-shape is a scale or vice versa, find chord's degree of the scale
+   If src-shape and dest-shape are both scales, find the dest-shape's mode number
+   If src-shape and dest-shape are both chords, return nil (no underlying scale context)"
+  [src-shape dest-shape]
+  ; {:pre [(every? theory/shape? [src-shape dest-shape])]}
+  (let [src-type (if (theory/chord? src-shape) :chord :scale)
+        dest-type (if (theory/chord? dest-shape) :chord :scale)]
+    (case [src-type dest-type]
+      [:chord :scale] (theory/scale-chord->degree dest-shape src-shape)
+      [:scale :chord] (theory/scale-chord->degree src-shape dest-shape)
+      [:scale :scale] (theory/scales->mode src-shape dest-shape)
+      nil)))
 
 (defn shape->abc
   [shape & {:keys [note-length selected-key]
@@ -127,13 +131,13 @@
 (defn scale->chords
   "Find chords which are diatonic to the scale (i.e. pitch subsets)"
   [{:keys [pitches] :as scale}]
-  ; {:post [(every? impl/shape-ref? %)]}
+  ; {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
     (for [chord all-chords
           :when (set/subset? (set (:pitches chord)) pitch-set)]
       {:pitch (:pitch chord)
        :name (:name chord)
-       :degree (contextualize chord scale)})))
+       :context (contextualize chord scale)})))
 
 ; Find scales from chords
 
@@ -142,16 +146,18 @@
    Look for overlapping intervals based on pitches
    Optionally filter by desired degree"
   [{:keys [pitches] :as chord} & {:keys [degree] :or {degree nil}}]
-  ; {:post [(every? impl/shape-ref? %)]}
+  ; {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
-    (sort-by #(theory/roman-numeral->int (:degree %))
+    (sort-by #(theory/roman-numeral->int (:context %))
              (for [scale all-scales
                    :when (set/subset? pitch-set (set (:pitches scale)))
                    :let [chord-degree (contextualize chord scale)]
-                   :when (if (some? degree) (= degree (theory/roman-numeral->int chord-degree)) true)]
+                   :when (if (some? degree)
+                           (= degree (theory/roman-numeral->int chord-degree))
+                           true)]
                {:pitch (:pitch scale)
                 :name (:name scale)
-                :degree chord-degree}))))
+                :context chord-degree}))))
 
 ; Find more deeply linked shapes
 
@@ -252,8 +258,8 @@
   Test combinations: #{0 2 7} AKA Csus2, #{0 4 7} AKA Cmaj
   "
   [target-shape candidate-notes & {:keys [max-shapes] :or {max-shapes 1}}]
-  ; {:pre [(impl/shape? target-shape) (every? impl/note? candidate-notes)]
-  ;  :post [(every? impl/shape-ref? %)]}
+  ; {:pre [(theory/shape? target-shape) (every? theory/note? candidate-notes)]
+  ;  :post [(every? theory/shape-ref? %)]}
   (let [comp-shape-type (if (theory/chord? target-shape) :scale :chord)
         shapes (if (= :chord comp-shape-type) all-chords all-scales)
         target-pitches (:pitches target-shape)
