@@ -1,4 +1,4 @@
-(ns jigsaw.space
+(ns jigsaw.experiments.datomic
   (:require
    [clojure.set :as set]
    [clojure.math.combinatorics :as combo]

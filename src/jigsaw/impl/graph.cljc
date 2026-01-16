@@ -1,5 +1,6 @@
-(ns jigsaw.graph-impl
-  (:require [jigsaw.utils :as utils]))
+(ns jigsaw.impl.graph
+  (:require
+   [jigsaw.utils :as utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Runtime state
@@ -75,7 +76,7 @@
 ;; Node evaluation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmulti compute-fn (fn [input-values params]))
+(defmulti compute-fn (fn [input-values params] [input-values params]))
 
 (defn eval-node
   "Compute possible results for a node if all inputs are present."
@@ -85,6 +86,7 @@
       :input state
       :fn (let [input-values (select-keys (:values state) (or inputs []))
                 params (get-in state [:params node-id])]
+            (prn node-id input-values params)
             (if (= (count input-values) (count (or inputs [])))
               (assoc-in state [:possible node-id]
                         (compute-fn fn-id input-values params))
@@ -98,7 +100,7 @@
   "Invalidate downstream nodes recursively when a node changes."
   [state node-id & {:keys [invalidate-self?]
                     :or {invalidate-self? false}}]
-  (let [deps (dependents state node-id)]
+  (let [deps (get (dependents state) node-id)]
     (reduce #(cond-> %1
                true (update :values dissoc %2)
                true (update :possible dissoc %2)

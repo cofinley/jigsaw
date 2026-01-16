@@ -1,5 +1,6 @@
-(ns jigsaw.graph
-  (:require [jigsaw.graph-impl :as g]))
+(ns jigsaw.experiments.graph
+  (:require
+   [jigsaw.impl.graph :as g]))
 
 (defmethod g/compute-fn :sum [input-values params]
   [(+ (first (vals input-values)) (second (vals input-values)))])
@@ -20,16 +21,16 @@
           :fn-id :sum}
 
       :d {:type :fn
-          :inputs [:a]
-          :fn-id :scale}
+          :inputs [:a :c]
+          :fn-id :sum}
 
       :e {:type :fn
-          :inputs [:c]
-          :fn-id :scale}
+          :inputs [:c :d]
+          :fn-id :sum}
 
       :f {:type :fn
-          :inputs [:d]
-          :fn-id :scale}}
+          :inputs [:b :d]
+          :fn-id :sum}}
      :params {}
      :possible {}
      :values {}
