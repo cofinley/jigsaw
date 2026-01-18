@@ -30,6 +30,7 @@
        true (merge {:pitch pitch
                     :name shape-name
                     :pitches pitches})
+       true (dissoc :aliases)
        (theory/note? x) (assoc :notes (mapv (partial theory/+interval-memo note) intervals))))))
 
 (defn contextualize
@@ -102,10 +103,11 @@
     - intervals because PCIs account for missing notes better
        - Intervals would have to account for all possible intervals just in case the root isn't played
          - i.e. is it really :P1?"
-  [notes shape-type & {:keys [heuristic max-shapes selected-pitch]
-                       :or {heuristic :overlap
-                            max-shapes 10
-                            selected-pitch nil}}]
+  [notes & {:keys [shape-type heuristic max-shapes selected-pitch]
+            :or {shape-type :chord
+                 heuristic :overlap
+                 max-shapes 10
+                 selected-pitch nil}}]
   (let [pcis (map #(-> % theory/parts :pci) notes)
         shapes (if (= shape-type :chord) all-chords all-scales)
         bass-pitch (theory/identify-bass-pitch notes)]
@@ -148,16 +150,24 @@
   [{:keys [pitches] :as chord} & {:keys [degree] :or {degree nil}}]
   ; {:post [(every? theory/shape-ref? %)]}
   (let [pitch-set (set pitches)]
-    (sort-by #(theory/roman-numeral->int (:context %))
-             (for [scale all-scales
-                   :when (set/subset? pitch-set (set (:pitches scale)))
-                   :let [chord-degree (contextualize chord scale)]
-                   :when (if (some? degree)
-                           (= degree (theory/roman-numeral->int chord-degree))
-                           true)]
-               {:pitch (:pitch scale)
-                :name (:name scale)
-                :context chord-degree}))))
+    ; (sort-by #(theory/roman-numeral->int (:context %))
+    (for [scale all-scales
+          :when (set/subset? pitch-set (set (:pitches scale)))
+          :let [chord-degree (contextualize chord scale)]
+          :when (if (some? degree)
+                  (= degree (theory/roman-numeral->int chord-degree))
+                  true)]
+      {:pitch (:pitch scale)
+       :name (:name scale)
+       :context chord-degree})))
+
+(defn scale->modes
+  [scale]
+  {:pre [(theory/scale? scale)]}
+  (for [n (range 1 (count (:pitches scale)))
+        :let [mode (theory/scale->mode scale n)
+              context (contextualize scale (->shape mode))]]
+    (assoc mode :context context)))
 
 ; Find more deeply linked shapes
 
@@ -166,9 +176,11 @@
   [shape]
   {:pre (theory/shape? shape)
    :post (every? theory/shape-ref? %)}
-  ((if (theory/chord? shape)
-     chord->scales
-     scale->chords) shape))
+  (if (theory/chord? shape)
+    (chord->scales shape)
+    (concat
+     (scale->chords shape)
+     (scale->modes shape))))
 
 (defn connect-shapes
   [shapes]
@@ -229,12 +241,6 @@
                                     :context (contextualize (->shape shape)
                                                             (->shape comp-shape))})
                                  shapes))]))))
-
-(defn scale->modes
-  [scale]
-  {:pre [(theory/scale? scale)]}
-  (for [n (range (count (:pitches scale)))]
-    (theory/scale->mode scale n)))
 
 (defn fit
   "

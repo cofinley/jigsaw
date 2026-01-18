@@ -502,7 +502,7 @@
 
 (defn parts
   [x]
-  {:pre [(pitch-or-note? x)]}
+  ; {:pre [(pitch-or-note? x)]}
   (let [[_ pitch-str letter-str accidental-str octave-str] (re-find pitch-or-note-pattern (name x))
         pitch (keyword pitch-str)]
     (-> {:pitch pitch
@@ -515,7 +515,7 @@
 
 (defn staff-distance
   [x1 x2]
-  {:pre [(every? pitch-or-note? [x1 x2])]}
+  ; {:pre [(every? pitch-or-note? [x1 x2])]}
   (let [{letter1 :letter} (parts x1)
         {letter2 :letter} (parts x2)
         i1 (#?(:clj int :cljs .charCodeAt) letter1)
@@ -719,8 +719,8 @@
   "Find interval between two pitches/notes
    Start with semitone distance, and use staff distance if needed to split hairs between augmented/diminished"
   [x1 x2]
-  {:pre [(every? pitch-or-note? [x1 x2])]
-   :post [(or (interval? %) (nil? %))]}
+  ; {:pre [(every? pitch-or-note? [x1 x2])]
+  ;  :post [(or (interval? %) (nil? %))]}
   (if (and (note? x1) (< (note->midi x2) (note->midi x1)))
     (let [{:keys [pitch octave]} (parts x2)]
       (->interval x1 (pitch->note pitch (inc octave))))
@@ -738,8 +738,8 @@
 (defn ->intervals-impl
   "Convert pitches to intervals, where the first pitch is :P1"
   [xs]
-  {:pre [(every? pitch-or-note? xs)]
-   :post [(every? interval? %)]}
+  ; {:pre [(every? pitch-or-note? xs)]
+  ;  :post [(every? interval? %)]}
   (if (pitch? (first xs))
     (->intervals (pitches->notes xs))
     (map (partial ->interval (first xs)) xs)))
@@ -806,7 +806,8 @@
       (cond
         (utils/in? intervals :A5) "+"
         (utils/in? intervals :d5) "o"
-        (= :7 chord-name) "7"
+        ; TODO: maybe don't add extension info and let the :name take care of that
+        ; (= :7 chord-name) "7"
         :else "")))))
 
 (defn chord-degree->chord-name
