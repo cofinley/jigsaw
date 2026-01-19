@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:unresolved-symbol {:level :off}}}}
   (:require
    [clojure.core.logic :as l]
+   [clojure.core.logic.fd :as fd]
    [jigsaw.core :as jigsaw]
    [jigsaw.impl.theory :as theory]))
 
@@ -45,11 +46,9 @@
                   (l/== [start a b] path)
                   (l/== q path))))
 
-; Connect from notes
+; Connect (from notes); given one or more starting points, find how they connect
 (comment
-  (let [; shapes-a (jigsaw/notes->shapes [:F4 :A4 :C5])
-        ; shapes-b (jigsaw/notes->shapes [:Bb5 :D6 :F6])
-        shapes-a (jigsaw/notes->shapes #{:Gb4 :A4 :C5 :E5})
+  (let [shapes-a (jigsaw/notes->shapes #{:Gb4 :A4 :C5 :E5})
         shapes-b (jigsaw/notes->shapes #{:Gb4 :A4 :B4 :Eb5})
         shapes-c (jigsaw/notes->shapes #{:E4 :G4 :B4})]
 
@@ -81,7 +80,7 @@
                               {:pitch b-pitch :name b-name :context b-context :overlap b-overlap}
                               {:pitch c-pitch :name c-name :context c-context :overlap c-overlap}]})))))
 
-; Connect from shapes
+; Connect (from shapes)
 (comment
   (l/run 3 [q]
          (l/fresh [a a-context x
@@ -96,12 +95,10 @@
                   (neighboro b y)
                   (l/featurec y {:pitch x-pitch :name x-name :context b-context})
 
-                   ; (l/== [:chord-degree/I :chord-degree/ii] [a-context b-context])
-
                   (l/== q {{:pitch x-pitch :name x-name} {a a-context
                                                           b b-context}}))))
 
-; Fit (one hop)
+; Search nested relations
 (comment
   (l/run* [q]
           (l/fresh [start scale end]
@@ -120,7 +117,7 @@
                    ; Return the results
                    (l/== q {end scale}))))
 
-; Fit (two hops)
+; More searching of nested relations
 (comment
   (l/run 1 [q]
          (l/fresh [start scale1 scale2 end]
@@ -165,18 +162,33 @@
                   ; Return the secondary dominant
                   (l/== q dom-chord2))))
 
-(defn shapeo [q shape-ref]
-  (l/project [shape-ref]
-             (l/== q (jigsaw/->shape shape-ref))))
+(defn shapeo
+  "Reify shape from (potential) shape ref"
+  [q shape-ref]
+  (l/is q shape-ref jigsaw/->shape))
 
-(defn subo [q shape-ref sub-interval new-name & [multiplier]]
+(defn noteso
+  "Potential shapes from notes"
+  [q notes]
+  (l/project [notes]
+             (l/membero q (jigsaw/notes->shapes notes))))
+
+(defn intervalo
+  "Transpose pitch by interval"
+  [q pitch interval & [multiplier]]
+  (l/project [pitch]
+             (l/== q (theory/+interval pitch interval multiplier))))
+
+(defn subo
+  "Transpose shape by interval, returns ref"
+  [q shape-ref sub-interval new-name & [multiplier]]
   (l/project [shape-ref]
-             (l/fresh [shape pitch next-pitch next-shape next-name]
+             (l/fresh [shape pitch new-pitch]
                       ; TODO: might be good to deal in whole shapes for algos to avoid recalcs, but refs/keywords for display
                       (shapeo shape shape-ref)
                       (l/featurec shape {:pitch pitch})
-                      (l/is next-pitch pitch #(theory/+interval % sub-interval multiplier))
-                      (l/== q {:pitch next-pitch :name new-name}))))
+                      (intervalo new-pitch pitch sub-interval multiplier)
+                      (l/== q {:pitch new-pitch :name new-name}))))
 
 ; Tritone substitution
 (comment
@@ -193,6 +205,7 @@
                   (neighboro scale i)
                   (l/featurec i {:context :chord-degree/I :name :maj7})
 
+                  ; Find the shape (ref) which is a tritone away from the V chord
                   (subo sub v :d5 :7)
                   (l/== q [ii sub i]))))
 
@@ -202,7 +215,7 @@
          (l/fresh [key1 ii v i
                    key2 v2 i2
                    key3 v3 i3]
-                  (l/== key1 {:pitch :C :name :major})
+                  (shapeo key1 :C_major)
 
                   ; Normal ii-V-I
                   (neighboro key1 ii)
@@ -235,3 +248,38 @@
                   (l/featurec i3 {:context :chord-degree/I :name :maj7})
 
                   (l/== q [ii v2 i2 v3 i3 v i]))))
+
+(defn heuristico [q shape1 shape2]
+  (l/project [shape1 shape2]
+             (l/== q (into {} (map (fn [[k v]]
+                                     (vector k (int (* 100 v))))
+                                   (theory/calculate-heuristics (:pitches (jigsaw/->shape shape1))
+                                                                (:pitches (jigsaw/->shape shape2))))))))
+
+; Fit (find closest compatible shape, to a reference shape)
+; i.e. <input> ~= ? <-> <shape>
+(comment
+  (l/run 3 [q]
+         (l/fresh [start candidate candidate-ref parent h overlap pc]
+                  ; Find which shape(s) are close to the C minor chord
+                  (shapeo start :C_m)
+                  ; ...in the C major scale
+                  (shapeo parent :C_major)
+
+                  (neighboro parent candidate)
+                  (heuristico h start candidate)
+
+                  (l/featurec h {:overlap overlap :same-pitch-count? pc})
+                  (l/conde
+                   ; same pitch count and/or good overlap
+                   [(fd/== pc 100) (fd/>= overlap 50)]
+                   ; Hacky sort?
+                   [(fd/== overlap 100)]
+                   [(fd/> overlap 95)]
+                   [(fd/> overlap 90)]
+                   [(fd/> overlap 80)]
+                   [(fd/> overlap 70)]
+                   [(fd/> overlap 60)]
+                   [(fd/> overlap 50)])
+
+                  (l/== q candidate))))

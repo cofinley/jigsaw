@@ -156,7 +156,7 @@
 
 ;;;; SHAPES ;;;;
 
-;; Chord and scales are composition of a pitch, name, and intervals
+;; Chord and scales are composition of a pitch, name (i.e. quality), and intervals
 ;;  e.g. a pitch with intervals is a chord or a scale (think ECS)
 ;;    maybe use degrees instead of intervals for scale to be able to differentiate
 
@@ -427,6 +427,7 @@
 (defn chord? [x] (s/valid? ::chord x))
 (defn scale? [x] (s/valid? ::scale x))
 
+; Shape name, i.e. quality, e.g. maj7
 (def name->shape (merge chords scales))
 (s/def ::name (set (concat (keys chords) (keys scales))))
 
@@ -1050,6 +1051,7 @@
      :contained-in? (heuristic->float (set/subset? input-set candidate-set))
      :fully-contained-in? (heuristic->float (and (set/subset? input-set candidate-set) (not= input-set candidate-set)))
      :overlap (heuristic->float (jaccard-index input-set candidate-set))
+     :same-pitch-count? (heuristic->float (= (count input-set) (count candidate-set)))
      :shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))}))
 
 ; Helper functions for bass/inversion analysis
