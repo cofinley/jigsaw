@@ -7,17 +7,20 @@
    [jigsaw.impl.theory :as theory]))
 
 ; (def all-shapes
-;   (vec
-;    (for [pitch theory/simple-pitch-keys
-;          shape-name (concat (keys theory/chords) (keys theory/scales))]
-;      (let [shape (jigsaw/->shape {:pitch pitch :name shape-name})]
-;        (assoc
-;         shape
-;         ; :pitch-set (set (:pitches shape))
-;         ; :pci-set (set (map theory/pitches (:pitches shape)))
+;   (for [pitch theory/simple-pitch-keys
+;         shape-name (concat (keys theory/chords) (keys theory/scales))]
+;     (let [shape (jigsaw/->shape {:pitch pitch :name shape-name})
+;           pitches (:pitches shape)
+;           pcis (map #(theory/pitches %) pitches)]
+;       (assoc
+;        shape
+;        :pcis pcis
+;        :pitch-set (set pitches)
+;        :pci-set (set pcis)
 ;         ; :interval-set (set (:intervals shape))
 ;         ; :degree-set (set (:degrees shape))
-;         :type (if (theory/chord? shape) :chord :scale))))))
+;        ;:type (if (theory/chord? shape) :chord :scale)
+;        ))))
 
 (defn ->shapes [x]
   (cond
@@ -51,7 +54,6 @@
   (let [shapes-a (jigsaw/notes->shapes #{:Gb4 :A4 :C5 :E5})
         shapes-b (jigsaw/notes->shapes #{:Gb4 :A4 :B4 :Eb5})
         shapes-c (jigsaw/notes->shapes #{:E4 :G4 :B4})]
-
     (l/run 5 [q]
            (l/fresh [a a-pitch a-name a-overlap a-context
                      b b-pitch b-name b-overlap b-context
@@ -177,18 +179,17 @@
   "Transpose pitch by interval"
   [q pitch interval & [multiplier]]
   (l/project [pitch]
-             (l/== q (theory/+interval pitch interval multiplier))))
+             (l/== q (theory/pci->default-pitch (theory/pitches (theory/+interval pitch interval multiplier))))))
 
 (defn subo
   "Transpose shape by interval, returns ref"
-  [q shape-ref sub-interval new-name & [multiplier]]
+  [q shape-ref sub-interval & [multiplier]]
   (l/project [shape-ref]
-             (l/fresh [shape pitch new-pitch]
+             (l/fresh [pitch name new-pitch]
                       ; TODO: might be good to deal in whole shapes for algos to avoid recalcs, but refs/keywords for display
-                      (shapeo shape shape-ref)
-                      (l/featurec shape {:pitch pitch})
+                      (l/featurec shape-ref {:pitch pitch :name name})
                       (intervalo new-pitch pitch sub-interval multiplier)
-                      (l/== q {:pitch new-pitch :name new-name}))))
+                      (l/== q {:pitch new-pitch :name name}))))
 
 ; Tritone substitution
 (comment
@@ -205,81 +206,89 @@
                   (neighboro scale i)
                   (l/featurec i {:context :chord-degree/I :name :maj7})
 
-                  ; Find the shape (ref) which is a tritone away from the V chord
-                  (subo sub v :d5 :7)
+                  ; Find the shape which is a tritone away from the V chord
+                  (subo sub v :d5)
                   (l/== q [ii sub i]))))
 
 ; Coltrane changes
 (comment
-  (l/run 1 [q]
-         (l/fresh [key1 ii v i
-                   key2 v2 i2
-                   key3 v3 i3]
-                  (shapeo key1 :C_major)
+  (let [key1 (jigsaw/->shape :C_major)]
+    (l/run 1 [q]
+           (l/fresh [ii v i
+                     key2 v2 i2
+                     key3 v3 i3]
+                    ; Normal ii-V-I
+                    (neighboro key1 ii)
+                    (l/featurec ii {:context :chord-degree/ii :name :m7})
 
-                  ; Normal ii-V-I
-                  (neighboro key1 ii)
-                  (l/featurec ii {:context :chord-degree/ii :name :m7})
+                    (neighboro key1 v)
+                    (l/featurec v {:context :chord-degree/V :name :7})
 
-                  (neighboro key1 v)
-                  (l/featurec v {:context :chord-degree/V :name :7})
+                    (neighboro key1 i)
+                    (l/featurec i {:context :chord-degree/I :name :maj7})
 
-                  (neighboro key1 i)
-                  (l/featurec i {:context :chord-degree/I :name :maj7})
+                    ; Key goes down a third
+                    (subo key2 key1 :M3 -1)
 
-                  ; Key goes down a third
-                  (subo key2 key1 :M3 :major -1)
+                    ; New V-I
+                    (neighboro key2 v2)
+                    (l/featurec v2 {:context :chord-degree/V :name :7})
 
-                  ; New V-I
-                  (neighboro key2 v2)
-                  (l/featurec v2 {:context :chord-degree/V :name :7})
+                    (neighboro key2 i2)
+                    (l/featurec i2 {:context :chord-degree/I :name :maj7})
 
-                  (neighboro key2 i2)
-                  (l/featurec i2 {:context :chord-degree/I :name :maj7})
+                    ; Key goes down another third
+                    (subo key3 key2 :M3 -1)
 
-                  ; Key goes down another third
-                  (subo key3 key2 :M3 :major -1)
+                    ; New V-I
+                    (neighboro key3 v3)
+                    (l/featurec v3 {:context :chord-degree/V :name :7})
 
-                  ; New V-I
-                  (neighboro key3 v3)
-                  (l/featurec v3 {:context :chord-degree/V :name :7})
+                    (neighboro key3 i3)
+                    (l/featurec i3 {:context :chord-degree/I :name :maj7})
 
-                  (neighboro key3 i3)
-                  (l/featurec i3 {:context :chord-degree/I :name :maj7})
-
-                  (l/== q [ii v2 i2 v3 i3 v i]))))
+                    (l/== q [ii v2 i2 v3 i3 v i]))))
+  ; => ([{:pitch :D, :name :m7, :context :chord-degree/ii}
+  ;      {:pitch :Eb, :name :7, :context :chord-degree/V}
+  ;      {:pitch :Ab, :name :maj7, :context :chord-degree/I}
+  ;      {:pitch :B, :name :7, :context :chord-degree/V}
+  ;      {:pitch :E, :name :maj7, :context :chord-degree/I}
+  ;      {:pitch :G, :name :7, :context :chord-degree/V}
+  ;      {:pitch :C, :name :maj7, :context :chord-degree/I}])
+  )
 
 (defn heuristico [q shape1 shape2]
   (l/project [shape1 shape2]
-             (l/== q (into {} (map (fn [[k v]]
-                                     (vector k (int (* 100 v))))
-                                   (theory/calculate-heuristics (:pitches (jigsaw/->shape shape1))
-                                                                (:pitches (jigsaw/->shape shape2))))))))
+             (l/== q (into {}
+                           (map (fn [[k v]] (vector k (int (* 100 v))))
+                                (theory/calculate-heuristics (:pitches (jigsaw/->shape shape1))
+                                                             (:pitches (jigsaw/->shape shape2))))))))
+
+(defn fuzzy-neighborc [from to]
+  (l/fresh [h overlap pc]
+           (heuristico h from to)
+           (l/featurec h {:overlap overlap :same-pitch-count? pc})
+           (l/conde
+            ; Perfect pitch match
+            [(fd/== overlap 100)]
+            ; Same pitch count and decent pitch overlap
+            [(fd/== pc 100) (fd/>= overlap 50)]
+            ; Hacky sort?
+            [(fd/>= overlap 95)]
+            [(fd/>= overlap 90)]
+            [(fd/>= overlap 80)]
+            [(fd/>= overlap 70)]
+            [(fd/>= overlap 60)])))
 
 ; Fit (find closest compatible shape, to a reference shape)
 ; i.e. <input> ~= ? <-> <shape>
 (comment
-  (l/run 3 [q]
-         (l/fresh [start candidate candidate-ref parent h overlap pc]
-                  ; Find which shape(s) are close to the C minor chord
-                  (shapeo start :C_m)
-                  ; ...in the C major scale
-                  (shapeo parent :C_major)
-
-                  (neighboro parent candidate)
-                  (heuristico h start candidate)
-
-                  (l/featurec h {:overlap overlap :same-pitch-count? pc})
-                  (l/conde
-                   ; same pitch count and/or good overlap
-                   [(fd/== pc 100) (fd/>= overlap 50)]
-                   ; Hacky sort?
-                   [(fd/== overlap 100)]
-                   [(fd/> overlap 95)]
-                   [(fd/> overlap 90)]
-                   [(fd/> overlap 80)]
-                   [(fd/> overlap 70)]
-                   [(fd/> overlap 60)]
-                   [(fd/> overlap 50)])
-
-                  (l/== q candidate))))
+  (let [start (jigsaw/->shape :C_m)
+        parent (jigsaw/->shape :C_major)]
+    (l/run 5 [q]
+           (l/fresh [candidate]
+                    ; Find which shape(s) in the C major scale
+                    (neighboro parent candidate)
+                    ; ...are close to the C minor chord
+                    (fuzzy-neighborc start candidate)
+                    (l/== q candidate)))))
