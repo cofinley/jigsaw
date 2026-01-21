@@ -302,10 +302,10 @@
         62 :D4
         63 :Eb4
         12 :C0))
-    (testing "with +interval"
+    (testing "with transpose"
       (testing "starting from a pitch"
         (testing "adding"
-          (are+ [p interval want] (= want (theory/+interval p interval))
+          (are+ [p interval want] (= want (theory/transpose p interval))
             :C :P1  :C
             :C :d2  :Dbb
             :C :m2  :Db
@@ -366,7 +366,7 @@
             :B# :A7 :B#  ; technically A###
             :B# :A8 :B##))
         (testing "subtracting"
-          (are+ [p interval want] (= want (theory/+interval p interval -1))
+          (are+ [p interval want] (= want (theory/transpose p interval -1))
             :C :d2  :B#
             :C :m2  :B
             :C :M2  :Bb
@@ -417,7 +417,7 @@
             :C# :P8 :C#)))
       (testing "starting from a note"
         (testing "adding"
-          (are+ [n interval want] (= want (theory/+interval n interval))
+          (are+ [n interval want] (= want (theory/transpose n interval))
             :C4 :P1  :C4
             :C4 :P8  :C5
             :C4 :P11 :F5
@@ -426,7 +426,7 @@
             :F#4 :A5 :C##5
             :B#4 :M3 :D##5))
         (testing "subtracting"
-          (are+ [n interval want] (= want (theory/+interval n interval -1))
+          (are+ [n interval want] (= want (theory/transpose n interval -1))
             :C4 :P1  :C4
             :C4 :P8  :C3
             :C4 :P11 :G2

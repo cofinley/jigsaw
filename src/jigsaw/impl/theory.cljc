@@ -452,42 +452,45 @@
 (s/def ::progression (s/coll-of ::chord))
 
 (def chord-progressions
-  (array-map
-   "50s progression" {:degrees [:I :vi :IV :V] :quality :major}
-   "IV-V-I-vi" {:degrees [:IV :V :I :vi] :quality :major}
-   "I–V–vi–IV" {:degrees [:I :V :vi :IV] :quality :major}
-   "I–IV–bVII–IV" {:degrees [:I :IV :bVII :IV] :quality :mixolydian}
-   "ii–V–I" {:degrees [:ii :V :I] :quality :major}
-   "ii–V–I with tritone substitution" {:degrees [:ii :bII :I] :quality :major}
-   "ii-V-I with bIII+ as dominant substitute" {:degrees [:ii :bIII+ :I] :quality :mixolydian}
-   ; Diminished represented as 'o' for easier typing
-   ; Secondary dominant; represent / with _ for Clojure keyword reader compatibility
-   "viio7/V–V–I" {:degrees [:viio7_V :V :I] :quality :major}
-   "Andalusian cadence" {:degrees [:iv :III :bII :I] :quality :phrygian-dominant}
-   "Backdoor progression" {:degrees [:ii :bVII :I] :quality :major}
-   ; Half-diminished represented as % for easier typing
-   "Bird changes" {:degrees [:I :vii% :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
-   "Chromatic descending 5–6 sequence" {:degrees [:I :V :bVII :IV] :quality :mixolydian}
-   "Circle progression" {:degrees [:vi :ii :V :I] :quality :major}
-   "Coltrane changes" {:degrees [:I :V_bVI :bVI :V_III :III :V :I] :quality :major}
-   "Eight-bar blues" {:degrees [:I :V :IV :IV :I :V :I :V] :quality :major}
-   "Folia" {:degrees [:i :V :i :bVII :bIII :bVII :i :V :i :V :i :bVII :bIII :bVII :i :V :i] :quality :minor}
-   "Irregular resolution" {:degrees [:V7 :III7] :quality :major}
-   "Montgomery–Ward bridge" {:degrees [:I :IV :ii :V] :quality :major}
-   "Passamezzo antico" {:degrees [:i :VII :i :V :III :VII :i :V :i] :quality :minor}
-   "Passamezzo moderno" {:degrees [:I :IV :I :V :I :IV :I :V :I] :quality :major}
-   "I–V–vi–IV" {:degrees [:I :V :vi :IV] :quality :major}
-   "Ragtime" {:degrees [:III7 :VI7 :II7 :V7] :quality :major}
-   "Romanesca" {:degrees [:III :VII :i :V :III :VII :i :V :i] :quality :major}
-   "Sixteen-bar blues" {:degrees [:I :I :I :I :I :I :I :I :IV :IV :I :I :V :IV :I :I] :quality :major}
-   "Twelve-bar blues" {:degrees [:I :I :I :I :IV :IV :I :I :V :IV :I :V] :quality :major}
-   "I−vi−ii−V" {:degrees [:I :vi :ii :V] :quality :major}
-   "bVII–V7 cadence" {:degrees [:bVII :V :I] :quality :mixolydian}
-   "V–IV–I turnaround" {:degrees [:V :IV :I] :quality :major}
-   "I–bVII–bVI–bVII" {:degrees [:I :bVII :bVI :bVII] :quality :minor}
-   ; Major 7th chord; represent with M7 for Clojure keyword reader compatibility
-   "Royal road" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
-   "bVI-bVII-I" {:degrees [:bVI :bVII :I] :quality :major}))
+  (apply
+   array-map
+   (map (fn [[prog-name prog]]
+          [prog-name (assoc prog :degrees (mapv #(keyword "chord-degree" (name %))
+                                                (:degrees prog)))])
+        {"50s progression" {:degrees [:I :vi :IV :V] :quality :major}
+         "IV-V-I-vi" {:degrees [:IV :V :I :vi] :quality :major}
+         "I–V–vi–IV" {:degrees [:I :V :vi :IV] :quality :major}
+         "I–IV–bVII–IV" {:degrees [:I :IV :bVII :IV] :quality :mixolydian}
+         "ii–V–I" {:degrees [:ii :V :I] :quality :major}
+         "ii–V–I with tritone substitution" {:degrees [:ii :bII :I] :quality :major}
+         "ii-V-I with bIII+ as dominant substitute" {:degrees [:ii :bIII+ :I] :quality :mixolydian}
+         ; Diminished represented as 'o' for easier typing
+         ; Secondary dominant; represent / with _ for Clojure keyword reader compatibility
+         "viio7/V–V–I" {:degrees [:viio7_V :V :I] :quality :major}
+         "Andalusian cadence" {:degrees [:iv :III :bII :I] :quality :phrygian-dominant}
+         "Backdoor progression" {:degrees [:ii :bVII :I] :quality :major}
+         ; Half-diminished represented as % for easier typing
+         "Bird changes" {:degrees [:I :vii% :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
+         "Chromatic descending 5–6 sequence" {:degrees [:I :V :bVII :IV] :quality :mixolydian}
+         "Circle progression" {:degrees [:vi :ii :V :I] :quality :major}
+         "Coltrane changes" {:degrees [:I :V_bVI :bVI :V_III :III :V :I] :quality :major}
+         "Eight-bar blues" {:degrees [:I :V :IV :IV :I :V :I :V] :quality :major}
+         "Folia" {:degrees [:i :V :i :bVII :bIII :bVII :i :V :i :V :i :bVII :bIII :bVII :i :V :i] :quality :minor}
+         "Irregular resolution" {:degrees [:V7 :III7] :quality :major}
+         "Montgomery–Ward bridge" {:degrees [:I :IV :ii :V] :quality :major}
+         "Passamezzo antico" {:degrees [:i :VII :i :V :III :VII :i :V :i] :quality :minor}
+         "Passamezzo moderno" {:degrees [:I :IV :I :V :I :IV :I :V :I] :quality :major}
+         "Ragtime" {:degrees [:III7 :VI7 :II7 :V7] :quality :major}
+         "Romanesca" {:degrees [:III :VII :i :V :III :VII :i :V :i] :quality :major}
+         "Sixteen-bar blues" {:degrees [:I :I :I :I :I :I :I :I :IV :IV :I :I :V :IV :I :I] :quality :major}
+         "Twelve-bar blues" {:degrees [:I :I :I :I :IV :IV :I :I :V :IV :I :V] :quality :major}
+         "I−vi−ii−V" {:degrees [:I :vi :ii :V] :quality :major}
+         "bVII–V7 cadence" {:degrees [:bVII :V :I] :quality :mixolydian}
+         "V–IV–I turnaround" {:degrees [:V :IV :I] :quality :major}
+         "I–bVII–bVI–bVII" {:degrees [:I :bVII :bVI :bVII] :quality :minor}
+         ; Major 7th chord; represent with M7 for Clojure keyword reader compatibility
+         "Royal road" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
+         "bVI-bVII-I" {:degrees [:bVI :bVII :I] :quality :major}})))
 
 ; :C (pitch)
 ; :C4 (note)
@@ -682,7 +685,7 @@
     (pitch-semitone-distance x1 x2)
     (note-semitone-distance x1 x2 :fold? fold?)))
 
-(defn pitch+interval
+(defn transpose-pitch
   [p interval & [multiplier]]
   (if (some? (#{:P1 :P8} interval))
     p
@@ -706,11 +709,11 @@
           new-pitch (keyword (str new-letter accidental-str))]
       (clamp-pitch new-pitch))))
 
-(defn note+interval
+(defn transpose-note
   [n interval & [multiplier]]
   (let [{:keys [pitch]} (parts n)
         interval-semitones (get-in intervals [interval :semitones])
-        new-pitch (pitch+interval pitch interval multiplier)]
+        new-pitch (transpose-pitch pitch interval multiplier)]
     (-> n
         (note->midi)
         (+ (* (or multiplier 1) interval-semitones))
@@ -747,7 +750,7 @@
 
 (def ->intervals (memoize ->intervals-impl))
 
-(defn +interval
+(defn transpose
   "Add/subtract interval to/from pitch or note"
   [x interval & [multiplier]]
   ; {:pre [(pitch-or-note? x)
@@ -756,10 +759,10 @@
   (if (= :P1 interval)
     x
     (if (pitch? x)
-      (pitch+interval x interval multiplier)
-      (note+interval x interval multiplier))))
+      (transpose-pitch x interval multiplier)
+      (transpose-note x interval multiplier))))
 
-(def +interval-memo (memoize +interval))
+(def transpose-memo (memoize transpose))
 
 (defn interval->degree [interval]
   {:pre [(interval? interval)]}
@@ -836,7 +839,7 @@
 
 (defn circle-of-fifths [major-or-minor]
   (zipmap
-   (take 15 (iterate (partial #(+interval % :P5))
+   (take 15 (iterate (partial #(transpose % :P5))
                      (case major-or-minor
                        :major :Cb
                        :minor :Ab)))
@@ -1094,7 +1097,7 @@
 (defn rotate-intervals
   "Recontextualize intervals by rotating/inverting them"
   [intervals n]
-  (let [pitches (map #(+interval :C %) intervals)
+  (let [pitches (map #(transpose :C %) intervals)
         rotated-pitches (utils/rotate pitches n)
         rotated-intervals (->intervals rotated-pitches)]
     rotated-intervals))

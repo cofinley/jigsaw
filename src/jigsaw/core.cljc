@@ -25,13 +25,13 @@
    (let [{:keys [pitch note]} (theory/parts x)
          shape (theory/name->shape shape-name)
          intervals (:intervals shape)
-         pitches (mapv (partial theory/+interval-memo pitch) intervals)]
+         pitches (mapv (partial theory/transpose-memo pitch) intervals)]
      (cond-> shape
        true (merge {:pitch pitch
                     :name shape-name
                     :pitches pitches})
        true (dissoc :aliases)
-       (theory/note? x) (assoc :notes (mapv (partial theory/+interval-memo note) intervals))))))
+       (theory/note? x) (assoc :notes (mapv (partial theory/transpose-memo note) intervals))))))
 
 (defn contextualize
   "If src-shape is a chord and dest-shape is a scale or vice versa, find chord's degree of the scale
