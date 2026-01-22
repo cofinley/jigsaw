@@ -96,42 +96,43 @@
 ;;   4th usually on major and sus chords, 11th on dominant and minor chords
 ;;   6th usually on major and minor chords, 13th usually on dominant chords
 (def intervals
-  {:P1  {:name "Root" :semitones 0}
-   :d2  {:name "Diminished 2nd" :semitones 0}
-   :m2  {:name "Minor 2nd" :semitones 1}
-   :M2  {:name "Major 2nd" :semitones 2}
-   :d3  {:name "Diminished 3rd" :semitones 2}
-   :m3  {:name "Minor 3rd" :semitones 3}
-   :A2  {:name "Augmented 2nd" :semitones 3}
-   :M3  {:name "Major 3rd" :semitones 4}
-   :d4  {:name "Diminished 4th" :semitones 4}
-   :P4  {:name "Perfect 4th" :semitones 5}
-   :A3  {:name "Augmented 3rd" :semitones 5}
-   :d5  {:name "Diminished 5th" :semitones 6 :aliases ["Tritone"]}
-   :A4  {:name "Augmented 4th" :semitones 6 :aliases ["Tritone"]}
-   :P5  {:name "Perfect 5th" :semitones 7}
-   :d6  {:name "Diminished 6th" :semitones 7}
-   :m6  {:name "Minor 6th" :semitones 8}
-   :A5  {:name "Augmented 5th" :semitones 8}
-   :M6  {:name "Major 6th" :semitones 9}
-   :d7  {:name "Diminished 7th" :semitones 9}
-   :m7  {:name "Minor 7th" :semitones 10}
-   :A6  {:name "Augmented 6th" :semitones 10}
-   :M7  {:name "Major 7th" :semitones 11}
-   :A7  {:name "Augmented 7th" :semitones 12}
-   :P8  {:name "Octave" :semitones 12}
-   :A8  {:name "Augmented 8th" :semitones 13}
-   :m9  {:name "Minor 9th" :semitones 13}
-   :M9  {:name "Major 9th" :semitones 14}
-   :m10 {:name "Minor 10th" :semitones 15}
-   :A9  {:name "Augmented 9th" :semitones 15}
-   :M10 {:name "Major 10th" :semitones 16}
-   :d11 {:name "Diminished 11th" :semitones 16}
-   :P11 {:name "Perfect 11th" :semitones 17}
-   :A11 {:name "Augmented 11th" :semitones 18}
-   :P12 {:name "Perfect 12th" :semitones 19}
-   :m13 {:name "Minor 13th" :semitones 20}
-   :M13 {:name "Major 13th" :semitones 21}})
+  {:P1  {:semitones 0 :aliases ["Root"]}
+   :d2  {:semitones 0 :aliases ["Diminished 2nd"]}
+   :m2  {:semitones 1 :aliases ["Minor 2nd"]}
+   :M2  {:semitones 2 :aliases ["Major 2nd"]}
+   :d3  {:semitones 2 :aliases ["Diminished 3rd"]}
+   :m3  {:semitones 3 :aliases ["Minor 3rd"]}
+   :A2  {:semitones 3 :aliases ["Augmented 2nd"]}
+   :M3  {:semitones 4 :aliases ["Major 3rd"]}
+   :d4  {:semitones 4 :aliases ["Diminished 4th"]}
+   :P4  {:semitones 5 :aliases ["Perfect 4th"]}
+   :A3  {:semitones 5 :aliases ["Augmented 3rd"]}
+   :d5  {:semitones 6 :aliases ["Diminished 5th", "Tritone"]}
+   :A4  {:semitones 6 :aliases ["Augmented 4th", "Tritone"]}
+   :P5  {:semitones 7 :aliases ["Perfect 5th"]}
+   :d6  {:semitones 7 :aliases ["Diminished 6th"]}
+   :m6  {:semitones 8 :aliases ["Minor 6th"]}
+   :A5  {:semitones 8 :aliases ["Augmented 5th"]}
+   :M6  {:semitones 9 :aliases ["Major 6th"]}
+   :d7  {:semitones 9 :aliases ["Diminished 7th"]}
+   :m7  {:semitones 10 :aliases ["Minor 7th"]}
+   :A6  {:semitones 10 :aliases ["Augmented 6th"]}
+   :M7  {:semitones 11 :aliases ["Major 7th"]}
+   :A7  {:semitones 12 :aliases ["Augmented 7th"]}
+   :P8  {:semitones 12 :aliases ["Octave"]}
+   :A8  {:semitones 13 :aliases ["Augmented 8th"]}
+   :m9  {:semitones 13 :aliases ["Minor 9th"]}
+   :M9  {:semitones 14 :aliases ["Major 9th"]}
+   :m10 {:semitones 15 :aliases ["Minor 10th"]}
+   :A9  {:semitones 15 :aliases ["Augmented 9th"]}
+   :M10 {:semitones 16 :aliases ["Major 10th"]}
+   :d11 {:semitones 16 :aliases ["Diminished 11th"]}
+   :P11 {:semitones 17 :aliases ["Perfect 11th"]}
+   :A11 {:semitones 18 :aliases ["Augmented 11th"]}
+   :P12 {:semitones 19 :aliases ["Perfect 12th"]}
+   :m13 {:semitones 20 :aliases ["Minor 13th"]}
+   :M13 {:semitones 21 :aliases ["Major 13th"]}})
+
 (s/def ::interval (set (keys intervals)))
 (defn interval? [interval] (s/valid? ::interval interval))
 (s/def ::intervals (s/coll-of ::interval))  ; Can be one (in isolation) or more (e.g. chords, scales)
@@ -164,7 +165,8 @@
 (s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
                                  :opt-un [::aliases ::degrees]))
 ; Lookup info for ->shape, enough to resolve final pitches/notes
-(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]))
+(s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]
+                           :opt-un [::context]))
 ; Resolved, with intervals converted into pitches/notes
 (s/def ::shape (s/merge ::shape-blueprint
                         (s/keys :req-un [::name
@@ -198,9 +200,9 @@
    :m11        {:intervals [:P1 :m3 :P5 :m7 :M9 :P11]       :aliases ["-11", "minor eleventh"]}
    :m13        {:intervals [:P1 :m3 :P5 :m7 :M9 :M13]       :aliases ["-13", "minor thirteenth"]}
    ;;; Diminished
-   :dim        {:intervals [:P1 :m3 :d5]                    :aliases ["°", "diminished"]}
-   :dim7       {:intervals [:P1 :m3 :d5 :d7]                :aliases ["°7", "diminished seventh"]}
-   :m7b5       {:intervals [:P1 :m3 :d5 :m7]                :aliases ["ø", "-7b5", "half-diminished"]}
+   :dim        {:intervals [:P1 :m3 :d5]                    :aliases ["°", "o", "diminished"]}
+   :dim7       {:intervals [:P1 :m3 :d5 :d7]                :aliases ["°7", "o7", "diminished seventh"]}
+   :m7b5       {:intervals [:P1 :m3 :d5 :m7]                :aliases ["ø", "%", "-7b5", "half-diminished"]}
    ;; Dominant/Seventh
    ;;; Normal
    :7          {:intervals [:P1 :M3 :P5 :m7]                :aliases ["dom", "dominant seventh"]}
@@ -429,31 +431,33 @@
 
 ; Shape name, i.e. quality, e.g. maj7
 (def name->shape (merge chords scales))
-(s/def ::name (set (concat (keys chords) (keys scales))))
+(s/def ::name #(contains? (set (concat (keys chords) (keys scales))) %))
 
 ;;;; CONTEXTUAL SHAPES ;;;;
 
 ; Shapes coming from other shapes; recursive; denotes chord degree relationship
-(s/def ::context (s/merge ::shape
-                          (s/keys :req-un [::degree]
-                                  :opt-un [::context])))
+(s/def ::context keyword?)
+; (s/def ::context (s/merge ::shape
+;                           (s/keys :req-un [::degree]
+;                                   :opt-un [::context])))
 
-; Chord coming from a scale context
-(s/def ::scale-chord (s/and ::chord
-                            ::context
-                            #(s/valid? ::scale (:context %))))
+; ; Chord coming from a scale context
+; (s/def ::scale-chord (s/and ::chord
+;                             ::context
+;                             #(s/valid? ::scale (:context %))))
 
-; Scale coming from a chord context
-(s/def ::chord-scale (s/and ::scale
-                            ::context
-                            #(s/valid? ::chord (:context %))))
+; ; Scale coming from a chord context
+; (s/def ::chord-scale (s/and ::scale
+;                             ::context
+;                             #(s/valid? ::chord (:context %))))
 
+; TBD
 (s/def ::progression-ref (s/keys :req-un [::degrees]))
 (s/def ::progression (s/coll-of ::chord))
 
 (def chord-progressions
-  (apply
-   array-map
+  (into
+   {}
    (map (fn [[prog-name prog]]
           [prog-name (assoc prog :degrees (mapv #(keyword "chord-degree" (name %))
                                                 (:degrees prog)))])
@@ -764,6 +768,8 @@
 
 (def transpose-memo (memoize transpose))
 
+;; DEGREES
+
 (defn interval->degree [interval]
   {:pre [(interval? interval)]}
   (let [major-intervals (get-in scales [:major :intervals])
@@ -796,10 +802,10 @@
                            m)))))
 
 (defn degree-chord->roman-numeral
-  [degree chord-name]
+  [scale-degree chord-name]
   (let [intervals (:intervals (chords chord-name))
         major? (utils/in? intervals :M3)
-        degree-str (name degree)
+        degree-str (name scale-degree)
         accidental (if (< 1 (count degree-str)) (first degree-str) "")
         degree-num (utils/parse-int degree-str)
         roman-num (roman-numeral degree-num)]
@@ -807,12 +813,19 @@
      (str
       accidental
       ((if major? str/upper-case str/lower-case) roman-num)
+      ; TODO improve this; too hacky
       (cond
         (utils/in? intervals :A5) "+"
-        (utils/in? intervals :d5) "o"
-        ; TODO: maybe don't add extension info and let the :name take care of that
-        ; (= :7 chord-name) "7"
-        :else "")))))
+        (and (utils/in? intervals :d5) (not= :m7b5 chord-name)) "o"
+        :else "")
+      (case chord-name
+        :m7b5 "%"
+        :dim7 "7" ; 'o' added above
+        :dim ""
+        :maj7 "M7"
+        :m7 "7"
+        :7 "7"
+        "")))))
 
 (defn chord-degree->chord-name
   "
@@ -828,14 +841,55 @@
   "
   [chord-degree]
   (condp #(some? (re-find %1 %2)) (name chord-degree)
-    #"%7" :m7b5
+    #"%" :m7b5
     #"o7" :dim7
     #"o" :dim
     #"M7" :maj7
-    #"m7" :m7
-    #"7" :7
+    #"[IV]7" :7
+    #"[iv]7" :m7
     #"[IV]" :maj
     #"[iv]" :m))
+
+(defn scale-degree->int [scale-degree]
+  (utils/parse-int (name scale-degree)))
+
+(defn chord-degree->int [chord-degree]
+  (utils/parse-int (roman-numeral->int chord-degree)))
+
+(defn scale-chord->degree [scale chord]
+  (let [scale-pitch-index (.indexOf (:pitches scale) (first (:pitches chord)))]
+    (when (<= 0 scale-pitch-index)
+      (let [scale-degree (nth (:degrees scale)
+                              scale-pitch-index)
+            chord-degree (degree-chord->roman-numeral scale-degree (:name chord))]
+        (keyword "chord-degree" (name chord-degree))))))
+
+(defn scale-chord-degree->chord
+  "
+  prefix:
+    #
+    b
+
+  chord:
+    [IiVv]+
+
+  suffix:
+    M7
+    7
+    m7
+    o7
+    %7
+  "
+  [scale chord-degree]
+  (let [chord-name (chord-degree->chord-name chord-degree)
+        scale-degree-int->pitch (reduce (fn [m [scale-degree pitch]]
+                                          (assoc m (scale-degree->int scale-degree) pitch))
+                                        {}
+                                        (zipmap (:degrees scale) (:pitches scale)))
+        chord-degree-int (chord-degree->int chord-degree)
+        pitch (scale-degree-int->pitch chord-degree-int)
+        new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
+    {:pitch new-pitch :name chord-name}))
 
 (defn circle-of-fifths [major-or-minor]
   (zipmap
@@ -844,6 +898,8 @@
                        :major :Cb
                        :minor :Ab)))
    (range -7 8)))
+
+;; ABC
 
 (defn key-signature-accidentals [key-ref]
   (let [fifths->num-accidentals (circle-of-fifths (if (= (:name key-ref) :major) :major :minor))
@@ -953,47 +1009,6 @@
     (str/join " " (map pitch->abc accidental-pitches))))
 
 (comment (key-signature->abc {:pitch :C :name :minor}))
-
-(defn scale-degree->int [scale-degree]
-  (utils/parse-int (name scale-degree)))
-
-(defn chord-degree->int [chord-degree]
-  (utils/parse-int (roman-numeral->int chord-degree)))
-
-(defn scale-chord->degree [scale chord]
-  (let [scale-pitch-index (.indexOf (:pitches scale) (first (:pitches chord)))]
-    (when (<= 0 scale-pitch-index)
-      (let [scale-degree (nth (:degrees scale)
-                              scale-pitch-index)
-            chord-degree (degree-chord->roman-numeral scale-degree (:name chord))]
-        (keyword "chord-degree" (name chord-degree))))))
-
-(defn scale-chord-degree->chord
-  "
-  prefix:
-    #
-    b
-
-  chord:
-    [IiVv]+
-
-  suffix:
-    M7
-    7
-    m7
-    o7
-    %7
-  "
-  [scale chord-degree]
-  (let [chord-name (chord-degree->chord-name chord-degree)
-        scale-degree-int->pitch (reduce (fn [m [scale-degree pitch]]
-                                          (assoc m (scale-degree->int scale-degree) pitch))
-                                        {}
-                                        (zipmap (:degrees scale) (:pitches scale)))
-        chord-degree-int (chord-degree->int chord-degree)
-        pitch (scale-degree-int->pitch chord-degree-int)
-        new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
-    {:pitch new-pitch :name chord-name}))
 
 (defn pitch->abc [p]
   (let [{:keys [letter accidental]} (parts p)
@@ -1121,9 +1136,41 @@
              :when (= rotated-pitches (:pitches dest-scale))]
          (keyword "mode" (roman-numeral (inc rotation))))))))
 
+(defn ->shape
+  "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
+  ([x]
+   ; Different notations
+   (cond
+     ; E.g. :C_maj, C4_maj
+     (keyword? x) (let [[pitch-or-note-str shape-name-str] (str/split (name x) #"_")
+                        pitch-or-note (keyword pitch-or-note-str)
+                        shape-name (keyword shape-name-str)]
+                    (->shape pitch-or-note shape-name))
+     ; E.g. {:pitch :C :name :maj}
+     (shape-ref? x) (if (or (contains? x :pitches) (contains? x :notes))
+                      x
+                      (->shape (or (:note x) (:pitch x)) (:name x)))))
+  ([x shape-name]
+   ; {:pre [(theory/pitch-or-note? x)]}
+   ; TODO: if :bass provided, reorder pitches and include lower note?
+   (let [{:keys [pitch note]} (parts x)
+         shape (name->shape shape-name)
+         intervals (:intervals shape)
+         pitches (mapv (partial transpose-memo pitch) intervals)]
+     (cond-> shape
+       true (merge {:pitch pitch
+                    :name shape-name
+                    :pitches pitches})
+       true (dissoc :aliases)
+       (note? x) (assoc :notes (mapv (partial transpose-memo note) intervals))))))
+
 (comment
   (assert (true? (pitch? :C)))
   (assert (true? (note? :C4)))
   (assert (true? (interval? :P5)))
   (assert (true? (shape-ref? {:pitch :C :name :maj})))
   (assert (true? (shape-ref? {:note :C4 :name :maj}))))
+
+(comment
+  (->> (get-in chord-progressions ["Royal road" :degrees])
+       (map #(scale-chord-degree->chord (->shape :C_major) %))))

@@ -9,20 +9,19 @@
     (testing "starting from a chord"
       (testing "starting from a pitch"
         (are+ [pitch chord-name want] (= want (jigsaw/->shape pitch chord-name))
-          :C  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :aliases ["M" "major"]}
-          :C# :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#] :aliases ["min" "-" "minor"]}
-          :F# :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##] :aliases ["+" "+5" "^#5" "augmented"]}))
+          :C  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G]}
+          :C# :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]}
+          :F# :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]}))
       (testing "starting from a note"
         (are+ [note chord-name want] (= want (jigsaw/->shape note chord-name))
-          :C3  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3] :aliases ["M" "major"]}
-          :C#4 :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4] :aliases ["min" "-" "minor"]}
-          :F#5 :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6] :aliases ["+" "+5" "^#5" "augmented"]})))
+          :C3  :maj {:name :maj :pitch :C  :intervals [:P1 :M3 :P5] :pitches [:C :E :G] :notes [:C3 :E3 :G3]}
+          :C#4 :m   {:name :m   :pitch :C# :intervals [:P1 :m3 :P5] :pitches [:C# :E :G#]  :notes [:C#4 :E4 :G#4]}
+          :F#5 :aug {:name :aug :pitch :F# :intervals [:P1 :M3 :A5] :pitches [:F# :A# :C##]  :notes [:F#5 :A#5 :C##6]})))
     (testing "starting from a scale"
       (testing "starting from a pitch"
         (are+ [pitch scale-name want] (= want (jigsaw/->shape pitch scale-name))
           :C :major {:name :major
                      :pitch :C
-                     :aliases ["ionian"]
                      :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                      :degrees [:1 :2 :3 :4 :5 :6 :7]
                      :pitches [:C :D :E :F :G :A :B]}
@@ -33,19 +32,16 @@
                       :pitches [:D :E :F :G :A :B :C]}
           :C :minor {:name :minor
                      :pitch :C
-                     :aliases ["aeolian"]
                      :intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7]
                      :degrees [:1 :2 :b3 :4 :5 :b6 :b7]
                      :pitches [:C :D :Eb :F :G :Ab :Bb]}
           :C# :major {:name :major
                       :pitch :C#
-                      :aliases ["ionian"]
                       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                       :degrees [:1 :2 :3 :4 :5 :6 :7]
                       :pitches [:C# :D# :E# :F# :G# :A# :B#]}
           :F# :major {:name :major
                       :pitch :F#
-                      :aliases ["ionian"]
                       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                       :degrees [:1 :2 :3 :4 :5 :6 :7]
                       :pitches [:F# :G# :A# :B :C# :D# :E#]}))
@@ -53,28 +49,24 @@
         (are+ [note scale-name want] (= want (jigsaw/->shape note scale-name))
           :C4 :major {:name :major
                       :pitch :C
-                      :aliases ["ionian"]
                       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                       :degrees [:1 :2 :3 :4 :5 :6 :7]
                       :pitches [:C :D :E :F :G :A :B]
                       :notes [:C4 :D4 :E4 :F4 :G4 :A4 :B4]}
           :C4 :minor {:name :minor
                       :pitch :C
-                      :aliases ["aeolian"]
                       :intervals [:P1 :M2 :m3 :P4 :P5 :m6 :m7]
                       :degrees [:1 :2 :b3 :4 :5 :b6 :b7]
                       :pitches [:C :D :Eb :F :G :Ab :Bb]
                       :notes [:C4 :D4 :Eb4 :F4 :G4 :Ab4 :Bb4]}
           :C#4 :major {:name :major
                        :pitch :C#
-                       :aliases ["ionian"]
                        :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                        :degrees [:1 :2 :3 :4 :5 :6 :7]
                        :pitches [:C# :D# :E# :F# :G# :A# :B#]
                        :notes [:C#4 :D#4 :E#4 :F#4 :G#4 :A#4 :B#4]}
           :F#4 :major {:name :major
                        :pitch :F#
-                       :aliases ["ionian"]
                        :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
                        :degrees [:1 :2 :3 :4 :5 :6 :7]
                        :pitches [:F# :G# :A# :B :C# :D# :E#]
@@ -84,25 +76,21 @@
         {:pitch :C :name :maj} {:pitch :C
                                 :name :maj
                                 :intervals [:P1 :M3 :P5]
-                                :pitches [:C :E :G]
-                                :aliases ["M" "major"]}))
+                                :pitches [:C :E :G]}))
     (testing "with keyword input"
       (are+ [k want] (= want (jigsaw/->shape k))
           ; Pitch-based
         :C_maj {:pitch :C
                 :name :maj
                 :intervals [:P1 :M3 :P5]
-                :pitches [:C :E :G]
-                :aliases ["M" "major"]}
+                :pitches [:C :E :G]}
           ; Note-based
         :C4_maj {:pitch :C
                  :name :maj
                  :intervals [:P1 :M3 :P5]
                  :pitches [:C :E :G]
-                 :notes [:C4 :E4 :G4]
-                 :aliases ["M" "major"]}
-        :Eb_13sus4 {:aliases ["13sus"],
-                    :intervals [:P1 :P4 :P5 :m7 :M9 :M13],
+                 :notes [:C4 :E4 :G4]}
+        :Eb_13sus4 {:intervals [:P1 :P4 :P5 :m7 :M9 :M13],
                     :name :13sus4,
                     :pitch :Eb,
                     :pitches [:Eb :Ab :Bb :Db :F :C]})))
@@ -130,12 +118,12 @@ L:1/4
     (are+ [tonic chord-degrees want] (= (map #(select-keys % [:pitch :name]) want) (jigsaw/->progression tonic chord-degrees))
       :C_major [:ii :V :I] [(jigsaw/->shape :D_m) (jigsaw/->shape :G_maj) (jigsaw/->shape :C_maj)]
       :C_major [:bii :V :I] [(jigsaw/->shape :Db_m) (jigsaw/->shape :G_maj) (jigsaw/->shape :C_maj)]
-      :C_major [:iim7 :V7 :IM7] [(jigsaw/->shape :D_m7) (jigsaw/->shape :G_7) (jigsaw/->shape :C_maj7)]))
+      :C_major [:ii7 :V7 :IM7] [(jigsaw/->shape :D_m7) (jigsaw/->shape :G_7) (jigsaw/->shape :C_maj7)]))
 
   (testing "scale->chords"
     (are+ [pitch scale-name expected] (= expected (jigsaw/scale->chords (jigsaw/->shape pitch scale-name)))
       :C :major '({:pitch :C, :name :maj, :context :chord-degree/I}
-                  {:pitch :C, :name :maj7, :context :chord-degree/I}
+                  {:pitch :C, :name :maj7, :context :chord-degree/IM7}
                   {:pitch :C, :name :maj9, :context :chord-degree/I}
                   {:pitch :C, :name :maj13, :context :chord-degree/I}
                   {:pitch :C, :name :6, :context :chord-degree/I}
@@ -149,7 +137,7 @@ L:1/4
                   {:pitch :C, :name :M7sus4, :context :chord-degree/i}
                   {:pitch :C, :name :M9sus4, :context :chord-degree/i}
                   {:pitch :D, :name :m, :context :chord-degree/ii}
-                  {:pitch :D, :name :m7, :context :chord-degree/ii}
+                  {:pitch :D, :name :m7, :context :chord-degree/ii7}
                   {:pitch :D, :name :m6, :context :chord-degree/ii}
                   {:pitch :D, :name :m9, :context :chord-degree/ii}
                   {:pitch :D, :name :m11, :context :chord-degree/ii}
@@ -168,7 +156,7 @@ L:1/4
                   {:pitch :D, :name :13sus4, :context :chord-degree/ii}
                   {:pitch :D, :name :q, :context :chord-degree/ii}
                   {:pitch :E, :name :m, :context :chord-degree/iii}
-                  {:pitch :E, :name :m7, :context :chord-degree/iii}
+                  {:pitch :E, :name :m7, :context :chord-degree/iii7}
                   {:pitch :E, :name :sus4, :context :chord-degree/iii}
                   {:pitch :E, :name :7sus4, :context :chord-degree/iii}
                   {:pitch :E, :name :b9sus, :context :chord-degree/iii}
@@ -181,7 +169,7 @@ L:1/4
                   {:pitch :E, :name :q, :context :chord-degree/iii}
                   {:pitch :E, :name :11b9, :context :chord-degree/iii}
                   {:pitch :F, :name :maj, :context :chord-degree/IV}
-                  {:pitch :F, :name :maj7, :context :chord-degree/IV}
+                  {:pitch :F, :name :maj7, :context :chord-degree/IVM7}
                   {:pitch :F, :name :maj9, :context :chord-degree/IV}
                   {:pitch :F, :name :maj13, :context :chord-degree/IV}
                   {:pitch :F, :name :6, :context :chord-degree/IV}
@@ -215,7 +203,7 @@ L:1/4
                   {:pitch :G, :name :9sus4, :context :chord-degree/v}
                   {:pitch :G, :name :13sus4, :context :chord-degree/v}
                   {:pitch :A, :name :m, :context :chord-degree/vi}
-                  {:pitch :A, :name :m7, :context :chord-degree/vi}
+                  {:pitch :A, :name :m7, :context :chord-degree/vi7}
                   {:pitch :A, :name :m9, :context :chord-degree/vi}
                   {:pitch :A, :name :m11, :context :chord-degree/vi}
                   {:pitch :A, :name :sus4, :context :chord-degree/vi}
@@ -232,7 +220,7 @@ L:1/4
                   {:pitch :A, :name :9sus4, :context :chord-degree/vi}
                   {:pitch :A, :name :q, :context :chord-degree/vi}
                   {:pitch :B, :name :dim, :context :chord-degree/viio}
-                  {:pitch :B, :name :m7b5, :context :chord-degree/viio}
+                  {:pitch :B, :name :m7b5, :context :chord-degree/vii%}
                   {:pitch :B, :name :m7#5, :context :chord-degree/vii}
                   {:pitch :B, :name :mb6b9, :context :chord-degree/vii}
                   {:pitch :B, :name :q, :context :chord-degree/vii})
@@ -242,10 +230,10 @@ L:1/4
                        {:pitch :C, :name :dimM7, :context :chord-degree/io}
                        {:pitch :C, :name :mb6M7, :context :chord-degree/i}
                        {:pitch :D, :name :m, :context :chord-degree/ii}
-                       {:pitch :D, :name :m7, :context :chord-degree/ii}
+                       {:pitch :D, :name :m7, :context :chord-degree/ii7}
                        {:pitch :D, :name :m6, :context :chord-degree/ii}
                        {:pitch :D, :name :dim, :context :chord-degree/iio}
-                       {:pitch :D, :name :m7b5, :context :chord-degree/iio}
+                       {:pitch :D, :name :m7b5, :context :chord-degree/ii%}
                        {:pitch :D, :name :5, :context :chord-degree/ii}
                        {:pitch :Eb, :name :m#5, :context :chord-degree/biii+}
                        {:pitch :Eb, :name :M7#5sus4, :context :chord-degree/biii+}
@@ -253,7 +241,7 @@ L:1/4
                        {:pitch :F, :name :maj, :context :chord-degree/IV}
                        {:pitch :F, :name :6, :context :chord-degree/IV}
                        {:pitch :F, :name :m, :context :chord-degree/iv}
-                       {:pitch :F, :name :m7, :context :chord-degree/iv}
+                       {:pitch :F, :name :m7, :context :chord-degree/iv7}
                        {:pitch :F, :name :m6, :context :chord-degree/iv}
                        {:pitch :F, :name :7, :context :chord-degree/IV7}
                        {:pitch :F, :name :7#11, :context :chord-degree/IV}
@@ -280,10 +268,10 @@ L:1/4
                        {:pitch :Ab, :name :13#9, :context :chord-degree/bVI}
                        {:pitch :Ab, :name :7no5, :context :chord-degree/bVI}
                        {:pitch :A, :name :dim, :context :chord-degree/vio}
-                       {:pitch :A, :name :dim7, :context :chord-degree/vio}
+                       {:pitch :A, :name :dim7, :context :chord-degree/vio7}
                        {:pitch :B, :name :dim, :context :chord-degree/viio}
-                       {:pitch :B, :name :dim7, :context :chord-degree/viio}
-                       {:pitch :B, :name :m7b5, :context :chord-degree/viio})))
+                       {:pitch :B, :name :dim7, :context :chord-degree/viio7}
+                       {:pitch :B, :name :m7b5, :context :chord-degree/vii%})))
 
   (testing "chord->scales"
     (are+ [pitch chord-name expected] (= (set expected) (set (map #(select-keys % [:pitch :name :context])
@@ -497,8 +485,7 @@ L:1/4
 
   (testing "scale->modes"
     (are+ [base-scale modes] (= modes (map #(select-keys % [:pitch :name]) (jigsaw/scale->modes base-scale)))
-      (jigsaw/->shape :C :major) '({:pitch :C, :name :major}
-                                   {:pitch :D, :name :dorian}
+      (jigsaw/->shape :C :major) '({:pitch :D, :name :dorian}
                                    {:pitch :E, :name :phrygian}
                                    {:pitch :F, :name :lydian}
                                    {:pitch :G, :name :mixolydian}
@@ -508,7 +495,7 @@ L:1/4
   (testing "notes->shapes"
     (testing "with basic inversions"
       (are+ [notes expected-pitch expected-name expected-bass]
-            (let [results (jigsaw/notes->shapes notes :chord :max-shapes 1)
+            (let [results (jigsaw/notes->shapes notes :shape-type :chord :max-shapes 1)
                   result (first results)]
               (and (= expected-pitch (:pitch result))
                    (= expected-name (:name result))
@@ -523,7 +510,7 @@ L:1/4
         [:B4 :C5 :E5 :G5] :C :maj7 :B))
     (testing "with slash chords"
       (are+ [notes expected-pitch expected-name expected-bass]
-            (let [results (jigsaw/notes->shapes notes :chord :max-shapes 1)
+            (let [results (jigsaw/notes->shapes notes :shape-type :chord :max-shapes 1)
                   result (first results)]
               (and (= expected-pitch (:pitch result))
                    (= expected-name (:name result))
@@ -532,7 +519,7 @@ L:1/4
         [:G4 :F5 :A5 :C6] :F :Madd9 :G))  ; Could also be F/G
     (testing "with incomplete chords in inversion"
       (are+ [notes expected-pitch expected-name expected-bass]
-            (let [results (jigsaw/notes->shapes notes :chord :max-shapes 1)
+            (let [results (jigsaw/notes->shapes notes :shape-type :chord :max-shapes 1)
                   result (first results)]
               (and (= expected-pitch (:pitch result))
                    (= expected-name (:name result))
@@ -543,7 +530,7 @@ L:1/4
         [:G4 :E5] :C :maj :G))
     (testing "with complex chord inversions"
       (are+ [notes expected-pitch expected-name expected-bass]
-            (let [results (jigsaw/notes->shapes notes :chord :max-shapes 1)
+            (let [results (jigsaw/notes->shapes notes :shape-type :chord :max-shapes 1)
                   result (first results)]
               (and (= expected-pitch (:pitch result))
                    (= expected-name (:name result))

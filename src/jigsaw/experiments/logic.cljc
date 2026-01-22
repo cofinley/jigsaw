@@ -102,22 +102,26 @@
 
 ; Search nested relations
 (comment
-  (l/run* [q]
-          (l/fresh [start scale end]
+  (l/run 5 [q]
+         (l/fresh [start scale end]
                    ; Start at C major chord
-                   (l/== start {:pitch :C :name :maj})
+                  (l/== start {:pitch :C :name :maj})
 
                    ; Find scale where it's a V chord
-                   (neighboro start scale)
-                   (l/featurec scale {:context :chord-degree/V})
+                  (neighboro start scale)
+                  (l/featurec scale {:context :chord-degree/V})
 
                    ; Find the corresponding I chord (specifically major 7th) of the scale
-                   (neighboro scale end)
-                   (l/featurec end {:context :chord-degree/I
-                                    :name :maj7})
+                  (neighboro scale end)
+                  (l/featurec end {:context :chord-degree/IM7})
 
                    ; Return the results
-                   (l/== q {end scale}))))
+                  (l/== q scale))))
+; ({:pitch :F, :name :major, :context :chord-degree/V}
+;  {:pitch :F, :name :bebop, :context :chord-degree/V}
+;  {:pitch :F, :name :lydian, :context :chord-degree/V}
+;  {:pitch :F, :name :harmonic-major, :context :chord-degree/V}
+;  {:pitch :F, :name :bebop-major, :context :chord-degree/V})
 
 ; More searching of nested relations
 (comment
@@ -136,11 +140,13 @@
 
                    ; Find the corresponding I chord of the second mode
                   (neighboro scale2 end)
-                  (l/featurec end {:context :chord-degree/I
-                                   :name :maj})
+                  (l/featurec end {:context :chord-degree/I})
 
                    ; Return the results
                   (l/== q [scale1 scale2 end]))))
+; ([{:pitch :F, :name :lydian, :context :chord-degree/V}
+;   {:pitch :G, :name :mixolydian, :context :mode/II}
+;   {:pitch :G, :name :maj, :context :chord-degree/I}])
 
 ; Secondary dominant (V/V or V7/V)
 (comment
@@ -163,6 +169,7 @@
 
                   ; Return the secondary dominant
                   (l/== q dom-chord2))))
+; => ({:pitch :D, :name :maj, :context :chord-degree/V})
 
 (defn shapeo
   "Reify shape from (potential) shape ref"
@@ -175,11 +182,11 @@
   (l/project [notes]
              (l/membero q (jigsaw/notes->shapes notes))))
 
-(defn intervalo
+(defn transposo
   "Transpose pitch by interval"
   [q pitch interval & [multiplier]]
   (l/project [pitch]
-             (l/== q (theory/pci->default-pitch (theory/pitches (theory/+interval pitch interval multiplier))))))
+             (l/== q (theory/pci->default-pitch (theory/pitches (theory/transpose pitch interval multiplier))))))
 
 (defn subo
   "Transpose shape by interval, returns ref"
@@ -188,7 +195,7 @@
              (l/fresh [pitch name new-pitch]
                       ; TODO: might be good to deal in whole shapes for algos to avoid recalcs, but refs/keywords for display
                       (l/featurec shape-ref {:pitch pitch :name name})
-                      (intervalo new-pitch pitch sub-interval multiplier)
+                      (transposo new-pitch pitch sub-interval multiplier)
                       (l/== q {:pitch new-pitch :name name}))))
 
 ; Tritone substitution
@@ -198,17 +205,20 @@
                   (l/== scale {:pitch :C :name :major})
 
                   (neighboro scale ii)
-                  (l/featurec ii {:context :chord-degree/ii :name :m7})
+                  (l/featurec ii {:context :chord-degree/ii7 :name :m7})
 
                   (neighboro scale v)
-                  (l/featurec v {:context :chord-degree/V :name :7})
+                  (l/featurec v {:context :chord-degree/V7 :name :7})
 
                   (neighboro scale i)
-                  (l/featurec i {:context :chord-degree/I :name :maj7})
+                  (l/featurec i {:context :chord-degree/IM7 :name :maj7})
 
                   ; Find the shape which is a tritone away from the V chord
                   (subo sub v :d5)
                   (l/== q [ii sub i]))))
+; ([{:pitch :D, :name :m7, :context :chord-degree/ii7}
+;   {:pitch :C#, :name :7}
+;   {:pitch :C, :name :maj7, :context :chord-degree/IM7}])
 
 ; Coltrane changes
 (comment
@@ -219,43 +229,42 @@
                      key3 v3 i3]
                     ; Normal ii-V-I
                     (neighboro key1 ii)
-                    (l/featurec ii {:context :chord-degree/ii :name :m7})
+                    (l/featurec ii {:context :chord-degree/ii7})
 
                     (neighboro key1 v)
-                    (l/featurec v {:context :chord-degree/V :name :7})
+                    (l/featurec v {:context :chord-degree/V7})
 
                     (neighboro key1 i)
-                    (l/featurec i {:context :chord-degree/I :name :maj7})
+                    (l/featurec i {:context :chord-degree/IM7})
 
                     ; Key goes down a third
                     (subo key2 key1 :M3 -1)
 
                     ; New V-I
                     (neighboro key2 v2)
-                    (l/featurec v2 {:context :chord-degree/V :name :7})
+                    (l/featurec v2 {:context :chord-degree/V7})
 
                     (neighboro key2 i2)
-                    (l/featurec i2 {:context :chord-degree/I :name :maj7})
+                    (l/featurec i2 {:context :chord-degree/IM7})
 
                     ; Key goes down another third
                     (subo key3 key2 :M3 -1)
 
                     ; New V-I
                     (neighboro key3 v3)
-                    (l/featurec v3 {:context :chord-degree/V :name :7})
+                    (l/featurec v3 {:context :chord-degree/V7})
 
                     (neighboro key3 i3)
-                    (l/featurec i3 {:context :chord-degree/I :name :maj7})
+                    (l/featurec i3 {:context :chord-degree/IM7})
 
-                    (l/== q [ii v2 i2 v3 i3 v i]))))
-  ; => ([{:pitch :D, :name :m7, :context :chord-degree/ii}
-  ;      {:pitch :Eb, :name :7, :context :chord-degree/V}
-  ;      {:pitch :Ab, :name :maj7, :context :chord-degree/I}
-  ;      {:pitch :B, :name :7, :context :chord-degree/V}
-  ;      {:pitch :E, :name :maj7, :context :chord-degree/I}
-  ;      {:pitch :G, :name :7, :context :chord-degree/V}
-  ;      {:pitch :C, :name :maj7, :context :chord-degree/I}])
-  )
+                    (l/== q [ii v2 i2 v3 i3 v i])))))
+; ([{:pitch :D, :name :m7, :context :chord-degree/ii7}
+;   {:pitch :Eb, :name :7, :context :chord-degree/V7}
+;   {:pitch :Ab, :name :maj7, :context :chord-degree/IM7}
+;   {:pitch :B, :name :7, :context :chord-degree/V7}
+;   {:pitch :E, :name :maj7, :context :chord-degree/IM7}
+;   {:pitch :G, :name :7, :context :chord-degree/V7}
+;   {:pitch :C, :name :maj7, :context :chord-degree/IM7}])
 
 (defn heuristico [q shape1 shape2]
   (l/project [shape1 shape2]
@@ -285,10 +294,33 @@
 (comment
   (let [start (jigsaw/->shape :C_m)
         parent (jigsaw/->shape :C_major)]
-    (l/run 5 [q]
+    (l/run 3 [q]
            (l/fresh [candidate]
-                    ; Find which shape(s) in the C major scale
+                    ; Find which shape(s) in the C major scale...
                     (neighboro parent candidate)
                     ; ...are close to the C minor chord
                     (fuzzy-neighborc start candidate)
                     (l/== q candidate)))))
+; ({:pitch :C, :name :maj, :context :chord-degree/I}
+;  {:pitch :C, :name :sus4, :context :chord-degree/i}
+;  {:pitch :C, :name :sus2, :context :chord-degree/i})
+
+; (defn progressiono [chords]
+;   (l/project [chords]))
+
+;; TODO: autocomplete: based on inputs, see if you're playing a known progression
+;; maybe account for fuzziness
+(comment
+  (let [; Start of a ii-V-I
+        ii (jigsaw/->shape :D_m)
+        v (jigsaw/->shape :G_7)]
+    (l/run 1 [q]
+           (l/fresh [scale progression]))))
+
+; chords -> scales, using the degrees, then degrees -> progressions?
+;   how to know if substitution?
+;     need chord -> possible sub relation
+; or
+; progressions -> scale-progressions -> scale-progression-chords -> match on current chords?
+; need scale to know current degrees
+

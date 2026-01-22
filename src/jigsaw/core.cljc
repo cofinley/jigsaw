@@ -5,33 +5,7 @@
    [jigsaw.impl.theory :as theory]
    [jigsaw.utils :as utils]))
 
-(defn ->shape
-  "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
-  ([x]
-   ; Different notations
-   (cond
-     ; E.g. :C_maj, C4_maj
-     (keyword? x) (let [[pitch-or-note-str shape-name-str] (str/split (name x) #"_")
-                        pitch-or-note (keyword pitch-or-note-str)
-                        shape-name (keyword shape-name-str)]
-                    (->shape pitch-or-note shape-name))
-     ; E.g. {:pitch :C :name :maj}
-     (theory/shape-ref? x) (if (or (contains? x :pitches) (contains? x :notes))
-                             x
-                             (->shape (or (:note x) (:pitch x)) (:name x)))))
-  ([x shape-name]
-   ; {:pre [(theory/pitch-or-note? x)]}
-   ; TODO: if :bass provided, reorder pitches and include lower note?
-   (let [{:keys [pitch note]} (theory/parts x)
-         shape (theory/name->shape shape-name)
-         intervals (:intervals shape)
-         pitches (mapv (partial theory/transpose-memo pitch) intervals)]
-     (cond-> shape
-       true (merge {:pitch pitch
-                    :name shape-name
-                    :pitches pitches})
-       true (dissoc :aliases)
-       (theory/note? x) (assoc :notes (mapv (partial theory/transpose-memo note) intervals))))))
+(def ->shape theory/->shape)
 
 (defn contextualize
   "If src-shape is a chord and dest-shape is a scale or vice versa, find chord's degree of the scale

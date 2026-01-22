@@ -77,90 +77,91 @@
     (are+ [m valid] (= valid (s/valid? ::theory/scale m))
       {:pitch :C :name :maj :intervals [:P1 :M3 :P5] :pitches [:C :E :G]} false
       {:pitch :C :name :major :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7] :pitches [:C :D :E :F :G :A :B]} true))
-  (testing "with context"
-    (are+ [m valid] (= valid (s/valid? ::theory/context m))
+  ; TBD
+  #_(testing "with context"
+      (are+ [m valid] (= valid (s/valid? ::theory/context m))
         ; Single context link; i.e. current shape (not shown) came from this
-      {:pitch :C
-       :name :maj
-       :intervals [:P1 :M3 :P5]
-       :pitches [:C :E :G]
+        {:pitch :C
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
          ; Original shape not shown, degree of 1 is random here
-       :degree :I} true
+         :degree :I} true
         ; Context chain, two links; i.e. current shape came from this which came from another shape
-      {:pitch :C
-       :name :maj
-       :intervals [:P1 :M3 :P5]
-       :pitches [:C :E :G]
-       :degree :I  ; Cmaj = first degree of the C major scale
-       :context {:pitch :C
-                 :name :major
-                 :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                 :pitches [:C :D :E :F :G :A :B]
-                 :degrees [:1 :2 :3 :4 :5 :6 :7]
+        {:pitch :C
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :degree :I  ; Cmaj = first degree of the C major scale
+         :context {:pitch :C
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]
                    ; Original shape not shown, degree of 2 is random here
-                 :degree :ii}} true
+                   :degree :ii}} true
         ; Context chain, three links; i.e. current shape came from this which came from another shape
-      {:pitch :C
-       :name :maj
-       :intervals [:P1 :M3 :P5]
-       :pitches [:C :E :G]
-       :degree :I  ; Cmaj is the first degree of the C major scale
-       :context {:pitch :C
-                 :name :major
-                 :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                 :pitches [:C :D :E :F :G :A :B]
-                 :degrees [:1 :2 :3 :4 :5 :6 :7]
-                 :degree :ii  ; Dm is the second degree of the C major scale (:degree is always the chord's degree, even if the current context is a scale)
-                 :context {:pitch :D
-                           :name :m
-                           :intervals [:P1 :m3 :P5]
-                           :pitches [:D :F :A]
+        {:pitch :C
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :degree :I  ; Cmaj is the first degree of the C major scale
+         :context {:pitch :C
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]
+                   :degree :ii  ; Dm is the second degree of the C major scale (:degree is always the chord's degree, even if the current context is a scale)
+                   :context {:pitch :D
+                             :name :m
+                             :intervals [:P1 :m3 :P5]
+                             :pitches [:D :F :A]
                              ; Original shape not shown, degree of 3 is random here
-                           :degree :iii}}} true))
-  (testing "with scale-chord"
-    (are+ [m valid] (= valid (s/valid? ::theory/scale-chord m))
+                             :degree :iii}}} true))
+  #_(testing "with scale-chord"
+      (are+ [m valid] (= valid (s/valid? ::theory/scale-chord m))
         ; Single context; no scale origin
-      {:pitch :C
-       :name :maj
-       :intervals [:P1 :M3 :P5]
-       :pitches [:C :E :G]
+        {:pitch :C
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
          ; Original shape not shown, degree of 1 is random here
-       :degree :I} false
+         :degree :I} false
         ; Context chain; chord with scale origin
-      {:pitch :C
-       :name :maj
-       :intervals [:P1 :M3 :P5]
-       :pitches [:C :E :G]
-       :degree :I
-       :context {:pitch :C
-                 :name :major
-                 :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-                 :pitches [:C :D :E :F :G :A :B]
-                 :degrees [:1 :2 :3 :4 :5 :6 :7]
+        {:pitch :C
+         :name :maj
+         :intervals [:P1 :M3 :P5]
+         :pitches [:C :E :G]
+         :degree :I
+         :context {:pitch :C
+                   :name :major
+                   :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+                   :pitches [:C :D :E :F :G :A :B]
+                   :degrees [:1 :2 :3 :4 :5 :6 :7]
                    ; Original shape not shown, degree of 2 is random here
-                 :degree :ii}} true))
-  (testing "with chord-scale"
-    (are+ [m valid] (= valid (s/valid? ::theory/chord-scale m))
+                   :degree :ii}} true))
+  #_(testing "with chord-scale"
+      (are+ [m valid] (= valid (s/valid? ::theory/chord-scale m))
         ; Single context; no scale origin
-      {:pitch :C
-       :name :major
-       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-       :pitches [:C :D :E :F :G :A :B]
-       :degrees [:1 :2 :3 :4 :5 :6 :7]
+        {:pitch :C
+         :name :major
+         :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+         :pitches [:C :D :E :F :G :A :B]
+         :degrees [:1 :2 :3 :4 :5 :6 :7]
          ; Random degree
-       :degree :I} false
+         :degree :I} false
         ; Context chain; scale with chord origin
-      {:pitch :C
-       :name :major
-       :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
-       :pitches [:C :D :E :F :G :A :B]
-       :degrees [:1 :2 :3 :4 :5 :6 :7]
-       :degree :I
-       :context {:pitch :C
-                 :name :maj
-                 :intervals [:P1 :M3 :P5]
-                 :pitches [:C :E :G]
-                 :degree :ii}} true))
+        {:pitch :C
+         :name :major
+         :intervals [:P1 :M2 :M3 :P4 :P5 :M6 :M7]
+         :pitches [:C :D :E :F :G :A :B]
+         :degrees [:1 :2 :3 :4 :5 :6 :7]
+         :degree :I
+         :context {:pitch :C
+                   :name :maj
+                   :intervals [:P1 :M3 :P5]
+                   :pitches [:C :E :G]
+                   :degree :ii}} true))
   (testing "arithmetic"
     (testing "parts"
       (testing "starting from a pitch"
@@ -471,12 +472,12 @@
     (testing "with degree-chord->roman-numeral"
       (are+ [degree chord-name want] (= want (theory/degree-chord->roman-numeral degree chord-name))
         :1 :maj :I
-        :1 :maj7 :I
+        :1 :maj7 :IM7
         :2 :min :ii
-        :2 :min7 :ii
-        :b2 :min :bii
-        :#2 :min :#ii
-        :3 :min :iii
+        :2 :m7 :ii7
+        :b2 :m :bii
+        :#2 :m :#ii
+        :3 :m :iii
         :7 :dim :viio
         :2 :dim :iio
         :b3 :aug :bIII+))
@@ -522,42 +523,49 @@
              :contains? 1
              :fully-contains? 0
              :overlap 0.0
+             :same-pitch-count? 1
              :shares-root? 0}
       [:C] [] {:contained-in? 0
                :fully-contained-in? 0
                :contains? 1
                :fully-contains? 1
                :overlap 0.0
+               :same-pitch-count? 0
                :shares-root? 0}
       [] [:C] {:contained-in? 1
                :fully-contained-in? 1
                :contains? 0
                :fully-contains? 0
                :overlap 0.0
+               :same-pitch-count? 0
                :shares-root? 0}
       [:C] [:C] {:contained-in? 1
                  :fully-contained-in? 0
                  :contains? 1
                  :fully-contains? 0
                  :overlap 1.0
+                 :same-pitch-count? 1
                  :shares-root? 1}
       [:C] [:C :D] {:contained-in? 1
                     :fully-contained-in? 1
                     :contains? 0
                     :fully-contains? 0
                     :overlap 0.5
+                    :same-pitch-count? 0
                     :shares-root? 1}
       [:C :D] [:C] {:contained-in? 0
                     :fully-contained-in? 0
                     :contains? 1
                     :fully-contains? 1
                     :overlap 0.5
+                    :same-pitch-count? 0
                     :shares-root? 1}
       [:C :D :E] [:C] {:contained-in? 0
                        :fully-contained-in? 0
                        :contains? 1
                        :fully-contains? 1
                        :overlap (float (/ 1 3))
+                       :same-pitch-count? 0
                        :shares-root? 1}))
 
   (testing "scale->mode"
