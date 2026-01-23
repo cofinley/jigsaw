@@ -16,8 +16,8 @@
   (let [src-type (if (theory/chord? src-shape) :chord :scale)
         dest-type (if (theory/chord? dest-shape) :chord :scale)]
     (case [src-type dest-type]
-      [:chord :scale] (theory/scale-chord->degree dest-shape src-shape)
-      [:scale :chord] (theory/scale-chord->degree src-shape dest-shape)
+      [:chord :scale] (theory/derive-chord-degree dest-shape src-shape)
+      [:scale :chord] (theory/derive-chord-degree src-shape dest-shape)
       [:scale :scale] (theory/scales->mode src-shape dest-shape)
       nil)))
 
@@ -56,7 +56,7 @@
   "
   [scale-def chord-degrees]
   (let [scale (->shape scale-def)]
-    (mapv #(theory/scale-chord-degree->chord scale %) chord-degrees)))
+    (mapv #(theory/resolve-chord-degree scale %) chord-degrees)))
 
 ; Based on PCI
 (defn resolve-all-shapes [shape-type]

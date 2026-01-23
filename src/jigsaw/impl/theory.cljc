@@ -689,6 +689,37 @@
     (pitch-semitone-distance x1 x2)
     (note-semitone-distance x1 x2 :fold? fold?)))
 
+(defn ->interval
+  "Find interval between two pitches/notes
+   Start with semitone distance, and use staff distance if needed to split hairs between augmented/diminished"
+  [x1 x2]
+  ; {:pre [(every? pitch-or-note? [x1 x2])]
+  ;  :post [(or (interval? %) (nil? %))]}
+  (if (and (note? x1) (< (note->midi x2) (note->midi x1)))
+    (let [{:keys [pitch octave]} (parts x2)]
+      (->interval x1 (pitch->note pitch (inc octave))))
+    (let [semitone-distance (semitone-distance x1 x2 :fold? true)
+          matching-intervals (semitones->intervals semitone-distance)]
+      (if (= (count matching-intervals) 1)
+        (first matching-intervals)
+        (let [distance (staff-distance x1 x2)]
+          (first (filter #(or (str/includes? (name %) (str distance))
+                              (str/includes? (name %) (str (+ 7 distance))))
+                         matching-intervals)))))))
+
+(declare ->intervals)
+
+(defn ->intervals-impl
+  "Convert pitches to intervals, where the first pitch is :P1"
+  [xs]
+  ; {:pre [(every? pitch-or-note? xs)]
+  ;  :post [(every? interval? %)]}
+  (if (pitch? (first xs))
+    (->intervals (pitches->notes xs))
+    (map (partial ->interval (first xs)) xs)))
+
+(def ->intervals (memoize ->intervals-impl))
+
 (defn transpose-pitch
   [p interval & [multiplier]]
   (if (some? (#{:P1 :P8} interval))
@@ -722,37 +753,6 @@
         (note->midi)
         (+ (* (or multiplier 1) interval-semitones))
         (midi->note new-pitch))))
-
-(defn ->interval
-  "Find interval between two pitches/notes
-   Start with semitone distance, and use staff distance if needed to split hairs between augmented/diminished"
-  [x1 x2]
-  ; {:pre [(every? pitch-or-note? [x1 x2])]
-  ;  :post [(or (interval? %) (nil? %))]}
-  (if (and (note? x1) (< (note->midi x2) (note->midi x1)))
-    (let [{:keys [pitch octave]} (parts x2)]
-      (->interval x1 (pitch->note pitch (inc octave))))
-    (let [semitone-distance (semitone-distance x1 x2 :fold? true)
-          matching-intervals (semitones->intervals semitone-distance)]
-      (if (= (count matching-intervals) 1)
-        (first matching-intervals)
-        (let [distance (staff-distance x1 x2)]
-          (first (filter #(or (str/includes? (name %) (str distance))
-                              (str/includes? (name %) (str (+ 7 distance))))
-                         matching-intervals)))))))
-
-(declare ->intervals)
-
-(defn ->intervals-impl
-  "Convert pitches to intervals, where the first pitch is :P1"
-  [xs]
-  ; {:pre [(every? pitch-or-note? xs)]
-  ;  :post [(every? interval? %)]}
-  (if (pitch? (first xs))
-    (->intervals (pitches->notes xs))
-    (map (partial ->interval (first xs)) xs)))
-
-(def ->intervals (memoize ->intervals-impl))
 
 (defn transpose
   "Add/subtract interval to/from pitch or note"
@@ -793,100 +793,77 @@
 
 (defn roman-numeral->int
   [numeral-keyword]
-  (let [m (into {}
-                (map-indexed (fn [idx numeral]
-                               [numeral (inc idx)])
-                             ["I" "II" "III" "IV" "V" "VI" "VII"]))]
-    (second (first (filter #(= (str/upper-case (str/replace (name numeral-keyword) #"[b#°o%+mM7]" ""))
-                               (first %))
-                           m)))))
+  (let [m (into {} (map-indexed (fn [idx numeral] [numeral (inc idx)]) ["I" "II" "III" "IV" "V" "VI" "VII"]))
+        stripped (-> numeral-keyword
+                     name
+                     (str/replace #"[b#°o%+mM7]" "")
+                     str/upper-case)]
+    (get m stripped)))
 
-(defn degree-chord->roman-numeral
-  [scale-degree chord-name]
-  (let [intervals (:intervals (chords chord-name))
-        major? (utils/in? intervals :M3)
-        degree-str (name scale-degree)
-        accidental (if (< 1 (count degree-str)) (first degree-str) "")
-        degree-num (utils/parse-int degree-str)
-        roman-num (roman-numeral degree-num)]
-    (keyword
-     (str
-      accidental
-      ((if major? str/upper-case str/lower-case) roman-num)
-      ; TODO improve this; too hacky
-      (cond
-        (utils/in? intervals :A5) "+"
-        (and (utils/in? intervals :d5) (not= :m7b5 chord-name)) "o"
-        :else "")
-      (case chord-name
-        :m7b5 "%"
-        :dim7 "7" ; 'o' added above
-        :dim ""
-        :maj7 "M7"
-        :m7 "7"
-        :7 "7"
-        "")))))
-
-(defn chord-degree->chord-name
-  "
-  Major    I
-  Minor    i
-  Dim      io
-
-  Major 7th    ...M7
-  Minor 7th    ...m7
-  Dom. 7th     ...7
-  Dim 7th      ...o7
-  Half-dim 7th ...%7
-  "
-  [chord-degree]
-  (condp #(some? (re-find %1 %2)) (name chord-degree)
-    #"%" :m7b5
-    #"o7" :dim7
-    #"o" :dim
-    #"M7" :maj7
-    #"[IV]7" :7
-    #"[iv]7" :m7
-    #"[IV]" :maj
-    #"[iv]" :m))
-
-(defn scale-degree->int [scale-degree]
-  (utils/parse-int (name scale-degree)))
-
-(defn chord-degree->int [chord-degree]
-  (utils/parse-int (roman-numeral->int chord-degree)))
-
-(defn scale-chord->degree [scale chord]
+(defn derive-chord-degree
+  "From a scale and chord, find the chord degree (roman numeral + optional quality)"
+  [scale chord]
   (let [scale-pitch-index (.indexOf (:pitches scale) (first (:pitches chord)))]
     (when (<= 0 scale-pitch-index)
       (let [scale-degree (nth (:degrees scale)
                               scale-pitch-index)
-            chord-degree (degree-chord->roman-numeral scale-degree (:name chord))]
-        (keyword "chord-degree" (name chord-degree))))))
+            degree-str (name scale-degree)
+            accidental (if (< 1 (count degree-str)) (first degree-str) "")
+            degree-num (utils/parse-int degree-str)
+            roman-num (roman-numeral degree-num)
+            chord-name (:name chord)
+            intervals (:intervals (chords chord-name))
+            major? (utils/in? intervals :M3)
+            chord-degree (str
+                          accidental
+                          ((if major? str/upper-case str/lower-case) roman-num)
+                          ; TODO improve chord quality suffix; feels too hacky
+                          (cond
+                            (utils/in? intervals :A5) "+"
+                            (and (utils/in? intervals :d5) (not= :m7b5 chord-name)) "o"
+                            :else "")
+                          (case chord-name
+                            :m7b5 "%"
+                            :dim7 "7" ; 'o' added above
+                            :dim ""
+                            :maj7 "M7"
+                            :m7 "7"
+                            :7 "7"
+                            ""))]
+        (keyword "chord-degree" chord-degree)))))
 
-(defn scale-chord-degree->chord
+(defn resolve-chord-degree
   "
-  prefix:
+  From a scale and a chord degree (roman numeral + optional quality), find the chord
+
+  Prefix:
     #
     b
 
-  chord:
-    [IiVv]+
-
-  suffix:
-    M7
-    7
-    m7
-    o7
-    %7
+  Major    I
+  Minor    i
+  Dim      io
+  Major 7th    ...M7
+  Minor 7th    ...7 (lowercase roman numeral)
+  Dom. 7th     ...7 (uppercase roman numeral)
+  Dim 7th      ...o7
+  Half-dim 7th ...%
   "
   [scale chord-degree]
-  (let [chord-name (chord-degree->chord-name chord-degree)
+  (let [chord-name (condp #(some? (re-find %1 %2)) (name chord-degree)
+                     #"%" :m7b5
+                     #"o7" :dim7
+                     #"o" :dim
+                     #"M7" :maj7
+                     #"[IV]7" :7
+                     #"[iv]7" :m7
+                     #"[IV]" :maj
+                     #"[iv]" :m)
         scale-degree-int->pitch (reduce (fn [m [scale-degree pitch]]
-                                          (assoc m (scale-degree->int scale-degree) pitch))
+                                          (assoc m (utils/parse-int (name scale-degree)) pitch))
                                         {}
                                         (zipmap (:degrees scale) (:pitches scale)))
-        chord-degree-int (chord-degree->int chord-degree)
+        chord-degree-int (roman-numeral->int chord-degree)
         pitch (scale-degree-int->pitch chord-degree-int)
         new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
     {:pitch new-pitch :name chord-name}))
@@ -1170,7 +1147,3 @@
   (assert (true? (interval? :P5)))
   (assert (true? (shape-ref? {:pitch :C :name :maj})))
   (assert (true? (shape-ref? {:note :C4 :name :maj}))))
-
-(comment
-  (->> (get-in chord-progressions ["Royal road" :degrees])
-       (map #(scale-chord-degree->chord (->shape :C_major) %))))

@@ -469,25 +469,6 @@
         :m7 :b7
         :A6 :#6
         :M7 :7))
-    (testing "with degree-chord->roman-numeral"
-      (are+ [degree chord-name want] (= want (theory/degree-chord->roman-numeral degree chord-name))
-        :1 :maj :I
-        :1 :maj7 :IM7
-        :2 :min :ii
-        :2 :m7 :ii7
-        :b2 :m :bii
-        :#2 :m :#ii
-        :3 :m :iii
-        :7 :dim :viio
-        :2 :dim :iio
-        :b3 :aug :bIII+))
-    (testing "with chord-degree->chord-name"
-      (are+ [chord-degree want] (= want (theory/chord-degree->chord-name chord-degree))
-        :I :maj
-        :iii :m
-        :bIV :maj
-        :bIII+ :maj
-        :viio7 :dim7))
     (testing "with roman-numeral->int"
       (are+ [degree want] (= want (theory/roman-numeral->int degree))
         :I 1
