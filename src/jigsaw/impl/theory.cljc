@@ -762,9 +762,14 @@
   ;  :post [(pitch-or-note? %)]}
   (if (= :P1 interval)
     x
-    (if (pitch? x)
-      (transpose-pitch x interval multiplier)
-      (transpose-note x interval multiplier))))
+    (cond-> x
+      (pitch? x) (transpose-pitch interval multiplier)
+      (note? x) (transpose-note interval multiplier)
+      (some? (:pitch x)) (assoc :pitch (transpose (:pitch x) interval multiplier))
+      (some? (:pitches x)) (assoc :pitches (mapv #(transpose % interval multiplier) (:pitches x)))
+      (some? (:notes x)) (assoc :notes (mapv #(transpose % interval multiplier) (:notes x)))
+      ; Any context is now stale
+      (and (map? x) (contains? x :context)) (dissoc :context))))
 
 (def transpose-memo (memoize transpose))
 

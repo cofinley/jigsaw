@@ -188,7 +188,7 @@
         note-seq->shapes (reduce (fn [m note-seq]
                                    (assoc m note-seq
                                           (set (map #(select-keys % [:pitch :name :bass :heuristics])
-                                                    (notes->shapes note-seq input-shape-type :max-shapes max-shapes)))))
+                                                    (notes->shapes note-seq :shape-type input-shape-type :max-shapes max-shapes)))))
                                  {}
                                  note-seqs)
         shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)

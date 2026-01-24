@@ -183,20 +183,10 @@
              (l/membero q (jigsaw/notes->shapes notes))))
 
 (defn transposo
-  "Transpose pitch by interval"
-  [q pitch interval & [multiplier]]
-  (l/project [pitch]
-             (l/== q (theory/pci->default-pitch (theory/pitches (theory/transpose pitch interval multiplier))))))
-
-(defn subo
-  "Transpose shape by interval, returns ref"
-  [q shape-ref sub-interval & [multiplier]]
-  (l/project [shape-ref]
-             (l/fresh [pitch name new-pitch]
-                      ; TODO: might be good to deal in whole shapes for algos to avoid recalcs, but refs/keywords for display
-                      (l/featurec shape-ref {:pitch pitch :name name})
-                      (transposo new-pitch pitch sub-interval multiplier)
-                      (l/== q {:pitch new-pitch :name name}))))
+  "Transpose pitch/note/shape by interval"
+  [q x interval & [multiplier]]
+  (l/project [x]
+             (l/== q (theory/transpose x interval multiplier))))
 
 ; Tritone substitution
 (comment
@@ -214,10 +204,10 @@
                   (l/featurec i {:context :chord-degree/IM7 :name :maj7})
 
                   ; Find the shape which is a tritone away from the V chord
-                  (subo sub v :d5)
+                  (transposo sub v :d5)
                   (l/== q [ii sub i]))))
 ; ([{:pitch :D, :name :m7, :context :chord-degree/ii7}
-;   {:pitch :C#, :name :7}
+;   {:pitch :Db, :name :7}
 ;   {:pitch :C, :name :maj7, :context :chord-degree/IM7}])
 
 ; Coltrane changes
@@ -238,7 +228,7 @@
                     (l/featurec i {:context :chord-degree/IM7})
 
                     ; Key goes down a third
-                    (subo key2 key1 :M3 -1)
+                    (transposo key2 key1 :M3 -1)
 
                     ; New V-I
                     (neighboro key2 v2)
@@ -248,7 +238,7 @@
                     (l/featurec i2 {:context :chord-degree/IM7})
 
                     ; Key goes down another third
-                    (subo key3 key2 :M3 -1)
+                    (transposo key3 key2 :M3 -1)
 
                     ; New V-I
                     (neighboro key3 v3)
