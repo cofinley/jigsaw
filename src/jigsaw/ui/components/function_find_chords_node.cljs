@@ -27,7 +27,7 @@
             [table {:ms @chords
                     :row-render {"Root" :pitch
                                  "Name" :name
-                                 "Degree" :degree
+                                 "Degree" :context
                                  "Piano" (fn [shape]
                                            [piano-preview
                                             shape

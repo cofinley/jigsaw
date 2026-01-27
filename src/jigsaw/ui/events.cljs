@@ -20,6 +20,10 @@
          ;[:dispatch [::update-edge-props "c->d" {:data {:highlighted? true}}]]
          ]}))
 
+; Computation methods
+(defmulti should-compute? (fn [parent-data data] (:type data)))
+(defmulti compute-node (fn [parent-data data] (:type data)))
+
 (re-frame/reg-event-db
  ::set-nodes
  (fn [db [_ nodes]]
@@ -43,15 +47,6 @@
         (when (seq sources)
           (get-in db [:node-data (.-source (first sources))]))))))
 
-(defn should-trigger-computation? [node-type parent-data]
-  (case node-type
-    :function-scale-chords (and parent-data (contains? parent-data :degrees))
-    :function-chord-scales (and parent-data (contains? parent-data :intervals))
-    :function-find-shape (and parent-data (seq (:notes parent-data)))
-    :function-connect-shapes (> (count parent-data) 1)
-    :function-fit-shape (= (count parent-data) 2)
-    false))
-
 (defn add-edge [db edge]
   (assoc db :edges (clj->js (conj (js->clj (:edges db))
                                   (clj->js (assoc edge :type :custom-edge))))))
@@ -62,21 +57,19 @@
    (let [new-db (add-edge db edge)
          target-id (:target edge)
          target-data (get-in new-db [:node-data target-id])
-         target-type (:type target-data)
          parent-data (get-parent-data-for-node new-db target-id)]
      {:db new-db
-      :fx (when (should-trigger-computation? target-type parent-data)
-            [[:dispatch ^:flush-dom [::compute-function-result target-id target-type parent-data target-data]]])})))
+      :fx (when (should-compute? parent-data target-data)
+            [[:dispatch ^:flush-dom [::compute-function-result target-id parent-data target-data]]])})))
 
 (re-frame/reg-event-fx
  ::recompute
  (fn [{:keys [db]} [_ id]]
    (let [data (get-in db [:node-data id])
-         node-type (:type data)
          parent-data (get-parent-data-for-node db id)]
      (cond-> {:db db}
-       (and parent-data (should-trigger-computation? node-type parent-data))
-       (assoc :fx [[:dispatch [::compute-function-result id node-type parent-data data]]])))))
+       (and parent-data (should-compute? parent-data data))
+       (assoc :fx [[:dispatch [::compute-function-result id parent-data data]]])))))
 
 (re-frame/reg-event-db
  ::update-edge-props
@@ -129,12 +122,11 @@
  ::add-node
  (fn [{:keys [db]} [_ node-props & [parent-id]]]
    (let [[node-id new-db] (create-node db node-props parent-id)
-         node-type (keyword (:type node-props))
          parent-data (when (some? parent-id) (get-parent-data-for-node new-db node-id))
          node-data (get-in new-db [:node-data node-id])]
      (cond-> {:db new-db}
-       (and (some? parent-data) (should-trigger-computation? node-type parent-data))
-       (assoc :fx [[:dispatch ^:flush-dom [::compute-function-result node-id node-type parent-data node-data]]])))))
+       (and (some? parent-data) (should-compute? parent-data node-data))
+       (assoc :fx [[:dispatch ^:flush-dom [::compute-function-result node-id parent-data node-data]]])))))
 
 (defn delete-node [db id]
   (-> db
@@ -160,57 +152,76 @@
          shape (calculate-shape node)]
      {:fx [[:dispatch ^:flush-dom [::update-node-data id shape]]]})))
 
-;; Function computation helpers
-(defn compute-scale-chords [parent-data data]
-  (when (and parent-data (contains? parent-data :degrees))
-    (let [shape-refs (jigsaw/scale->chords parent-data)]
-      (map #(merge % (jigsaw/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
-
-(defn compute-chord-scales [parent-data data]
-  (when (and parent-data (contains? parent-data :intervals))
-    (let [selected-degree (:selected-degree data)
-          shape-refs (jigsaw/chord->scales (jigsaw/->shape parent-data) :degree selected-degree)]
-      (map #(merge % (jigsaw/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs))))
-
-(defn compute-closest-shapes [parent-data data]
-  (when-let [notes (seq (get-in parent-data [:notes]))]
-    (let [incoming-shape-type (cond
-                                (contains? parent-data :degrees) :scale
-                                (contains? parent-data :intervals) :chord
-                                :else :notes)
-          selected-shape-type (or (:selected-shape-type data) (if (= :chord incoming-shape-type) :scale :chord))
-          selected-pitch (or (:selected-pitch data) "")
-          heuristic (or (:heuristic data) :overlap)
-          max-shapes (or (:max-shapes data) 10)
-          shapes (jigsaw/notes->shapes-memo notes
-                                            selected-shape-type
-                                            :max-shapes max-shapes
-                                            :heuristic (keyword heuristic)
-                                            :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
-          resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
-      resolved-shapes)))
-
-(defn compute-shape-connections [parent-data data]
-  (when (> (count parent-data) 1)
-    (let [max-shapes (or (:max-shapes data) 1)]
-      (if (every? #(contains? % :name) parent-data)
-        (jigsaw/connect-shapes-memo parent-data :chord)
-        (jigsaw/connect-memo (map :notes parent-data) :chord :max-shapes max-shapes)))))
-
-(defn compute-fitted-shapes [parent-data data]
-  (when (= (count parent-data) 2)
-    (let [target-shape (first (filter #(contains? % :name) parent-data))
-          candidate-input (first (filter #(not= % target-shape) parent-data))
-          max-shapes (or (:max-shapes data) 1)
-          shapes (jigsaw/fit target-shape (:notes candidate-input) :max-shapes max-shapes)
-          resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
-      resolved-shapes)))
-
 (defn get-child-nodes [db parent-id]
   (let [edges (:edges db)
         child-edges (filter #(= (.-source %) parent-id) edges)
         child-ids (map #(.-target %) child-edges)]
     child-ids))
+
+(defmethod should-compute? :function-scale-chords [parent-data data]
+  (and parent-data (contains? parent-data :degrees)))
+(defmethod compute-node :function-scale-chords [parent-data data]
+  (let [shape-refs (jigsaw/scale->chords parent-data)]
+    (map #(merge % (jigsaw/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs)))
+
+(defmethod should-compute? :function-chord-scales [parent-data data]
+  (and parent-data (contains? parent-data :intervals)))
+(defmethod compute-node :function-chord-scales [parent-data data]
+  (let [selected-degree (:selected-degree data)
+        shape-refs (jigsaw/chord->scales (jigsaw/->shape parent-data) :degree selected-degree)]
+    (map #(merge % (jigsaw/->shape (assoc % :note (theory/pitch->note (:pitch %))))) shape-refs)))
+
+(defmethod should-compute? :function-find-shape [parent-data data]
+  (and parent-data (seq (:notes parent-data))))
+(defmethod compute-node :function-find-shape [parent-data data]
+  (let [notes (:notes parent-data)
+        incoming-shape-type (cond
+                              (contains? parent-data :degrees) :scale
+                              (contains? parent-data :intervals) :chord
+                              :else :notes)
+        selected-shape-type (or (:selected-shape-type data) (if (= :chord incoming-shape-type) :scale :chord))
+        selected-pitch (or (:selected-pitch data) "")
+        heuristic (or (:heuristic data) :overlap)
+        max-shapes (or (:max-shapes data) 10)
+        shapes (jigsaw/notes->shapes-memo notes
+                                          selected-shape-type
+                                          :max-shapes max-shapes
+                                          :heuristic (keyword heuristic)
+                                          :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
+        resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
+    resolved-shapes))
+
+(defmethod should-compute? :function-connect-shapes [parent-data data]
+  (> (count parent-data) 1))
+(defmethod compute-node :function-connect-shapes [parent-data data]
+  (let [max-shapes (or (:max-shapes data) 1)]
+    (if (every? #(contains? % :name) parent-data)
+      (jigsaw/connect-shapes-memo parent-data :chord)
+      (jigsaw/connect-memo (map :notes parent-data) :chord :max-shapes max-shapes))))
+
+(defmethod should-compute? :function-fit-shape [parent-data data]
+  (= (count parent-data) 2))
+(defmethod compute-node :function-fit-shape [parent-data data]
+  (let [target-shape (first (filter #(contains? % :name) parent-data))
+        candidate-input (first (filter #(not= % target-shape) parent-data))
+        max-shapes (or (:max-shapes data) 1)
+        shapes (jigsaw/fit target-shape (:notes candidate-input) :max-shapes max-shapes)
+        resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
+    resolved-shapes))
+
+(defmethod should-compute? :function-transpose [parent-data data]
+  (some? parent-data))
+(defmethod compute-node :function-transpose [parent-data data]
+  (let [interval (keyword (or (:interval data) "P1"))
+        multiplier (or (:multiplier data) 1)]
+    (theory/transpose (dissoc parent-data :type :view-type) interval multiplier)))
+
+(defmethod should-compute? :function-chords-by-degrees [parent-data data]
+  (and parent-data (theory/scale? parent-data)))
+(defmethod compute-node :function-chords-by-degrees [parent-data data]
+  (let [scale parent-data
+        chord-degrees (or (:chord-degrees data) [])]
+    (jigsaw/->progression scale chord-degrees)))
 
 (re-frame/reg-event-fx
  ::update-node-data
@@ -218,14 +229,14 @@
    (let [old-data (get-in db [:node-data id])
          new-data (merge old-data data)
          new-db (assoc-in db [:node-data id] new-data)
-         node-type (:type new-data)
          parent-data (get-parent-data-for-node new-db id)
          opt-changed? (not-any? #(contains? data %) [:pitch :note :name])
 
          ;; Only trigger computation for this node, not children yet
          this-node-fx (when (and opt-changed?
-                                 (should-trigger-computation? node-type parent-data))
-                        [[:dispatch ^:flush-dom [::compute-function-result id node-type parent-data new-data]]])
+                                 (contains? (methods compute-node) (:type new-data))
+                                 (should-compute? parent-data new-data))
+                        [[:dispatch ^:flush-dom [::compute-function-result id parent-data new-data]]])
 
          child-fx [[:dispatch ^:flush-dom [::cascade-to-children id]]]]
 
@@ -234,21 +245,15 @@
 
 (re-frame/reg-event-fx
  ::compute-function-result
- (fn [{:keys [db]} [_ id node-type parent-data opts]]
+ (fn [{:keys [db]} [_ id parent-data data]]
    {:db (assoc-in db [:node-loading id] true)
-    :fx [[:dispatch ^:flush-dom [::execute-function-computation id node-type parent-data opts]]]}))
+    :fx [[:dispatch ^:flush-dom [::execute-function-computation id parent-data data]]]}))
 
 (re-frame/reg-event-fx
  ::execute-function-computation
- (fn [{:keys [db]} [_ id node-type parent-data opts]]
+ (fn [{:keys [db]} [_ id parent-data data]]
    (try
-     (let [result (case node-type
-                    :function-scale-chords (compute-scale-chords parent-data opts)
-                    :function-chord-scales (compute-chord-scales parent-data opts)
-                    :function-find-shape (compute-closest-shapes parent-data opts)
-                    :function-connect-shapes (compute-shape-connections parent-data opts)
-                    :function-fit-shape (compute-fitted-shapes parent-data opts)
-                    nil)]
+     (let [result (compute-node parent-data data)]
        {:db (-> db
                 (assoc-in [:function-results id] result)
                 (assoc-in [:node-loading id] false))})
@@ -262,10 +267,11 @@
    (let [child-ids (get-child-nodes db parent-id)
          child-fx (for [child-id child-ids
                         :let [child-data (get-in db [:node-data child-id])
-                              parent-data (get-parent-data-for-node db child-id)
-                              child-type (:type child-data)]
-                        :when (should-trigger-computation? child-type parent-data)]
-                    [:dispatch [::compute-function-result child-id child-type parent-data child-data]])]
+                              parent-data (get-parent-data-for-node db child-id)]
+                        :when (and (contains? (methods should-compute?) (:type child-data))
+                                   (should-compute? parent-data child-data))]
+                    ; Don't recursively cascade; many of the nodes are nondeterministic and require user actions to proceed
+                    [:dispatch [::compute-function-result child-id parent-data child-data]])]
      {:fx child-fx})))
 
 ;; Audio state management

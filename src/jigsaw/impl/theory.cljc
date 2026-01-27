@@ -474,7 +474,7 @@
          "Andalusian cadence" {:degrees [:iv :III :bII :I] :quality :phrygian-dominant}
          "Backdoor progression" {:degrees [:ii :bVII :I] :quality :major}
          ; Half-diminished represented as % for easier typing
-         "Bird changes" {:degrees [:I :vii% :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
+         #_#_"Bird changes" {:degrees [:I :vii% :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
          "Chromatic descending 5–6 sequence" {:degrees [:I :V :bVII :IV] :quality :mixolydian}
          "Circle progression" {:degrees [:vi :ii :V :I] :quality :major}
          "Coltrane changes" {:degrees [:I :V_bVI :bVI :V_III :III :V :I] :quality :major}
@@ -871,7 +871,7 @@
         chord-degree-int (roman-numeral->int chord-degree)
         pitch (scale-degree-int->pitch chord-degree-int)
         new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
-    {:pitch new-pitch :name chord-name}))
+    {:pitch new-pitch :name chord-name :context chord-degree}))
 
 (defn circle-of-fifths [major-or-minor]
   (zipmap

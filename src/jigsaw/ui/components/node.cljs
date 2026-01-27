@@ -42,7 +42,7 @@
 
           ;; Loading overlay
           (when loading?
-            [:div {:class "absolute inset-0 bg-neutral-900 bg-opacity-70 flex items-center justify-center z-20 rounded-lg pointer-events-auto"}
+            [:div {:class "absolute inset-0 bg-neutral-900 opacity-50 flex items-center justify-center z-20 rounded-lg pointer-events-auto"}
              [loading-indicator {:message "Computing..."}]])
 
           [:div {:class "flex border-b border-neutral-400 mb-4 gap-2"}
