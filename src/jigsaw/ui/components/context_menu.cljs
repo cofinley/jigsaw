@@ -30,15 +30,16 @@
 
 (def node-type-allowed-children
   {nil (map :type node-types)
-   :input-chord [:function-chord-scales :function-find-shape]
-   :input-scale [:function-scale-chords :function-find-shape]
-   :input-piano [:function-find-shape]
-   :input-music-staff [:function-find-shape]
-   :function-chord-scales [:function-scale-chords :function-find-shape]
-   :function-scale-chords [:function-chord-scales :function-find-shape]
-   :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape]
-   :function-fit-shape [:function-chord-scales :function-scale-chords :function-find-shape]
-   :function-connect-shapes [:function-scale-chords :function-find-shape]})
+   :input-chord [:function-chord-scales :function-find-shape :function-transpose]
+   :input-scale [:function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]
+   :input-piano [:function-find-shape :function-transpose]
+   :input-music-staff [:function-find-shape :function-transpose]
+   :function-chord-scales [:function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]
+   :function-scale-chords [:function-chord-scales :function-find-shape :function-transpose]
+   :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape :function-transpose]
+   :function-fit-shape [:function-chord-scales :function-scale-chords :function-find-shape :function-transpose]
+   :function-connect-shapes [:function-scale-chords :function-find-shape :function-transpose]
+   :function-transpose [:function-chord-scales :function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]})
 
 (defn node-context-menu [{:keys [type] :as props}]
   [context-menu props

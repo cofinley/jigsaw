@@ -1,7 +1,7 @@
 (ns jigsaw.ui.components.input-shape-node
   (:require
    [clojure.string :as s]
-   [jigsaw.core :as jig]
+   [jigsaw.core :as jigsaw]
    [jigsaw.impl.theory :as theory]
    [jigsaw.ui.components.node :refer [node]]
    [jigsaw.ui.components.output-piano-node :refer [piano-preview]]
@@ -31,9 +31,9 @@
          [:span {:class "font-semibold"} (if (= shape-type :chord) "Root" "Tonic")]
          [select {:value (or (:pitch @data) "")
                   :on-change (fn [e]
-                               (let [pitch (keyword (-> e .-target .-value))]
-                                 (re-frame/dispatch [::events/update-node-data id {:pitch pitch}])
-                                 (re-frame/dispatch [::events/calculate-shape id])))
+                               (let [pitch (keyword (-> e .-target .-value))
+                                     shape (jigsaw/->shape (theory/pitch->note pitch) (keyword (:name @data)))]
+                                 (re-frame/dispatch [::events/update-node-data id shape])))
                   :placeholder "Pitch"}
           (cons
            [:option {:disabled true :value ""} "Pitch"]
@@ -45,7 +45,8 @@
                   :on-change #(reset! search (-> % .-target .-value))}]]
         ;; Shape names
         [table {:ms (cond->> shapes
-                      (some? (:pitch @data)) (map #(jig/->shape (theory/pitch->note (:pitch @data)) (:name %))))
+                      ;; TODO: potentially do this in output piano/piano preview (reactive)
+                      (some? (:pitch @data)) (map #(jigsaw/->shape (theory/pitch->note (:pitch @data)) (:name %))))
                 :row-render {"Name" :name
                              "Intervals" (fn [shape] (s/join " " (map name (:intervals shape))))
                              "Piano" (fn [shape]

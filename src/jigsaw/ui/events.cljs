@@ -20,9 +20,11 @@
          ;[:dispatch [::update-edge-props "c->d" {:data {:highlighted? true}}]]
          ]}))
 
-; Computation methods
+;; Computation declarations
 (defmulti should-compute? (fn [parent-data data] (:type data)))
 (defmulti compute-node (fn [parent-data data] (:type data)))
+
+;; Graph functions
 
 (re-frame/reg-event-db
  ::set-nodes
@@ -37,12 +39,12 @@
 (defn get-parent-data-for-node [db node-id]
   (let [node-type (get-in db [:node-data node-id :type])]
     (case node-type
-    ; Multiple parents
+      ; Multiple parents
       (:function-connect-shapes :function-fit-shape)
       (let [sources (filter #(= (.-target %) node-id) (:edges db))
             source-ids (map #(.-source %) sources)]
         (map #(get-in db [:node-data %]) source-ids))
-    ;; Single parent for other function nodes
+      ;; Single parent for other function nodes
       (let [sources (filter #(= (.-target %) node-id) (:edges db))]
         (when (seq sources)
           (get-in db [:node-data (.-source (first sources))]))))))
@@ -60,16 +62,7 @@
          parent-data (get-parent-data-for-node new-db target-id)]
      {:db new-db
       :fx (when (should-compute? parent-data target-data)
-            [[:dispatch ^:flush-dom [::compute-function-result target-id parent-data target-data]]])})))
-
-(re-frame/reg-event-fx
- ::recompute
- (fn [{:keys [db]} [_ id]]
-   (let [data (get-in db [:node-data id])
-         parent-data (get-parent-data-for-node db id)]
-     (cond-> {:db db}
-       (and parent-data (should-compute? parent-data data))
-       (assoc :fx [[:dispatch [::compute-function-result id parent-data data]]])))))
+            [[:dispatch ^:flush-dom [::recompute target-id]]])})))
 
 (re-frame/reg-event-db
  ::update-edge-props
@@ -126,37 +119,40 @@
          node-data (get-in new-db [:node-data node-id])]
      (cond-> {:db new-db}
        (and (some? parent-data) (should-compute? parent-data node-data))
-       (assoc :fx [[:dispatch ^:flush-dom [::compute-function-result node-id parent-data node-data]]])))))
+       (assoc :fx [[:dispatch ^:flush-dom [::recompute node-id]]])))))
 
 (defn delete-node [db id]
   (-> db
       (assoc :nodes (clj->js (remove #(= id (get % "id"))
                                      (js->clj (:nodes db)))))
-      (update :node-data dissoc id)))
+      (assoc :edges (remove #(or (= id (.-source %))
+                                 (= id (.-target %)))
+                            (:edges db)))
+      (update :node-data dissoc id)
+      (update :function-results dissoc id)
+      (update :node-loading dissoc id)))
 
 (re-frame/reg-event-db
  ::delete-node
  (fn [db [_ id]]
    (delete-node db id)))
 
-;; TODO: do this in output piano node (reactive), not on shape node change (stale on piano re-render)
-(defn calculate-shape [node]
-  (let [{:keys [pitch name]} node]
-    (when (and (some? pitch) (some? name))
-      (jigsaw/->shape (theory/pitch->note pitch) (keyword name)))))
-
-(re-frame/reg-event-fx
- ::calculate-shape
- (fn [{:keys [db]} [_ id]]
-   (let [node (get-in db [:node-data id])
-         shape (calculate-shape node)]
-     {:fx [[:dispatch ^:flush-dom [::update-node-data id shape]]]})))
-
 (defn get-child-nodes [db parent-id]
   (let [edges (:edges db)
         child-edges (filter #(= (.-source %) parent-id) edges)
         child-ids (map #(.-target %) child-edges)]
     child-ids))
+
+(re-frame/reg-event-fx
+ ::update-node-data
+ (fn [{:keys [db]} [_ id data]]
+   (let [old-data (get-in db [:node-data id])
+         new-data (merge old-data data)
+         new-db (assoc-in db [:node-data id] new-data)]
+     {:db new-db
+      :fx [[:dispatch ^:flush-dom [::recompute id]]]})))
+
+;; Computation
 
 (defmethod should-compute? :function-scale-chords [parent-data data]
   (and parent-data (contains? parent-data :degrees)))
@@ -213,66 +209,52 @@
   (some? parent-data))
 (defmethod compute-node :function-transpose [parent-data data]
   (let [interval (keyword (or (:interval data) "P1"))
-        multiplier (or (:multiplier data) 1)]
-    (theory/transpose (dissoc parent-data :type :view-type) interval multiplier)))
+        multiplier (or (:multiplier data) 1)
+        result (theory/transpose (select-keys parent-data [:pitch :pitches :intervals :degrees :name :notes]) interval multiplier)]
+    result))
 
 (defmethod should-compute? :function-chords-by-degrees [parent-data data]
   (and parent-data (theory/scale? parent-data)))
 (defmethod compute-node :function-chords-by-degrees [parent-data data]
   (let [scale parent-data
-        chord-degrees (or (:chord-degrees data) [])]
-    (jigsaw/->progression scale chord-degrees)))
+        chord-degrees (map #(keyword "chord-degree" %) (or (:chord-degrees data) []))]
+    (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) (jigsaw/->progression scale chord-degrees))))
 
+; Recompute current node, kick off recomputation for children
 (re-frame/reg-event-fx
- ::update-node-data
- (fn [{:keys [db]} [_ id data]]
-   (let [old-data (get-in db [:node-data id])
-         new-data (merge old-data data)
-         new-db (assoc-in db [:node-data id] new-data)
-         parent-data (get-parent-data-for-node new-db id)
-         opt-changed? (not-any? #(contains? data %) [:pitch :note :name])
+ ::recompute
+ (fn [{:keys [db]} [_ id]]
+   (let [data (get-in db [:node-data id])
+         parent-data (get-parent-data-for-node db id)
+         should-update? (and (contains? (methods compute-node) (:type data))
+                             (should-compute? parent-data data))
+         this-node-fx (when should-update?
+                        [[:dispatch ^:flush-dom [::toggle-loading id true]]
+                         [:dispatch ^:flush-dom [::execute-function-computation id]]
+                         [:dispatch ^:flush-dom [::toggle-loading id false]]])
+         child-fx (for [child-id (get-child-nodes db id)]
+                    [:dispatch [::recompute child-id]])]
+     {:fx (concat this-node-fx child-fx)})))
 
-         ;; Only trigger computation for this node, not children yet
-         this-node-fx (when (and opt-changed?
-                                 (contains? (methods compute-node) (:type new-data))
-                                 (should-compute? parent-data new-data))
-                        [[:dispatch ^:flush-dom [::compute-function-result id parent-data new-data]]])
+(re-frame/reg-event-db
+ ::toggle-loading
+ (fn [db [_ id loading?]]
+   (assoc-in db [:node-loading id] loading?)))
 
-         child-fx [[:dispatch ^:flush-dom [::cascade-to-children id]]]]
-
-     {:db new-db
-      :fx (concat this-node-fx child-fx)})))
-
-(re-frame/reg-event-fx
- ::compute-function-result
- (fn [{:keys [db]} [_ id parent-data data]]
-   {:db (assoc-in db [:node-loading id] true)
-    :fx [[:dispatch ^:flush-dom [::execute-function-computation id parent-data data]]]}))
-
-(re-frame/reg-event-fx
+(re-frame/reg-event-db
  ::execute-function-computation
- (fn [{:keys [db]} [_ id parent-data data]]
-   (try
-     (let [result (compute-node parent-data data)]
-       {:db (-> db
-                (assoc-in [:function-results id] result)
-                (assoc-in [:node-loading id] false))})
-     (catch js/Error e
-       (js/console.error "Function computation error:" e)
-       {:db (assoc-in db [:node-loading id] false)}))))
-
-(re-frame/reg-event-fx
- ::cascade-to-children
- (fn [{:keys [db]} [_ parent-id]]
-   (let [child-ids (get-child-nodes db parent-id)
-         child-fx (for [child-id child-ids
-                        :let [child-data (get-in db [:node-data child-id])
-                              parent-data (get-parent-data-for-node db child-id)]
-                        :when (and (contains? (methods should-compute?) (:type child-data))
-                                   (should-compute? parent-data child-data))]
-                    ; Don't recursively cascade; many of the nodes are nondeterministic and require user actions to proceed
-                    [:dispatch [::compute-function-result child-id parent-data child-data]])]
-     {:fx child-fx})))
+ (fn [db [_ id]]
+   (let [data (get-in db [:node-data id])
+         parent-data (get-parent-data-for-node db id)]
+     (try
+       (let [result (compute-node parent-data data)]
+         (cond-> db
+           true (assoc-in [:function-results id] result)
+           ; If scalar result, use it automatically
+           (not (sequential? result)) (update-in [:node-data id] merge result)))
+       (catch js/Error e
+         (js/console.error "Function computation error:" e)
+         db)))))
 
 ;; Audio state management
 (defonce audio-state (atom {:instruments {} :audio-context nil}))
