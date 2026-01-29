@@ -21,34 +21,6 @@
       [:scale :scale] (theory/scales->mode src-shape dest-shape)
       nil)))
 
-(defn shape->abc
-  [shape & {:keys [note-length selected-key]
-            :or {note-length "1/4"}}]
-  {:pre [(theory/shape? shape)]}
-  (let [notes (set (:notes shape))
-        scale? (theory/scale? shape)
-        pitch (:pitch shape)
-        shape-name (:name shape)
-        key-ref (cond
-                  (some? selected-key) selected-key
-                  :else {:pitch :C :name :major})
-        key-shape (->shape (assoc key-ref :note (theory/pitch->note (:pitch key-ref))))
-        key-abc (str (name (:pitch key-shape))
-                     " exp "
-                     (str/join " " (map theory/note->abc (:notes key-shape))))
-        sorted-notes (sort-by theory/note->midi notes)
-        pitches-str (str/join " " (map theory/note->abc sorted-notes))]
-    (str/join "\n"
-              ["X:1"
-               (str "K:" key-abc)
-               (str "L:" note-length)
-               (str/join " "
-                         [(when-not scale?
-                            (str "\"" (name pitch) (name shape-name) "\""))
-                          (if scale?
-                            pitches-str
-                            (str "[" pitches-str "]"))])])))
-
 (defn ->progression
   "
   :C_major [:ii :V :I] -> [<D_m chord> <G_maj chord> <C_maj chord>]

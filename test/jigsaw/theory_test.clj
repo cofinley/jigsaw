@@ -495,22 +495,7 @@
         :iii 3
         :viio 7
         :iio 2
-        :bIII+ 3))
-    (testing "with note->abc"
-      (are+ [note want] (= want (theory/note->abc note))
-        :C4 "C"
-        :C#4 "^C"
-        :C##4 "^^C"
-        :Db4 "_D"
-        :Dbb4 "__D"
-        :C5 "c"
-        :C6 "c'"
-        :C7 "c''"
-        :C8 "c'''"
-        :C3 "C,"
-        :C2 "C,,"
-        :C1 "C,,,"
-        :C0 "C,,,,")))
+        :bIII+ 3)))
 
   (testing "heuristics"
     (are+ [set1 set2 m] (= m (theory/calculate-heuristics set1 set2))

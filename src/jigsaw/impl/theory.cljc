@@ -871,7 +871,9 @@
         chord-degree-int (roman-numeral->int chord-degree)
         pitch (scale-degree-int->pitch chord-degree-int)
         new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
-    {:pitch new-pitch :name chord-name :context chord-degree}))
+    {:pitch new-pitch :name chord-name :context (keyword "chord-degree" (name chord-degree))}))
+
+;; KEY
 
 (defn circle-of-fifths [major-or-minor]
   (zipmap
@@ -880,8 +882,6 @@
                        :major :Cb
                        :minor :Ab)))
    (range -7 8)))
-
-;; ABC
 
 (defn key-signature-accidentals [key-ref]
   (let [fifths->num-accidentals (circle-of-fifths (if (= (:name key-ref) :major) :major :minor))
@@ -904,120 +904,6 @@
         relative-pitch (get pitch->accidentals absolute-pitch absolute-pitch)
         relative-note (keyword (str (name relative-pitch) octave))]
     relative-note))
-
-(defn abc-pitch->note
-  "
-  Convert abc notation pitch to :jigsaw.note format
-  \"C\" :C4
-  \"^C\" :C#4
-  \"^^C\" :C##4
-  \"_D\" :Db4
-  \"__D\" :Dbb4
-  \"c\" :C5
-  \"c'\" :C6
-  \"c''\" :C7
-  \"c'''\" :C8
-  \"C,\" :C3
-  \"C,,\" :C2
-  \"C,,,\" :C1
-  \"C,,,,\" :C0
-  "
-  [abc-pitch]
-  (when abc-pitch
-    (let [pitch-str (str abc-pitch)
-          ;; Parse accidentals (^ for sharp, _ for flat)
-          accidental-count (count (take-while #(or (= % \^) (= % \_)) pitch-str))
-          accidental-char (when (pos? accidental-count) (first pitch-str))
-          accidental-str (case [accidental-char accidental-count]
-                           [\^ 1] "#"
-                           [\^ 2] "##"
-                           [\_ 1] "b"
-                           [\_ 2] "bb"
-                           "")
-          ;; Get the base note letter (after accidentals)
-          note-char (nth pitch-str accidental-count)
-          base-letter (str/upper-case (str note-char))
-          ;; Determine base octave (uppercase = 4, lowercase = 5)
-          base-octave (if (= (str/upper-case note-char) note-char) 4 5)
-          ;; Parse octave modifiers (' raises, , lowers)
-          modifier-part (subs pitch-str (inc accidental-count))
-          octave-offset (- (count (filter #(= % \') modifier-part))
-                           (count (filter #(= % \,) modifier-part)))
-          final-octave (+ base-octave octave-offset)
-          ;; Construct the note keyword
-          note-name (str base-letter accidental-str final-octave)]
-      (keyword note-name))))
-
-(defn key-signature->abc
-  "
-  B♭ - on the middle line (3rd line)
-  E♭ - in the 4th space
-  A♭ - in the 2nd space
-  D♭ - on the 2nd line
-  G♭ - on the 4th line
-  C♭ - in the 3rd space
-  F♭ - on the 1st line
-
-  For sharps in treble clef:
-
-  F♯ - on the 5th line
-  C♯ - in the 3rd space
-  G♯ - on the 4th line
-  D♯ - in the 2nd space
-  A♯ - on the 2nd line
-  E♯ - in the 4th space
-  B♯ - on the 3rd line
-  "
-  [key-ref]
-  (let [accidental-pitches (key-signature-accidentals key-ref)
-        pitch->abc #(case %
-                      ;; Flats
-                      :Bb "_B"
-                      :Eb "_e"
-                      :Ab "_A"
-                      :Db "_d"
-                      :Gb "_G"
-                      :Cb "_c"
-                      :Fb "_F"
-
-                      ;; Sharps
-                      :F# "^f"
-                      :C# "^c"
-                      :G# "^g"
-                      :D# "^d"
-                      :A# "^a"
-                      :E# "^e"
-                      :B# "^B")]
-    (str/join " " (map pitch->abc accidental-pitches))))
-
-(comment (key-signature->abc {:pitch :C :name :minor}))
-
-(defn pitch->abc [p]
-  (let [{:keys [letter accidental]} (parts p)
-        abc-accidental (case accidental
-                         "bb" "__"
-                         "b" "_"
-                         "#" "^"
-                         "##" "^^"
-                         "")]
-    (str abc-accidental letter)))
-
-(defn note->abc [n]
-  (let [{:keys [letter octave accidental]} (parts n)
-        abc-accidental (case accidental
-                         "bb" "__"
-                         "b" "_"
-                         "#" "^"
-                         "##" "^^"
-                         "")
-        lowercase? (< 4 octave)
-        commas (if lowercase? 0 (- 4 octave))
-        apostrophes (if lowercase? (- octave 5) 0)]
-    (str
-     abc-accidental
-     ((if lowercase? str/lower-case str) letter)
-     (str/join (take commas (repeat ",")))
-     (str/join (take apostrophes (repeat "'"))))))
 
 ;;;; SEARCH ;;;;
 

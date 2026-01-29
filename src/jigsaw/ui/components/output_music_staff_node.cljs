@@ -1,7 +1,7 @@
 (ns jigsaw.ui.components.output-music-staff-node
   (:require
    ["abcjs" :as abcjs]
-   [jigsaw.core :as jigsaw]
+   [jigsaw.impl.abc :as abc]
    [reagent.core :as r]))
 
 (defn score [data]
@@ -11,7 +11,7 @@
       :component-did-mount
       (fn [_]
         (let [notes (set (:notes data))
-              syntax (jigsaw/shape->abc data)
+              syntax (abc/shape->abc data)
               scale? (contains? data :degrees)]
           (.renderAbc abcjs dom-id syntax #js {:jazzchords true
                                                :lineThickness 0.1
@@ -24,7 +24,7 @@
       (fn [this _ _ _]
         (let [new-data (second (r/argv this))
               notes (set (:notes new-data))
-              syntax (jigsaw/shape->abc new-data)
+              syntax (abc/shape->abc new-data)
               scale? (contains? new-data :degrees)]
           (.renderAbc abcjs dom-id syntax #js {:jazzchords true
                                                :lineThickness 0.1

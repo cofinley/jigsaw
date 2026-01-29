@@ -95,30 +95,18 @@
                     :pitch :Eb,
                     :pitches [:Eb :Ab :Bb :Db :F :C]})))
 
-  (testing "shape->abc"
-    (are+ [shape-ref want] (= want (jigsaw/shape->abc (jigsaw/->shape shape-ref)))
-      :C4_maj "X:1
-K:C exp C D E F G A B
-L:1/4
-\"Cmaj\" [C E G]"
-      :C#4_m "X:1
-K:C exp C D E F G A B
-L:1/4
-\"C#m\" [^C E ^G]"
-      :C##6_sus4 "X:1
-K:C exp C D E F G A B
-L:1/4
-\"C##sus4\" [^^c' ^^f' ^^g']"
-      :C0_dim "X:1
-K:C exp C D E F G A B
-L:1/4
-\"Cdim\" [C,,,, _E,,,, _G,,,,]"))
-
   (testing "->progression"
-    (are+ [tonic chord-degrees want] (= (map #(select-keys % [:pitch :name]) want) (jigsaw/->progression tonic chord-degrees))
-      :C_major [:ii :V :I] [(jigsaw/->shape :D_m) (jigsaw/->shape :G_maj) (jigsaw/->shape :C_maj)]
-      :C_major [:bii :V :I] [(jigsaw/->shape :Db_m) (jigsaw/->shape :G_maj) (jigsaw/->shape :C_maj)]
-      :C_major [:ii7 :V7 :IM7] [(jigsaw/->shape :D_m7) (jigsaw/->shape :G_7) (jigsaw/->shape :C_maj7)]))
+    (are+ [tonic chord-degrees want] (= (map #(select-keys % [:pitch :name]) want)
+                                        (map #(select-keys % [:pitch :name]) (jigsaw/->progression tonic chord-degrees)))
+      :C_major [:ii :V :I] [(jigsaw/->shape :D_m)
+                            (jigsaw/->shape :G_maj)
+                            (jigsaw/->shape :C_maj)]
+      :C_major [:bii :V :I] [(jigsaw/->shape :Db_m)
+                             (jigsaw/->shape :G_maj)
+                             (jigsaw/->shape :C_maj)]
+      :C_major [:ii7 :V7 :IM7] [(jigsaw/->shape :D_m7)
+                                (jigsaw/->shape :G_7)
+                                (jigsaw/->shape :C_maj7)]))
 
   (testing "scale->chords"
     (are+ [pitch scale-name expected] (= expected (jigsaw/scale->chords (jigsaw/->shape pitch scale-name)))
