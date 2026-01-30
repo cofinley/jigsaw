@@ -69,7 +69,9 @@
 (def note-pattern (re-pattern (str "^" note-pattern-str "$")))
 (def pitch-or-note-pattern (re-pattern (str "^" note-pattern-str "?" "$")))
 (s/def ::note (s/and keyword? #(re-find note-pattern (name %))))
-(defn note? [n] (s/valid? ::note n))
+(s/def ::notes (s/coll-of ::note))
+(defn note? [x] (s/valid? ::note x))
+(defn notes? [xs] (s/valid? ::notes xs))
 
 (defn pitch-or-note? [x]
   (or (pitch? x) (note? x)))

@@ -72,7 +72,8 @@
                 (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))))
          (sort-by (comp heuristic :heuristics) >)
          (take max-shapes)
-         (map #(select-keys % [:pitch :name :bass :heuristics])))))
+         (map #(select-keys % [:pitch :name :bass :heuristics]))
+         (map #(assoc % :input notes)))))
 
 ; Find chords from scales (via matching pitches)
 

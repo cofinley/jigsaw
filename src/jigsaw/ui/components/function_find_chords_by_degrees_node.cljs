@@ -23,12 +23,15 @@
                      {:type "source" :position "right"}]}
      (if @parent-data
        [:div {:class "flex flex-col space-y-2 items-start text-xl"}
+        [:p {:class "space-x-4"}
+         [:span {:class "font-semibold"} "Scale"]
+         [:span (str (name (:pitch @parent-data)) " " (name (:name @parent-data)))]]
         [:label {:class "space-x-4"}
          [:span {:class "font-semibold"} "Chord Degrees"]
          [:input {:class "p-1 rounded-md border-2 border-gray-400 nodrag"
                   :placeholder "ii V I ..."
-                  :value (str/join " " (or (:chord-degrees @data) []))
-                  :on-change #(re-frame/dispatch [::events/update-node-data id {:chord-degrees (str/split (-> % .-target .-value) #"\s+")}])}]]
+                  :value (or (:chord-degrees-str @data) "")
+                  :on-change #(re-frame/dispatch [::events/update-node-data id {:chord-degrees-str (-> % .-target .-value)}])}]]
         (if (theory/scale? @parent-data)
           [:div {:class "flex flex-col text-xl items-start space-y-4"}
            (when @chords

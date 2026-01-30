@@ -1,5 +1,6 @@
 (ns jigsaw.ui.events
   (:require
+   [clojure.string :as str]
    [jigsaw.core :as jigsaw]
    [jigsaw.impl.theory :as theory]
    [jigsaw.ui.db :as db]
@@ -217,7 +218,7 @@
   (and parent-data (theory/scale? parent-data)))
 (defmethod compute-node :function-chords-by-degrees [parent-data data]
   (let [scale parent-data
-        chord-degrees (map #(keyword "chord-degree" %) (or (:chord-degrees data) []))]
+        chord-degrees (map #(keyword "chord-degree" %) (str/split (or (:chord-degrees-str data) "") #"\s+"))]
     (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) (jigsaw/->progression scale chord-degrees))))
 
 ; Recompute current node, kick off recomputation for children
@@ -226,7 +227,9 @@
  (fn [{:keys [db]} [_ id]]
    (let [data (get-in db [:node-data id])
          parent-data (get-parent-data-for-node db id)
-         should-update? (and (contains? (methods compute-node) (:type data))
+         #_#_opt-changed? (not-any? #(contains? data %) [:pitch :note :name])
+         should-update? (and #_opt-changed?
+                         (contains? (methods compute-node) (:type data))
                              (should-compute? parent-data data))
          this-node-fx (when should-update?
                         [[:dispatch ^:flush-dom [::toggle-loading id true]]

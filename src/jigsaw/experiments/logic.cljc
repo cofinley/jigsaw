@@ -1,5 +1,6 @@
 (ns jigsaw.experiments.logic
-  {:clj-kondo/config '{:linters {:unresolved-symbol {:level :off}}}}
+  {:clj-kondo/config '{:linters {:unresolved-symbol {:level :off}
+                                 :invalid-arity {:level :off}}}}
   (:require
    [clojure.core.logic :as l]
    [clojure.core.logic.fd :as fd]
@@ -35,6 +36,12 @@
   (l/project [from]
              (l/membero to (->shapes from))))
 
+(defn noteso
+  "Potential shapes from notes"
+  [q notes]
+  (l/project [notes]
+             (l/membero q (jigsaw/notes->shapes notes))))
+
 (defmacro ? [m k v]
   `(l/featurec ~m {~k ~v}))
 
@@ -50,56 +57,73 @@
                   (l/== [start a b] path)
                   (l/== q path))))
 
-; Connect (from notes); given one or more starting points, find how they connect
+; Connect; given one or more starting points, find how they connect; finds common diatonic complementary shape (i.e. chord<->scale)
+
+; Recursive goal to find shared neighbor shape; collect pitch & name of neighbor as well as the shapes contextualized to that neighbor
+(l/defne connect-neighbors [shapes ?contextualized-shapes ?common-pitch ?common-name]
+  ([() () _ _])
+  ([[shape . rest-shapes] [?contextualized-shape . ?rest-contextualized-shapes] _ _]
+   (l/fresh [?neighbor ?context]
+            (neighboro shape ?neighbor)
+            (l/featurec ?neighbor {:pitch ?common-pitch :name ?common-name :context ?context})
+            (l/conjo shape {:context ?context} ?contextualized-shape)
+            (connect-neighbors rest-shapes ?rest-contextualized-shapes ?common-pitch ?common-name))))
+
+(defn connecto [q shapes]
+  (l/fresh [?connection ?contextualized-shapes ?common-pitch ?common-name]
+           (l/== ?connection {:pitch ?common-pitch :name ?common-name})
+           (connect-neighbors shapes ?contextualized-shapes ?common-pitch ?common-name)
+           (l/== q {:connection ?connection
+                    :contextualized-shapes ?contextualized-shapes})))
+
+(defn resolve-input [?shape x]
+  (l/project [x]
+             (if (theory/notes? x)
+               (noteso ?shape x)
+               (l/== ?shape x))))
+
+; Support input of shapes or note-seqs which map to one or more shapes
+(l/defne prepare-shapes [?shapes xs]
+  ([() ()])
+  ([[?shape . ?rest-shapes] [x . rest-xs]]
+   (resolve-input ?shape x)
+   (prepare-shapes ?rest-shapes rest-xs)))
+
+; Find connection with shapes
 (comment
-  (let [shapes-a (jigsaw/notes->shapes #{:Gb4 :A4 :C5 :E5})
-        shapes-b (jigsaw/notes->shapes #{:Gb4 :A4 :B4 :Eb5})
-        shapes-c (jigsaw/notes->shapes #{:E4 :G4 :B4})]
+  (let [; Start of a ii-V-I
+        ii (jigsaw/->shape :D_m)
+        v (jigsaw/->shape :G_maj)
+        chords [ii v]]
     (l/run 5 [q]
-           (l/fresh [a a-pitch a-name a-overlap a-context
-                     b b-pitch b-name b-overlap b-context
-                     c c-pitch c-name c-overlap c-context
-                     x x-pitch x-name y z]
-                    (l/membero a shapes-a)
-                    (l/membero b shapes-b)
-                    (l/membero c shapes-c)
+           (l/fresh [?shapes ?conn ?chords ?prog]
+                    (prepare-shapes ?shapes chords)
+                    (connecto ?conn ?shapes)
+                    (l/== q ?conn)))))
 
-                    (neighboro a x)
-                    ; (l/== x-pitch :E)
-                    (l/featurec x {:pitch x-pitch :name x-name :context a-context})
-
-                    (neighboro b y)
-                    (l/featurec y {:pitch x-pitch :name x-name :context b-context})
-
-                    (neighboro c z)
-                    (l/featurec z {:pitch x-pitch :name x-name :context c-context})
-
-                    (l/featurec a {:pitch a-pitch :name a-name :heuristics {:overlap a-overlap}})
-                    (l/featurec b {:pitch b-pitch :name b-name :heuristics {:overlap b-overlap}})
-                    (l/featurec c {:pitch c-pitch :name c-name :heuristics {:overlap c-overlap}})
-
-                    (l/== q {{:pitch x-pitch :name x-name}
-                             [{:pitch a-pitch :name a-name :context a-context :overlap a-overlap}
-                              {:pitch b-pitch :name b-name :context b-context :overlap b-overlap}
-                              {:pitch c-pitch :name c-name :context c-context :overlap c-overlap}]})))))
-
-; Connect (from shapes)
+; Find connection with note seqs
 (comment
-  (l/run 3 [q]
-         (l/fresh [a a-context x
-                   x-pitch x-name
-                   b b-context y]
-                  (l/== a :C_maj)
-                  (l/== b :D_m)
+  (let [ii (jigsaw/->shape :D4_m)
+        ii-notes (:notes ii)
+        v (jigsaw/->shape :G4_maj)
+        v-notes (:notes v)
+        note-seqs [ii-notes v-notes]]
+    (l/run 1 [q]
+           (l/fresh [?shapes ?conn ?contextualized-shapes ?prog]
+                    (prepare-shapes ?shapes note-seqs)
+                    (connecto ?conn ?shapes)
+                    (l/== q ?conn)))))
 
-                  (neighboro a x)
-                  (l/featurec x {:pitch x-pitch :name x-name :context a-context})
-
-                  (neighboro b y)
-                  (l/featurec y {:pitch x-pitch :name x-name :context b-context})
-
-                  (l/== q {{:pitch x-pitch :name x-name} {a a-context
-                                                          b b-context}}))))
+; More connections from notes
+(comment
+  (let [note-seqs [[:Gb4 :A4 :C5 :E5]
+                   [:Gb4 :A4 :B4 :Eb5]
+                   [:E4 :G4 :B4]]]
+    (l/run 5 [q]
+           (l/fresh [?shapes ?conn ?contextualized-shapes]
+                    (prepare-shapes ?shapes note-seqs)
+                    (connecto ?conn ?shapes)
+                    (l/== q ?conn)))))
 
 ; Search nested relations
 (comment
@@ -172,17 +196,6 @@
                   (l/== q dom-chord2))))
 ; => ({:pitch :D, :name :maj, :context :chord-degree/V})
 
-(defn shapeo
-  "Reify shape from (potential) shape ref"
-  [q shape-ref]
-  (l/is q shape-ref jigsaw/->shape))
-
-(defn noteso
-  "Potential shapes from notes"
-  [q notes]
-  (l/project [notes]
-             (l/membero q (jigsaw/notes->shapes notes))))
-
 (defn transposo
   "Transpose pitch/note/shape by interval"
   [q x interval & [multiplier]]
@@ -196,13 +209,13 @@
                   (l/== scale {:pitch :C :name :major})
 
                   (neighboro scale ii)
-                  (l/featurec ii {:context :chord-degree/ii7 :name :m7})
+                  (l/featurec ii {:context :chord-degree/ii7})
 
                   (neighboro scale v)
-                  (l/featurec v {:context :chord-degree/V7 :name :7})
+                  (l/featurec v {:context :chord-degree/V7})
 
                   (neighboro scale i)
-                  (l/featurec i {:context :chord-degree/IM7 :name :maj7})
+                  (l/featurec i {:context :chord-degree/IM7})
 
                   ; Find the shape which is a tritone away from the V chord
                   (transposo sub v :d5)
@@ -287,17 +300,28 @@
         parent (jigsaw/->shape :C_major)]
     (l/run 3 [q]
            (l/fresh [candidate]
-                    ; Find which shape(s) in the C major scale...
+                    ; Find the shape(s) in the C major scale...
                     (neighboro parent candidate)
-                    ; ...are close to the C minor chord
+                    ; ...which are close (pitch-wise) to the C minor chord
                     (fuzzy-neighborc start candidate)
                     (l/== q candidate)))))
-; ({:pitch :C, :name :maj, :context :chord-degree/I}
-;  {:pitch :C, :name :sus4, :context :chord-degree/i}
-;  {:pitch :C, :name :sus2, :context :chord-degree/i})
+; => ({:pitch :C, :name :maj, :context :chord-degree/I}
+;     {:pitch :C, :name :sus4, :context :chord-degree/i}
+;     {:pitch :C, :name :sus2, :context :chord-degree/i})
 
-(defn progressiono2 [q scale-ref degrees & {:keys [p]
-                                            :or {p set/subset?}}]
+(defn progresso
+  "Find compatible progresion, given some chord degrees"
+  [q contextualized-chords & {:keys [p] :or {p set/subset?}}]
+  (l/project [contextualized-chords]
+             (l/membero q (->> theory/chord-progressions
+                               (filter (fn [[prog-name details]]
+                                         (p (set (map :context contextualized-chords))
+                                            (set (:degrees details)))))))))
+
+(defn progresso2
+  "Find compatible progresion and resolve its chords, given some scale and chord degrees"
+  [q scale-ref degrees & {:keys [p]
+                          :or {p set/subset?}}]
   (l/project [scale-ref degrees]
              (l/membero q (->> theory/chord-progressions
                                (filter (fn [[prog-name details]]
@@ -305,135 +329,85 @@
                                (map (fn [[prog-name details]]
                                       [prog-name (assoc details :resolved-degrees (map #(theory/resolve-chord-degree (jigsaw/->shape scale-ref) %) (:degrees details)))]))))))
 
-(defn progressiono [q scale-ref contextualized-chords & {:keys [p]
-                                                         :or {p set/subset?}}]
-  (l/project [scale-ref contextualized-chords]
-             (l/membero q (->> theory/chord-progressions
-                               (filter (fn [[prog-name details]]
-                                         (p (set (map :context contextualized-chords))
-                                            (set (:degrees details)))))))))
+;; Autocomplete: based on inputs, see if you're playing a known progression
 
-(defn resolve-degreeo [q scale-ref degrees]
-  (l/project [scale-ref degrees]
-             (l/== q (map #(theory/resolve-chord-degree (jigsaw/->shape scale-ref) %) degrees))))
-
-;; TODO: autocomplete: based on inputs, see if you're playing a known progression
-;; maybe account for fuzziness
+; With shapes
 (comment
   (let [; Start of a ii-V-I
         ii (jigsaw/->shape :D_m)
-        v (jigsaw/->shape :G_maj)]
+        v (jigsaw/->shape :G_maj)
+        chords [ii v]]
     (l/run 5 [q]
-           (l/fresh [deg1 deg2 scale-ref progression]
-                    ; Match scale
-                    (l/fresh [a b scale-pitch scale-name]
-                             (neighboro ii a)
-                             (neighboro v b)
-                             (l/featurec a {:pitch scale-pitch :name scale-name :context deg1})
-                             (l/featurec b {:pitch scale-pitch :name scale-name :context deg2})
-                             (l/== scale-ref {:pitch scale-pitch :name scale-name}))
-                    (progressiono progression scale-ref [deg1 deg2])
-                    (l/== q [progression deg1 deg2])))))
+           (l/fresh [?shapes ?conn ?chords ?prog]
+                    (prepare-shapes ?shapes chords)
+                    (connecto ?conn ?shapes)
+                    (l/featurec ?conn {:contextualized-shapes ?chords})
+                    (progresso ?prog ?chords)
+                    (l/== q [?conn ?prog])))))
 
-(defmacro autoprogression
-  [chords n & {:keys [p]
-               :or {p set/subset?}}]
-  (let [degrees (map #(gensym (str % "-deg__")) chords)
-        degree-neighbors (map #(gensym (str % "-neighbor__")) chords)
-        scale-pitch (gensym "scale-pitch__")
-        scale-name (gensym "scale-name__")
-        scale-ref (gensym "scale-ref__")
-        progression (gensym "prog__")
-        q (gensym "q__")]
-    `(l/run ~n [~q]
-            (l/fresh [~@degrees ~@degree-neighbors ~scale-pitch ~scale-name ~scale-ref ~progression]
-                     ~@(for [i (range (count chords))
-                             :let [chord (nth chords i)
-                                   degree (nth degrees i)
-                                   degree-neighbor (nth degree-neighbors i)]
-                             goal [`(neighboro ~chord ~degree-neighbor)
-                                   `(l/featurec ~degree-neighbor {:pitch ~scale-pitch :name ~scale-name :context ~degree})]]
-                         goal)
-                     (l/== ~scale-ref {:pitch ~scale-pitch :name ~scale-name})
-                     (progressiono ~progression ~scale-ref [~@degrees] :p ~p)
-                     (l/== ~q [~scale-ref ~progression])))))
-
-(let [; Start of a ii-V-I
-      ii (jigsaw/->shape :D_m)
-      v (jigsaw/->shape :G_maj)
-      i (jigsaw/->shape :C_maj)]
-  (autoprogression [ii v i] 5))
-
-(defmacro progression-goals
-  [?prog ?scale-ref ?final-chords chords & {:keys [p]
-                                            :or {p set/subset?}}]
-  (let [degrees (map #(gensym (str % "-deg__")) chords)
-        degree-neighbors (map #(gensym (str % "-neighbor__")) chords)
-        contextualized-chords (map #(gensym (str % "-contextualized__")) chords)
-        scale-pitch (gensym "scale-pitch__")
-        scale-name (gensym "scale-name__")]
-    `(l/fresh [~@degrees ~@degree-neighbors ~@contextualized-chords ~scale-pitch ~scale-name]
-              ~@(for [i (range (count chords))
-                      :let [chord (nth chords i)
-                            degree (nth degrees i)
-                            degree-neighbor (nth degree-neighbors i)
-                            contextualized-chord (nth contextualized-chords i)]
-                      goal [`(neighboro ~chord ~degree-neighbor)
-                            `(l/featurec ~degree-neighbor {:pitch ~scale-pitch :name ~scale-name :context ~degree})
-                            `(l/conjo ~chord {:context ~degree} ~contextualized-chord)]]
-                  goal)
-              (l/== ~?scale-ref {:pitch ~scale-pitch :name ~scale-name})
-              (progressiono ~?prog ~?scale-ref [~@degrees] :p ~p)
-              (l/== ~?final-chords [~@contextualized-chords]))))
-
-; (defn neighboro [from to]
-;   (l/project [from]
-;              (l/membero to (->shapes from))))
-
-(defmacro connecto
-  [?common-neighbor ?contextualized-shapes shapes]
-  (let [contexts (map #(gensym (str % "-context__")) shapes)
-        neighbors (map #(gensym (str % "-neighbor__")) shapes)
-        contextualized-shapes (map #(gensym (str % "-contextualized__")) shapes)
-        common-neighbor-pitch (gensym "common-neighbor-pitch__")
-        common-neighbor-name (gensym "common-neighbor-name__")]
-    `(l/fresh [~@contexts ~@neighbors ~@contextualized-shapes ~common-neighbor-pitch ~common-neighbor-name]
-              ~@(for [i (range (count shapes))
-                      :let [shape (nth shapes i)
-                            context (nth contexts i)
-                            neighbor (nth neighbors i)
-                            contextualized-shape (nth contextualized-shapes i)]
-                      goal [`(neighboro ~shape ~neighbor)
-                            `(l/featurec ~neighbor {:pitch ~common-neighbor-pitch :name ~common-neighbor-name :context ~context})
-                            `(l/conjo ~shape {:context ~context} ~contextualized-shape)]]
-                  goal)
-              (l/== ~?common-neighbor {:pitch ~common-neighbor-pitch :name ~common-neighbor-name})
-              (l/== ~?contextualized-shapes [~@contextualized-shapes]))))
-
-(comment
-  (let [c (jigsaw/->shape :C_maj)
-        d (jigsaw/->shape :D_m)]
-    (l/run-nc 1 [q]
-              (l/fresh [?common-neighbor ?pitch ?contextualized-shapes ?prog]
-                       (l/featurec ?common-neighbor {:pitch ?pitch})
-                       (l/!= ?pitch :C)
-                       (l/!= ?pitch :D)
-                       (connecto ?common-neighbor ?contextualized-shapes [c d])
-                       (progressiono ?prog ?common-neighbor ?contextualized-shapes)
-                       (l/== q {:common-neighbor ?common-neighbor
-                                :shapes ?contextualized-shapes
-                                :progression ?prog})))))
-
+; With note seqs (i.e. account for fuzziness)
 (comment (let [; Start of a ii-V-I
                ii (jigsaw/->shape :D4_m)
                ii-notes (:notes ii)
                v (jigsaw/->shape :G4_maj)
                v-notes (:notes v)
-               i (jigsaw/->shape :C4_maj)]
-           (l/run-nc 1 [q]
-                     (l/fresh [ii-shape v-shape ?prog ?scale-ref ?final-chords]
-                              (noteso ii-shape ii-notes)
-                              (noteso v-shape v-notes)
-                     ; (l/featurec ?scale-ref {:pitch :A})
-                              (progression-goals ?prog ?scale-ref ?final-chords [ii-shape v-shape])
-                              (l/== q [?scale-ref ?final-chords ?prog])))))
+               i (jigsaw/->shape :C4_maj)
+               i-notes (:notes i)
+               #_#_note-seqs [ii-notes v-notes i-notes]
+               note-seqs [[:Gb4 :A4 :C5 :E5]
+                          [:Gb4 :A4 :B4 :Eb5]
+                          [:E4 :G4 :B4]]]
+           (l/run 1 [q]
+                  (l/fresh [?shapes ?conn ?contextualized-shapes ?prog]
+                           (prepare-shapes ?shapes note-seqs)
+                           (connecto ?conn ?shapes)
+                           (l/featurec ?conn {:contextualized-shapes ?contextualized-shapes})
+                           (progresso ?prog ?contextualized-shapes)
+                           (l/== q [?conn ?prog])))))
+; ([{:connection {:pitch :G, :name :major-augmented},
+;    :contextualized-shapes
+;    ({:pitch :A,
+;      :name :m6,
+;      :bass :F#,
+;      :heuristics
+;      {:contains? 1,
+;       :fully-contains? 0,
+;       :contained-in? 1,
+;       :fully-contained-in? 0,
+;       :overlap 1.0,
+;       :same-pitch-count? 1,
+;       :shares-root? 0},
+;      :input [:Gb4 :A4 :C5 :E5],
+;      :context :chord-degree/ii}
+;     {:pitch :E,
+;      :name :M9sus4,
+;      :bass :F#,
+;      :heuristics
+;      {:contains? 0,
+;       :fully-contains? 0,
+;       :contained-in? 1,
+;       :fully-contained-in? 1,
+;       :overlap 0.8,
+;       :same-pitch-count? 0,
+;       :shares-root? 0},
+;      :input [:Gb4 :A4 :B4 :Eb5],
+;      :context :chord-degree/vi}
+;     {:pitch :E,
+;      :name :m,
+;      :heuristics
+;      {:contains? 1,
+;       :fully-contains? 0,
+;       :contained-in? 1,
+;       :fully-contained-in? 0,
+;       :overlap 1.0,
+;       :same-pitch-count? 1,
+;       :shares-root? 1},
+;      :input [:E4 :G4 :B4],
+;      :context :chord-degree/vi})}
+;   ["Circle progression"
+;    {:degrees
+;     [:chord-degree/vi
+;      :chord-degree/ii
+;      :chord-degree/V
+;      :chord-degree/I],
+;     :quality :major}]])
