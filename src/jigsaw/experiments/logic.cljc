@@ -6,23 +6,8 @@
    [clojure.core.logic.fd :as fd]
    [clojure.set :as set]
    [jigsaw.core :as jigsaw]
-   [jigsaw.impl.theory :as theory]))
-
-; (def all-shapes
-;   (for [pitch theory/simple-pitch-keys
-;         shape-name (concat (keys theory/chords) (keys theory/scales))]
-;     (let [shape (jigsaw/->shape {:pitch pitch :name shape-name})
-;           pitches (:pitches shape)
-;           pcis (map #(theory/pitches %) pitches)]
-;       (assoc
-;        shape
-;        :pcis pcis
-;        :pitch-set (set pitches)
-;        :pci-set (set pcis)
-;         ; :interval-set (set (:intervals shape))
-;         ; :degree-set (set (:degrees shape))
-;        ;:type (if (theory/chord? shape) :chord :scale)
-;        ))))
+   [jigsaw.impl.theory :as theory]
+   [jigsaw.utils :as utils]))
 
 (defn ->shapes [x]
   (cond
@@ -76,7 +61,7 @@
            (l/== q {:connection ?connection
                     :contextualized-shapes ?contextualized-shapes})))
 
-(defn resolve-input [?shape x]
+(defn shapeo [?shape x]
   (l/project [x]
              (if (theory/notes? x)
                (noteso ?shape x)
@@ -86,7 +71,7 @@
 (l/defne prepare-shapes [?shapes xs]
   ([() ()])
   ([[?shape . ?rest-shapes] [x . rest-xs]]
-   (resolve-input ?shape x)
+   (shapeo ?shape x)
    (prepare-shapes ?rest-shapes rest-xs)))
 
 ; Find connection with shapes
@@ -309,15 +294,6 @@
 ;     {:pitch :C, :name :sus4, :context :chord-degree/i}
 ;     {:pitch :C, :name :sus2, :context :chord-degree/i})
 
-(defn progresso
-  "Find compatible progresion, given some chord degrees"
-  [q contextualized-chords & {:keys [p] :or {p set/subset?}}]
-  (l/project [contextualized-chords]
-             (l/membero q (->> theory/chord-progressions
-                               (filter (fn [[prog-name details]]
-                                         (p (set (map :context contextualized-chords))
-                                            (set (:degrees details)))))))))
-
 (defn progresso2
   "Find compatible progresion and resolve its chords, given some scale and chord degrees"
   [q scale-ref degrees & {:keys [p]
@@ -328,6 +304,16 @@
                                          (p (set degrees) (set (:degrees details)))))
                                (map (fn [[prog-name details]]
                                       [prog-name (assoc details :resolved-degrees (map #(theory/resolve-chord-degree (jigsaw/->shape scale-ref) %) (:degrees details)))]))))))
+
+(defn progresso
+  "Find compatible progresion, given some chords (with degree contexts)"
+  [q contextualized-chords & {:keys [p] :or {p set/subset?}}]
+  ; TODO: just pass in degrees, not full chords
+  (l/project [contextualized-chords]
+             (l/membero q (->> theory/chord-progressions
+                               (filter (fn [[prog-name details]]
+                                         (p (set (map :context contextualized-chords))
+                                            (set (:degrees details)))))))))
 
 ;; Autocomplete: based on inputs, see if you're playing a known progression
 
@@ -411,3 +397,88 @@
 ;      :chord-degree/V
 ;      :chord-degree/I],
 ;     :quality :major}]])
+
+(def all-shapes
+  (for [pitch theory/simple-pitch-keys
+        shape-name (concat (keys theory/chords) (keys theory/scales))]
+    (let [shape (jigsaw/->shape {:pitch pitch :name shape-name})
+          pitches (:pitches shape)
+          pcis (mapv #(theory/pitches %) pitches)]
+      (assoc shape :pcis pcis))))
+
+(defn shape-rel [q]
+  (fn [a]
+    (l/to-stream
+     (map #(l/unify a % q) all-shapes))))
+
+(defn heuristico2 [q p1 p2]
+  (l/project [p1 p2]
+             (l/== q (into {}
+                           (map (fn [[k v]] (vector k (int (* 100 v))))
+                                (theory/calculate-heuristics p1 p2))))))
+
+(defn notes->shapes [q notes]
+  (let [pcis (map #(-> % theory/parts :pci) notes)]
+    (l/fresh [?shape ?shape-pcis ?h ?overlap ?pc]
+             (shape-rel ?shape)
+             (l/featurec ?shape {:pcis ?shape-pcis})
+             (heuristico2 ?h pcis ?shape-pcis)
+             (l/featurec ?h {:overlap ?overlap :same-pitch-count? ?pc})
+             (l/conde
+              ; [(fd/== ?pc 100) (fd/>= ?overlap 70)]
+              ; [(fd/== ?overlap 100)]
+              ; [(fd/>= ?overlap 95)]
+              [(fd/>= ?overlap 90) (l/conjo ?shape {:heuristics ?h} q)]
+              ; [(fd/>= ?overlap 80)]
+              #_[(fd/>= ?overlap 70)]
+              #_[(fd/>= ?overlap 60)]))))
+
+(comment
+  (l/run 10 [q]
+         (notes->shapes q [:C4 :E4 :G4])))
+
+; Attempt to use logic for shape relations
+(comment
+  (let []
+    (l/run 10 [q]
+           (l/fresh [?shape ?pitch]
+                    (l/== ?pitch :C)
+                    (shape-rel ?shape)
+                    (? ?shape :pitch ?pitch)
+                    (? ?shape :name :major)
+                    ; (l/featurec ?shape {:pitch ?pitch :name :major})
+                    #_(l/project [?shape]
+                                 (fd/> (int (* 100 (theory/jaccard-index #{0 4 7} (set (:pcis ?shape))))) 50))
+                    (l/== q ?shape)))))
+
+;; Different projections; find different ways to think about same notes (PCIs)
+
+(defn alto
+  "
+  Given a shape, find alternative ways of thinking about that shape (what else could it be?), based on PCIs.
+  Like noteso, but with disequality with current tonic/root and shape name
+  "
+  [?q ?shape]
+  (l/project [?shape]
+             (let [pcis (map theory/pitches (:pitches ?shape))]
+               (l/fresh [?shape' ?pitch ?name ?pcis ?first-pci]
+                        (noteso ?shape' (:notes ?shape))
+                        (l/featurec ?shape' {:pitch ?pitch :name ?name :pcis ?pcis})
+                        (l/!= (:name ?shape) ?name)
+                        ; Don't use same pitch or enharmonic equivalent
+                        (l/firsto ?pcis ?first-pci)
+                        (l/!= (first pcis) ?first-pci)
+                        (l/== ?q ?shape')))))
+(comment
+  (let [shape (jigsaw/->shape :C4_maj)]
+    (map #(update-in % [0 :connection] merge (jigsaw/->shape (:connection (first %))))
+         (l/run 5 [q]
+                (l/fresh [?shape ?conn ?pitch ?name ?shape' ?cs ?prog ?degs]
+                         (alto ?shape shape)
+                         (l/featurec ?shape {:pitch ?pitch})
+                         (l/!= :Fb ?pitch)
+                         ; (connecto ?conn [?shape])
+                         (neighboro ?shape ?conn)
+                         ; (l/is ?degs ?conn #(map :context (:contextualized-shapes %)))
+                         ; (progresso ?prog ?degs)
+                         (l/== q [?conn ?degs]))))))

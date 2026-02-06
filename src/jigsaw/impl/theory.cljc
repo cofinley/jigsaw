@@ -42,7 +42,7 @@
 (def pitch-pattern-str "(([A-G])(b{0,2}|#{0,2}))")
 (def pitch-pattern (re-pattern (str "^" pitch-pattern-str "$")))
 (s/def ::pitch (s/and keyword? #(re-find pitch-pattern (name %)))) ; pitch in isolation or root (chord) or tonic (scale)
-(defn pitch? [p] (s/valid? ::pitch p))
+(defn pitch? [x] (s/valid? ::pitch x))
 
 (def pci->default-pitch
   {0 :C
@@ -136,7 +136,7 @@
    :M13 {:semitones 21 :aliases ["Major 13th"]}})
 
 (s/def ::interval (set (keys intervals)))
-(defn interval? [interval] (s/valid? ::interval interval))
+(defn interval? [x] (s/valid? ::interval x))
 (s/def ::intervals (s/coll-of ::interval))  ; Can be one (in isolation) or more (e.g. chords, scales)
 
 ;; Possible intervals for a given semitone value
@@ -164,17 +164,15 @@
 ;;    maybe use degrees instead of intervals for scale to be able to differentiate
 
 ; Base chord/scale shapes
-(s/def ::shape-blueprint (s/keys :req-un [::name ::intervals]
-                                 :opt-un [::aliases ::degrees]))
+(s/def ::shape-blueprint (s/keys :req-un [::intervals]
+                                 :opt-un [::degrees]))
 ; Lookup info for ->shape, enough to resolve final pitches/notes
 (s/def ::shape-ref (s/keys :req-un [::name (or ::pitch ::note)]
                            :opt-un [::context]))
 ; Resolved, with intervals converted into pitches/notes
 (s/def ::shape (s/merge ::shape-blueprint
-                        (s/keys :req-un [::name
-                                         (or ::pitch ::note)
-                                         (or ::pitches ::notes)])))
-
+                        ::shape-ref
+                        (s/keys :req-un [(or ::pitches ::notes)])))
 (defn shape-ref? [x] (s/valid? ::shape-ref x))
 (defn shape? [x] (s/valid? ::shape x))
 
