@@ -30,15 +30,17 @@
 (defmacro ? [m k v]
   `(l/featurec ~m {~k ~v}))
 
+(defn flatten-to-death
+  [x]
+  (cond
+    (coll? x) (mapcat flatten-to-death x)
+    :else (list x)))
+
 ; Thank you, Tim Baldridge
 (defmacro with-fresh
   [& body]
   (let [lvars (->> body
-                   flatten
-                   (map #(if (map? %)
-                           (seq %)
-                           %))
-                   flatten
+                   flatten-to-death
                    (filter simple-symbol?)
                    (remove #(contains? &env %))
                    (filter #(str/starts-with? (name %) "?"))
@@ -78,9 +80,10 @@
 
 (defn shapeo [?shape x]
   (l/project [x]
-             (if (theory/notes? x)
-               (noteso ?shape x)
-               (l/== ?shape x))))
+             (cond
+               (theory/shape? x) (l/== ?shape x)
+               (theory/notes? x) (noteso ?shape x)
+               (theory/shape-ref? x) (l/== ?shape (jigsaw/->shape x)))))
 
 ; Support input of shapes or note-seqs which map to one or more shapes
 (l/defne prepare-shapes [?shapes xs]
@@ -320,13 +323,13 @@
 
 (defn progresso
   "Find compatible progresion, given some chords (with degree contexts)"
-  [q contextualized-chords & {:keys [p] :or {p set/subset?}}]
+  [q contextualized-chords & {:keys [pred] :or {pred set/subset?}}]
   ; TODO: just pass in degrees, not full chords
   (l/project [contextualized-chords]
              (l/membero q (->> theory/chord-progressions
-                               (filter (fn [[prog-name details]]
-                                         (p (set (map :context contextualized-chords))
-                                            (set (:degrees details)))))))))
+                               (filter (fn [[_ details]]
+                                         (pred (set (map :context contextualized-chords))
+                                               (set (:degrees details)))))))))
 
 ;; Autocomplete: based on inputs, see if you're playing a known progression
 
@@ -345,15 +348,9 @@
              (l/== q [?conn ?prog])))))
 
 ; With note seqs (i.e. account for fuzziness)
-(comment (let [; Start of a ii-V-I
-               ii (jigsaw/->shape :D4_m)
-               ii-notes (:notes ii)
-               v (jigsaw/->shape :G4_maj)
-               v-notes (:notes v)
-               i (jigsaw/->shape :C4_maj)
-               i-notes (:notes i)
-               #_#_note-seqs [ii-notes v-notes i-notes]
-               note-seqs [[:Gb4 :A4 :C5 :E5]
+; Slow; note-seqs * possible shapes * possible connections * possible progressions
+; Good for getting whole picture, but only if each goal passes; intermediate goal results tossed
+(comment (let [note-seqs [[:Gb4 :A4 :C5 :E5]
                           [:Gb4 :A4 :B4 :Eb5]
                           [:E4 :G4 :B4]]]
            (l/run 1 [q]
@@ -411,65 +408,11 @@
 ;      :chord-degree/I],
 ;     :quality :major}]])
 
-(def all-shapes
-  (for [pitch theory/simple-pitch-keys
-        shape-name (concat (keys theory/chords) (keys theory/scales))]
-    (let [shape (jigsaw/->shape {:pitch pitch :name shape-name})
-          pitches (:pitches shape)
-          pcis (mapv #(theory/pitches %) pitches)]
-      (assoc shape :pcis pcis))))
-
-(defn shape-rel [q]
-  (fn [a]
-    (l/to-stream
-     (map #(l/unify a % q) all-shapes))))
-
-(defn heuristico2 [q p1 p2]
-  (l/project [p1 p2]
-             (l/== q (into {}
-                           (map (fn [[k v]] (vector k (int (* 100 v))))
-                                (theory/calculate-heuristics p1 p2))))))
-
-(defn notes->shapes [q notes]
-  (let [pcis (map #(-> % theory/parts :pci) notes)]
-    (with-fresh
-      (shape-rel ?shape)
-      (l/featurec ?shape {:pcis ?shape-pcis})
-      (heuristico2 ?h pcis ?shape-pcis)
-      (l/featurec ?h {:overlap ?overlap :same-pitch-count? ?pc})
-      (l/conde
-      ; [(fd/== ?pc 100) (fd/>= ?overlap 70)]
-      ; [(fd/== ?overlap 100)]
-      ; [(fd/>= ?overlap 95)]
-       [(fd/>= ?overlap 90) (l/conjo ?shape {:heuristics ?h} q)]
-      ; [(fd/>= ?overlap 80)]
-       #_[(fd/>= ?overlap 70)]
-       #_[(fd/>= ?overlap 60)]))))
-
-(comment
-  (l/run 10 [q]
-         (notes->shapes q [:C4 :E4 :G4])))
-
-; Attempt to use logic for shape relations
-(comment
-  (let []
-    (l/run 10 [q]
-           (with-fresh
-             (l/== ?pitch :C)
-             (shape-rel ?shape)
-             (? ?shape :pitch ?pitch)
-             (? ?shape :name :major)
-             #_(l/featurec ?shape {:pitch ?pitch :name :major})
-             #_(l/project [?shape]
-                          (fd/> (int (* 100 (theory/jaccard-index #{0 4 7} (set (:pcis ?shape))))) 50))
-             (l/== q ?shape)))))
-
 ;; Different projections; find different ways to think about same notes (PCIs)
-
 (defn alto
   "
   Given a shape, find alternative ways of thinking about that shape (what else could it be?), based on PCIs.
-  Like noteso, but with disequality on the current shape or its enarmonic equivalent
+  Like noteso, but with disequality on the current shape and its enarmonic equivalent
   "
   [?q shape]
   (l/project [shape]
@@ -482,16 +425,147 @@
                  (l/firsto ?pcis ?first-pci)
                  (l/!= (first pcis) ?first-pci)
                  (l/== ?q ?shape)))))
+
+; What else could the C major chord be?
 (comment
   (let [shape (jigsaw/->shape :C4_maj)]
-    (map #(assoc % :connection (jigsaw/->shape (:connection %)))
-         (l/run 5 [q]
-                (with-fresh
-                  (alto ?shape shape)
-                  (l/featurec ?shape {:pitch ?pitch})
-                  (l/!= :Fb ?pitch)
-                  (connecto ?conn [?shape])
-                  ; (l/featurec ?conn {:contextualized-shapes ?cs})
-                  #_(neighboro ?shape ?conn)
-                  #_(l/is ?degs ?conn #(map :context (:contextualized-shapes %)))
-                  (l/== q ?conn))))))
+    (l/run* [q]
+            (with-fresh
+              (alto ?shape shape)
+              (l/== q ?shape)))))
+; => ({:pitch :Fb,
+;      :name :m#5,
+;      :bass :C,
+;      :heuristics
+;      {:contains? 1,
+;       :fully-contains? 0,
+;       :contained-in? 1,
+;       :fully-contained-in? 0,
+;       :overlap 1.0,
+;       :same-pitch-count? 1,
+;       :shares-root? 0},
+;      :pcis [4 7 0],
+;      :input [:C4 :E4 :G4]}
+;     {:pitch :E,
+;      :name :m#5,
+;      :bass :B#,
+;      :heuristics
+;      {:contains? 1,
+;       :fully-contains? 0,
+;       :contained-in? 1,
+;       :fully-contained-in? 0,
+;       :overlap 1.0,
+;       :same-pitch-count? 1,
+;       :shares-root? 0},
+;      :pcis [4 7 0],
+;      :input [:C4 :E4 :G4]})
+
+; Now find scales which work with above
+(comment
+  (let [shape (jigsaw/->shape :C4_maj)]
+    (l/run 5 [q]
+           (with-fresh
+             (alto ?shape shape)
+             (l/featurec ?shape {:pitch ?pitch :name ?name})
+             (l/!= :Fb ?pitch)
+             (neighboro ?shape ?conn)
+             #_(connecto ?conn [?shape])
+             #_(l/featurec ?conn {:connection ?scale})
+             #_(l/is ?degs ?conn #(map :context (:contextualized-shapes %)))
+             (l/== q {:alt {:pitch ?pitch :name ?name}
+                      :alt-scale ?conn})))))
+
+; Find path between two shapes
+(l/defne not-membero [x l]
+  ([_ []])
+  ([_ [?y . ?r]]
+   (l/!= x ?y)
+   (not-membero x ?r)))
+
+(l/defne reverseo [lst acum res]
+  ([[] _ acum])
+  ([[?x . ?y] ?z _]
+   (l/fresh [w]
+            (l/conso ?x ?z w)
+            (reverseo ?y w res))))
+
+(defn neighbor-refo
+  "Stick with pitch+name keys to let map (dis)equality work below, otherwise :context will throw things off"
+  [from to]
+  (l/project [from]
+             (l/membero to (map #(select-keys % [:pitch :name]) (->shapes from)))))
+
+; Thank you, David Nolan
+(l/defne travelo [a b visited max-depth path]
+  ([?a ?b _ _ [b . visited]] (neighbor-refo ?a ?b))
+  ([?a ?b ?v ?d ?p]
+   (fd/<= 0 ?d)
+   (l/fresh [c vis d]
+            (neighbor-refo ?a c)
+            (l/!= ?b c)
+            (not-membero c ?v)
+            (l/conso c ?v vis)
+            (fd/- ?d 1 d)
+            (travelo c ?b vis d ?p))))
+
+(defn patho [start end depth res]
+  (let [start-ref (select-keys (jigsaw/->shape start) [:pitch :name])
+        end-ref (select-keys (jigsaw/->shape end) [:pitch :name])]
+    (l/fresh [path]
+             (travelo start-ref end-ref [start-ref] depth path)
+             (reverseo path [] res))))
+
+(defn contextualize-path [path]
+  (reduce
+   (fn [v current]
+     (if (empty? v)
+       (conj v current)
+       (let [prev (last v)
+             context (jigsaw/contextualize (jigsaw/->shape prev) (jigsaw/->shape current))]
+         (conj v (assoc current :context context)))))
+   [] path))
+
+(defn find-paths [start end & {:keys [depth n]
+                               :or {depth 1
+                                    n 1}}]
+  (->>
+   (l/run n [p]
+          (patho start end depth p))
+   (map contextualize-path)))
+
+(comment
+  (find-paths :C_maj :A_m7b5 :n 2 :depth 2))
+; => ([{:pitch :C, :name :maj}
+;      {:pitch :C, :name :major-blues, :context :chord-degree/I}
+;      {:pitch :A, :name :m7b5, :context :chord-degree/vi%}]
+;     [{:pitch :C, :name :maj}
+;      {:pitch :C, :name :major-blues, :context :chord-degree/I}
+;      {:pitch :A, :name :minor-blues, :context :mode/VI}
+;      {:pitch :A, :name :m7b5, :context :chord-degree/i%}])
+
+(comment
+  (->>
+   (find-paths :C_maj7 :G_7 :depth 1)
+   #_(map #(map jigsaw/->shape %))))
+
+; Composing paths
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (patho :C_maj7 :G_7 1 ?p1)
+           (patho :G_7 :A_m7 1 ?p2)
+           (l/== q [?p1 ?p2]))))
+
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (patho :C_maj7 :G_7 1 ?p1)
+           (l/resto ?p1 ?rest)
+           (l/firsto ?rest ?second)
+           (l/featurec ?second {:pitch ?pitch})
+           (l/!= ?pitch :C)
+           (l/!= ?pitch :D)
+           (patho :G_7 :A_m7 1 ?p2)
+           (l/== q [?p1 ?second ?p2]))))
+
+; TODO: Neighboring paths; account for fuzziness
