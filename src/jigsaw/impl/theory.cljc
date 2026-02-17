@@ -768,8 +768,9 @@
       (some? (:pitch x)) (assoc :pitch (transpose (:pitch x) interval multiplier))
       (some? (:pitches x)) (assoc :pitches (mapv #(transpose % interval multiplier) (:pitches x)))
       (some? (:notes x)) (assoc :notes (mapv #(transpose % interval multiplier) (:notes x)))
-      ; Any context is now stale
-      (and (map? x) (contains? x :context)) (dissoc :context))))
+      ; Refresh context
+      (shape-ref? x) (assoc :context (keyword "interval" (name interval))
+                            :parent-shape (select-keys x [:pitch :name])))))
 
 (def transpose-memo (memoize transpose))
 
@@ -855,6 +856,7 @@
   Half-dim 7th ...%
   "
   [scale chord-degree]
+  ; TODO: allow secondary chords? (i.e. V/V (represented as :V-V))
   (let [chord-name (condp #(some? (re-find %1 %2)) (name chord-degree)
                      #"%" :m7b5
                      #"o7" :dim7

@@ -1,6 +1,5 @@
 (ns jigsaw.core
   (:require
-   [clojure.string :as str]
    [clojure.set :as set]
    [jigsaw.impl.theory :as theory]
    [jigsaw.utils :as utils]))
@@ -86,7 +85,8 @@
           :when (set/subset? (set (:pitches chord)) pitch-set)]
       {:pitch (:pitch chord)
        :name (:name chord)
-       :context (contextualize chord scale)})))
+       :context (contextualize chord scale)
+       :parent-shape (select-keys scale [:pitch :name])})))
 
 ; Find scales from chords
 
@@ -106,7 +106,8 @@
                   true)]
       {:pitch (:pitch scale)
        :name (:name scale)
-       :context chord-degree})))
+       :context chord-degree
+       :parent-shape (select-keys scale [:pitch :name])})))
 
 (defn scale->modes
   [scale]
@@ -114,7 +115,13 @@
   (for [n (range 1 (count (:pitches scale)))
         :let [mode (theory/scale->mode scale n)
               context (contextualize scale (->shape mode))]]
-    (assoc mode :context context)))
+    (assoc mode :context context :parent-shape (select-keys scale [:pitch :name]))))
+
+(defn chord->chords
+  [chord]
+  {:pre [(theory/chord? chord)]}
+  (when-let [scale (:parent-shape chord)]
+    (scale->chords (->shape scale))))
 
 ; Find more deeply linked shapes
 
@@ -124,10 +131,10 @@
   {:pre (theory/shape? shape)
    :post (every? theory/shape-ref? %)}
   (if (theory/chord? shape)
-    (chord->scales shape)
-    (concat
-     (scale->chords shape)
-     (scale->modes shape))))
+    (concat (chord->scales shape)
+            (chord->chords shape))
+    (concat (scale->chords shape)
+            (scale->modes shape))))
 
 (defn connect-shapes
   [shapes]
@@ -262,7 +269,10 @@
 ;;  - mood identification, scale and progression, add colors
 
 (comment
-  ;; Resolve a shape
+  ;; Resolve a shape from a reference
+  (->shape {:pitch :C :name :maj})
+  (->shape :C :maj)
+  ;; (shorthand, single keywords)
   (->shape :C_maj)
   (->shape :C_major)
   ;; Shape of shapes
@@ -272,7 +282,7 @@
   (scale->chords (->shape :C :major))
   (scale->modes (->shape :G_lydian-pentatonic))
   (notes->shapes (:notes (->shape :C4_maj)) :chord)
-  ;; Generalized shape -> shapes
+  ;; (generalized version)
   (shape->shapes (->shape :C_maj))
   (shape->shapes (->shape :C_major))
   ;; Shapes -> parent shape

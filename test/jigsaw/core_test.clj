@@ -109,7 +109,7 @@
                                 (jigsaw/->shape :C_maj7)]))
 
   (testing "scale->chords"
-    (are+ [pitch scale-name expected] (= expected (jigsaw/scale->chords (jigsaw/->shape pitch scale-name)))
+    (are+ [pitch scale-name expected] (= expected (map #(dissoc % :parent-shape) (jigsaw/scale->chords (jigsaw/->shape pitch scale-name))))
       :C :major '({:pitch :C, :name :maj, :context :chord-degree/I}
                   {:pitch :C, :name :maj7, :context :chord-degree/IM7}
                   {:pitch :C, :name :maj9, :context :chord-degree/I}

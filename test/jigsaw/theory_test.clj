@@ -436,14 +436,16 @@
         (are+ [notes interval want] (= want (theory/transpose notes interval))
           {:notes [:C4 :E4 :G4]} :M3 {:notes [:E4 :G#4 :B4]}))
       (testing "starting from shape-ref"
-        (are+ [shape-ref interval want] (= want (theory/transpose shape-ref interval))
+        (are+ [shape-ref interval want] (= want (select-keys (theory/transpose shape-ref interval) [:pitch :name]))
           {:pitch :C :name :maj} :M3 {:pitch :E :name :maj}))
       (testing "starting from shape"
-        (are+ [shape-ref interval want] (= want (theory/transpose (jigsaw/->shape shape-ref) interval))
-          :C_maj :M3 {:pitch :E :name :maj
+        (are+ [shape-ref interval want] (= want (dissoc (theory/transpose (theory/->shape shape-ref) interval) :context :parent-shape))
+          :C_maj :M3 {:pitch :E
+                      :name :maj
                       :intervals [:P1 :M3 :P5]
                       :pitches [:E :G# :B]}
-          :C4_maj :M3 {:pitch :E :name :maj
+          :C4_maj :M3 {:pitch :E
+                       :name :maj
                        :intervals [:P1 :M3 :P5]
                        :pitches [:E :G# :B]
                        :notes [:E4 :G#4 :B4]})))

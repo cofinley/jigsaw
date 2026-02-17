@@ -17,7 +17,9 @@
     (keyword? x) (->shapes (jigsaw/->shape x))
     :else (lazy-seq)))
 
-(defn neighboro [from to]
+(defn neighboro
+  "Shapes from shape"
+  [from to]
   (l/project [from]
              (l/membero to (->shapes from))))
 
@@ -25,12 +27,10 @@
   "Potential shapes from notes"
   [q notes]
   (l/project [notes]
-             (l/membero q (jigsaw/notes->shapes notes))))
-
-(defmacro ? [m k v]
-  `(l/featurec ~m {~k ~v}))
+             (l/membero q (jigsaw/notes->shapes notes :max-shapes 500))))
 
 (defn flatten-to-death
+  "flatten, accounting for maps"
   [x]
   (cond
     (coll? x) (mapcat flatten-to-death x)
@@ -43,7 +43,8 @@
                    flatten-to-death
                    (filter simple-symbol?)
                    (remove #(contains? &env %))
-                   (filter #(str/starts-with? (name %) "?"))
+                   (filter #(and (str/starts-with? (name %) "?")
+                                 (not (str/starts-with? (name %) "?="))))
                    distinct)]
     `(l/fresh [~@lvars]
               ~@body)))
@@ -57,7 +58,7 @@
            (neighboro ?a ?b)
            (l/featurec ?b {:context :mode/II})
 
-           (l/== q [?start ?a ?b]))))
+           (l/== q [?a ?b]))))
 
 ; Connect; given one or more starting points, find how they connect; finds common diatonic complementary shape (i.e. chord<->scale)
 
@@ -83,7 +84,7 @@
              (cond
                (theory/shape? x) (l/== ?shape x)
                (theory/notes? x) (noteso ?shape x)
-               (theory/shape-ref? x) (l/== ?shape (jigsaw/->shape x)))))
+               :else (l/== ?shape (jigsaw/->shape x)))))
 
 ; Support input of shapes or note-seqs which map to one or more shapes
 (l/defne prepare-shapes [?shapes xs]
@@ -176,6 +177,15 @@
 ;   {:pitch :G, :name :mixolydian, :context :mode/II}
 ;   {:pitch :G, :name :maj, :context :chord-degree/I}])
 
+; What's the V chord of A?
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (l/== ?scale :A_major)
+           (neighboro ?scale ?v)
+           (l/featurec ?v {:context :chord-degree/V})
+           (l/== q ?v))))
+
 ; Secondary dominant (V/V or V7/V)
 (comment
   (l/run 1 [q]
@@ -183,21 +193,36 @@
            ; Start at C major scale
            (l/== ?start-scale {:pitch :C :name :major})
 
-            ; Find the dominant (V) chord
-           (neighboro ?start-scale ?dom-chord)
-           (l/featurec ?dom-chord {:context :chord-degree/V})
+            ; Find the tonic (I) chord
+           (neighboro ?start-scale ?i)
+           (l/featurec ?i {:context :chord-degree/I})
 
-            ; Find the scale where the dominant chord is the I
-           (neighboro ?dom-chord ?dom-scale)
+            ; Find the dominant (V) chord
+           (neighboro ?start-scale ?v)
+           (l/featurec ?v {:context :chord-degree/V})
+
+            ; Find the scale where the dominant chord is the I (i.e. the now-tonicized chord)
+           (neighboro ?v ?dom-scale)
            (l/featurec ?dom-scale {:context :chord-degree/I})
 
-            ; Find that scale's dominant (i.e. tonicized chord)
-           (neighboro ?dom-scale ?dom-chord2)
-           (l/featurec ?dom-chord2 {:context :chord-degree/V})
+            ; Find that scale's dominant
+           (neighboro ?dom-scale ?v-v)
+           (l/featurec ?v-v {:context :chord-degree/V})
 
             ; Return the secondary dominant
-           (l/== q ?dom-chord2))))
-; => ({:pitch :D, :name :maj, :context :chord-degree/V})
+           (l/== q [?v-v ?v ?i]))))
+; => ([{:pitch :D,
+;       :name :maj,
+;       :context :chord-degree/V,
+;       :parent-scale {:pitch :G, :name :major}}
+;      {:pitch :G,
+;       :name :maj,
+;       :context :chord-degree/V,
+;       :parent-scale {:pitch :C, :name :major}}
+;      {:pitch :C,
+;       :name :maj,
+;       :context :chord-degree/I,
+;       :parent-scale {:pitch :C, :name :major}}])
 
 (defn transposo
   "Transpose pitch/note/shape by interval"
@@ -216,16 +241,25 @@
 
            (neighboro ?scale ?v)
            (l/featurec ?v {:context :chord-degree/V7})
+            ; Find the shape which is a tritone away from the V chord
+           (transposo ?sub ?v :d5)
 
            (neighboro ?scale ?i)
            (l/featurec ?i {:context :chord-degree/IM7})
 
-            ; Find the shape which is a tritone away from the V chord
-           (transposo ?sub ?v :d5)
            (l/== q [?ii ?sub ?i]))))
-; ([{:pitch :D, :name :m7, :context :chord-degree/ii7}
-;   {:pitch :Db, :name :7}
-;   {:pitch :C, :name :maj7, :context :chord-degree/IM7}])
+; ([{:pitch :D,
+;    :name :m7,
+;    :context :chord-degree/ii7,
+;    :parent-shape {:pitch :C, :name :major}}
+;   {:pitch :Db,
+;    :name :7,
+;    :context :interval/d5,
+;    :parent-shape {:pitch :G, :name :7}}
+;   {:pitch :C,
+;    :name :maj7,
+;    :context :chord-degree/IM7,
+;    :parent-shape {:pitch :C, :name :major}}])
 
 ; Coltrane changes
 (comment
@@ -339,13 +373,32 @@
         ii (jigsaw/->shape :D_m)
         v (jigsaw/->shape :G_maj)
         chords [ii v]]
-    (l/run 5 [q]
+    (l/run 1 [q]
            (with-fresh
              (prepare-shapes ?shapes chords)
              (connecto ?conn ?shapes)
              (l/featurec ?conn {:contextualized-shapes ?chords})
              (progresso ?prog ?chords)
              (l/== q [?conn ?prog])))))
+; ([{:connection {:pitch :C, :name :major},
+;    :contextualized-shapes
+;    ({:intervals [:P1 :m3 :P5],
+;      :pitch :D,
+;      :name :m,
+;      :pitches [:D :F :A],
+;      :context :chord-degree/ii}
+;     {:intervals [:P1 :M3 :P5],
+;      :pitch :G,
+;      :name :maj,
+;      :pitches [:G :B :D],
+;      :context :chord-degree/V})}
+;   ["Montgomery–Ward bridge"
+;    {:degrees
+;     [:chord-degree/I
+;      :chord-degree/IV
+;      :chord-degree/ii
+;      :chord-degree/V],
+;     :quality :major}]])
 
 ; With note seqs (i.e. account for fuzziness)
 ; Slow; note-seqs * possible shapes * possible connections * possible progressions
@@ -414,9 +467,14 @@
   Given a shape, find alternative ways of thinking about that shape (what else could it be?), based on PCIs.
   Like noteso, but with disequality on the current shape and its enarmonic equivalent
   "
-  [?q shape]
-  (l/project [shape]
-             (let [pcis (map theory/pitches (:pitches shape))]
+  [?q ?shape-ref]
+  (l/project [?shape-ref]
+             (let [_shape (jigsaw/->shape ?shape-ref)
+                   ; Fix shapes without notes
+                   shape (if (contains? _shape :notes)
+                           _shape
+                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))
+                   pcis (map theory/pitches (:pitches shape))]
                (with-fresh
                  (noteso ?shape (:notes shape))
                  (l/featurec ?shape {:pitch ?pitch :name ?name :pcis ?pcis})
@@ -460,7 +518,7 @@
 ;      :pcis [4 7 0],
 ;      :input [:C4 :E4 :G4]})
 
-; Now find scales which work with above
+; Now find scales which work with above (i.e. fuzzy neighbors)
 (comment
   (let [shape (jigsaw/->shape :C4_maj)]
     (l/run 5 [q]
@@ -493,10 +551,11 @@
   "Stick with pitch+name keys to let map (dis)equality work below, otherwise :context will throw things off"
   [from to]
   (l/project [from]
-             (l/membero to (map #(select-keys % [:pitch :name]) (->shapes from)))))
+             (let [shapes (->shapes from)]
+               (l/membero to (map #(select-keys % [:pitch :name]) shapes)))))
 
-; Thank you, David Nolan
-(l/defne travelo [a b visited max-depth path]
+; Thank you, David Nolen
+(l/defne travelo2 [a b visited max-depth path]
   ([?a ?b _ _ [b . visited]] (neighbor-refo ?a ?b))
   ([?a ?b ?v ?d ?p]
    (fd/<= 0 ?d)
@@ -506,14 +565,51 @@
             (not-membero c ?v)
             (l/conso c ?v vis)
             (fd/- ?d 1 d)
-            (travelo c ?b vis d ?p))))
+            (travelo2 c ?b vis d ?p))))
+
+(defn shape-ido [?id ?shape]
+  (l/project [?shape]
+             (l/== ?id (select-keys ?shape [:pitch :name]))))
+
+(l/defne travelo [a b visited-ids visited-shapes max-depth path]
+  ([?a ?b _ _ _ [?b' . visited-shapes]]
+   (l/fresh [?bid ?bid2]
+            ; ?b' is the contextualized version of ?b
+            (neighboro ?a ?b')
+            ; need to check subset of keys for equality, but use contextualized version in path
+            (shape-ido ?bid ?b)
+            (shape-ido ?bid2 ?b')
+            (l/== ?bid ?bid2)))
+  ([?a ?b ?v ?vs ?d ?p]
+   (fd/<= 0 ?d)
+   (l/fresh [?bid ?c ?cid ?v' ?vs' ?d']
+            (neighboro ?a ?c)
+            (shape-ido ?bid ?b)
+            (shape-ido ?cid ?c)
+            (l/!= ?bid ?cid)
+            ; Base visited on pitch+names...
+            (not-membero ?cid ?v)
+            (l/conso ?cid ?v ?v')
+            ; But store contextualized versions of shapes for path later
+            (l/conso ?c ?vs ?vs')
+            (fd/- ?d 1 ?d')
+            (travelo ?c ?b ?v' ?vs' ?d' ?p))))
 
 (defn patho [start end depth res]
-  (let [start-ref (select-keys (jigsaw/->shape start) [:pitch :name])
+  (let [start (jigsaw/->shape start)
+        end (jigsaw/->shape end)
+        start-ref (select-keys (jigsaw/->shape start) [:pitch :name])
         end-ref (select-keys (jigsaw/->shape end) [:pitch :name])]
     (l/fresh [path]
-             (travelo start-ref end-ref [start-ref] depth path)
+             (travelo start end [start] [start] depth path)
              (reverseo path [] res))))
+
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (patho :C_maj :D_m 1 q)
+           #_(l/membero ?step q)
+           #_(l/featurec ?step {:pitch :A}))))
 
 (defn contextualize-path [path]
   (reduce
@@ -529,8 +625,8 @@
                                :or {depth 1
                                     n 1}}]
   (->>
-   (l/run n [p]
-          (patho start end depth p))
+   (l/run-nc n [p]
+             (patho start end depth p))
    (map contextualize-path)))
 
 (comment
@@ -559,13 +655,183 @@
 (comment
   (l/run 1 [q]
          (with-fresh
-           (patho :C_maj7 :G_7 1 ?p1)
-           (l/resto ?p1 ?rest)
-           (l/firsto ?rest ?second)
-           (l/featurec ?second {:pitch ?pitch})
-           (l/!= ?pitch :C)
-           (l/!= ?pitch :D)
-           (patho :G_7 :A_m7 1 ?p2)
-           (l/== q [?p1 ?second ?p2]))))
+           (patho :C_maj7 :D_m7 1 q)
+           (l/membero ?step q)
+           (l/featurec ?step {:pitch :A}))))
+
+(defn shape== [?a ?b]
+  (with-fresh
+    (shapeo ?shape1 ?a)
+    (shapeo ?shape2 ?b)
+    (shape-ido ?ref1 ?shape1)
+    (shape-ido ?ref2 ?shape2)
+    (l/== ?ref1 ?ref2)))
+
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (l/== q {:pitch :C :name :maj :context :chord-degree/iii})
+           (shape== q {:pitch :C :name :maj :context :chord-degree/I}))))
+
+(defn resolvo [?scale ?degree ?chord]
+  (l/conde
+   ; Need scale
+   [(l/== true (l/lvar? ?scale))
+    (neighboro ?chord ?scale)
+    (l/featurec ?scale {:context ?degree})]
+   ; Need degree
+   [(l/== true (l/lvar? ?degree))
+    (l/fresh [?chord-neighbor]
+             (neighboro ?scale ?chord-neighbor)
+             (shape== ?chord ?chord-neighbor)
+             (l/featurec ?chord-neighbor {:context ?degree}))]
+   ; Need chord
+   [(l/== true (l/lvar? ?chord))
+    (neighboro ?scale ?chord)
+    (l/featurec ?chord {:context ?degree})]))
+
+(l/defne resolvo* [?scale ?degrees ?chords]
+  ([?s [] []])
+  ([?s [?deg . ?rest-degs] [?chord . ?rest-chords]]
+   (l/conde
+     ; Need scale
+    [(l/== true (l/lvar? ?s))
+     (neighboro ?chord ?scale)
+     (l/featurec ?s {:context ?deg})]
+     ; Need degrees
+    [(l/== true (l/lvar? ?deg))
+     (l/fresh [?chord-neighbor]
+              (neighboro ?s ?chord-neighbor)
+              (shape== ?chord ?chord-neighbor)
+              (l/featurec ?chord-neighbor {:context ?deg})
+              (resolvo2 ?s ?rest-degs ?rest-chords))]
+     ; Need chords
+    [(l/== true (l/lvar? ?chord))
+     (neighboro ?s ?chord)
+     (l/featurec ?chord {:context ?deg})
+     (resolvo2 ?s ?rest-degs ?rest-chords)])))
+
+(comment
+  (l/run 2 [q]
+         (with-fresh
+           (resolvo q :chord-degree/V :E_maj))))
+
+(comment
+  (l/run 3 [q]
+         (with-fresh
+           (resolvo :A_major q :E_maj))))
+
+(comment
+  (l/run 3 [q]
+         (with-fresh
+           (resolvo :A_major :chord-degree/V ?v)
+           (resolvo :A_major :chord-degree/I ?i)
+           (l/== q [?v ?i]))))
+
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (resolvo* q [:chord-degree/V] [:E_maj]))))
+
+(comment
+  (l/run 3 [q]
+         (with-fresh
+           (resolvo* :A_major q [:E_maj]))))
+
+(comment
+  (l/run 3 [q]
+         (with-fresh
+           (resolvo* :A_major [:chord-degree/V :chord-degree/I] q))))
+
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           (resolvo* :A_major [:chord-degree/V :chord-degree/I] ?chords)
+           (l/is q ?chords (fn [chords] (map #(theory/transpose % :M3) chords))))))
+
+(defn ?=
+  "Fuzzy shape, can include ?shape"
+  [?possible-shape ?shape-ref]
+  (l/project [?shape-ref]
+             (let [_shape (jigsaw/->shape ?shape-ref)
+                   ; Fix shapes without notes
+                   shape (if (contains? _shape :notes)
+                           _shape
+                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))]
+               (noteso ?possible-shape (:notes shape)))))
+
+(comment
+  (l/run 2 [q]
+         (with-fresh
+           (?= q :C_maj))))
+
+(comment
+  (l/run 2 [q]
+         (with-fresh
+           (?= ?chord :C_maj)
+           (resolvo ?scale :chord-degree/i ?chord)
+           (l/== q ?scale))))
+
+; (jig ...)               ; syntax wrapper
+; C_maj                   ; realized chord
+; C_major                 ; realized scale
+; V I                     ; chord degrees
+; mode/II                 ; mode (differentiated from degree roman numerals)
+; M3 P5 A4                ; intervals
+; (A_major V)             ; get chord from parent scale by degree(s)
+; (== E_maj (?s V))       ; get scale from chord and degree(s)
+; (- (A_major ii V I) M3) ; transpose chords (from a scale and degree(s)) by an interval
+; (?s [C E G] [D F A])    ; find scale, chords from sets of notes (i.e. connect)
+; (C_major ~[C Eb G])     ; fit notes to scale, get chord
+; ~C_maj                  ; use fuzzy representation of chord (i.e. alto, maybe keep original too instead of disequality on it)
+; [(C_major ii V) (Eb_major V I)] ; modulated progression
+
+; C_maj : strict input
+; [<pitches/notes] : strict input
+; ~C_maj : fuzzy input (i.e. from shape notes)
+; ~[<pitches/notes] : fuzzy input
+; [C ~E G] : fuzzy input on specific note(s); other notes are strict
+; ~C_maj !C : mix fuzzy with strict constraints (?)
+
+; Connect
+; (?s C_maj D_m)
+; Proposed: (?s [C E G] [D F A])
+; 
+; Tritone sub:
+; (C_major ii (t- v d5) i)
+;   'v' is relative to parent
+;
+; Secondary
+;   (C_major V-V)
+;   Alternative possibility? (C_major (V V))  ; confusing when nested?
+; Tertiary
+;   (C_major V-V-V)
+; ...ary
+;   (C_major V-V-V-...)
+;
+; Coltrane
+; [(C_major ii)
+;  (t- (C_major V I) M3)
+;  (t- (C_major V I) (t* M3 2))
+;  (t- (C_major V I) (t* M3 3))
+;  (C_major V I)] 
+; 
+; Fit
+; (C_major ~[C Eb G])  ; fuzzy input, but outputs should conform to scale
+;
+; Progression-finding
+; [(?s D_m G_maj) ?...]
+; (progs D_m G_maj)
+;
+; Path-finding
+; [C_maj --> ?x --> D_m]
+; [C_maj --> ?x --> ?{:pitch :A}y]
+
+; (defmacro jig [& body]
+;   `(for [form# [~@body]]
+;      ~form#))
+
+; (jig
+;  '[C_maj])
 
 ; TODO: Neighboring paths; account for fuzziness
