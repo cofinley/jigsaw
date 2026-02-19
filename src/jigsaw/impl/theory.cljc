@@ -849,6 +849,7 @@
   [scale chord-degree]
   ; TODO: allow secondary chords? (i.e. V/V (represented as :V-V))
   (let [chord-name (condp #(some? (re-find %1 %2)) (name chord-degree)
+                     ; TODO: use normal chord names (unless :maj or :m (blanks))
                      #"%" :m7b5
                      #"o7" :dim7
                      #"o" :dim

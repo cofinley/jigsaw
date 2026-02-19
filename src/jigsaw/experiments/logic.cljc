@@ -37,12 +37,6 @@
     (keyword? x) (->shapes (jigsaw/->shape x))
     :else (lazy-seq)))
 
-(defn neighboro
-  "Shapes from shape"
-  [from to]
-  (l/project [from]
-             (l/membero to (->shapes from))))
-
 (defn noteso
   "Potential shapes from notes"
   [q notes]
@@ -56,7 +50,46 @@
                (theory/notes? x) (noteso ?shape x)
                :else (l/== ?shape (jigsaw/->shape x)))))
 
-(defn shape-ido [?id ?shape]
+(defn neighboro
+  "Shapes from shape"
+  [from to]
+  (l/project [from]
+             (l/membero to (->shapes from))))
+
+(defn ?=
+  "Fuzzy shape; get similar shapes to ?shape; can include ?shape"
+  [?possible-shape ?shape-ref]
+  (l/project [?shape-ref]
+             (let [_shape (jigsaw/->shape ?shape-ref)
+                   ; Ensure shape has notes
+                   shape (if (contains? _shape :notes)
+                           _shape
+                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))]
+               (noteso ?possible-shape (:notes shape)))))
+
+;; Different projections; find different ways to think about same notes (PCIs)
+(defn alto
+  "
+  Given a shape, find alternative ways of thinking about that shape (what else could it be?), based on PCIs.
+  Like noteso or ?=, but with disequality on the current shape and its enarmonic equivalent
+  "
+  [?possible-shape ?shape-ref]
+  (l/project [?shape-ref]
+             (let [_shape (jigsaw/->shape ?shape-ref)
+                   ; Ensure shape has notes
+                   shape (if (contains? _shape :notes)
+                           _shape
+                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))
+                   pcis (map theory/pitches (:pitches shape))]
+               (with-fresh
+                 (noteso ?possible-shape (:notes shape))
+                 (l/featurec ?possible-shape {:pitch ?pitch :name ?name :pcis ?pcis})
+                 (l/!= (:name shape) ?name)
+                 ; Don't use same pitch or enharmonic equivalent
+                 (l/firsto ?pcis ?first-pci)
+                 (l/!= (first pcis) ?first-pci)))))
+
+(defn shape-refo [?id ?shape]
   (l/project [?shape]
              (l/== ?id (select-keys ?shape [:pitch :name]))))
 
@@ -66,8 +99,8 @@
   (with-fresh
     (shapeo ?shape1 ?a)
     (shapeo ?shape2 ?b)
-    (shape-ido ?ref1 ?shape1)
-    (shape-ido ?ref2 ?shape2)
+    (shape-refo ?ref1 ?shape1)
+    (shape-refo ?ref2 ?shape2)
     (l/== ?ref1 ?ref2)))
 
 (defn shape!=
@@ -76,8 +109,8 @@
   (with-fresh
     (shapeo ?shape1 ?a)
     (shapeo ?shape2 ?b)
-    (shape-ido ?ref1 ?shape1)
-    (shape-ido ?ref2 ?shape2)
+    (shape-refo ?ref1 ?shape1)
+    (shape-refo ?ref2 ?shape2)
     (l/!= ?ref1 ?ref2)))
 
 (comment
@@ -403,7 +436,7 @@
         ii (jigsaw/->shape :D_m)
         v (jigsaw/->shape :G_maj)
         chords [ii v]]
-    (l/run 1 [q]
+    (l/run 5 [q]
            (with-fresh
              (prepare-shapes ?shapes chords)
              (connecto ?conn ?shapes)
@@ -490,29 +523,6 @@
 ;      :chord-degree/V
 ;      :chord-degree/I],
 ;     :quality :major}]])
-
-;; Different projections; find different ways to think about same notes (PCIs)
-(defn alto
-  "
-  Given a shape, find alternative ways of thinking about that shape (what else could it be?), based on PCIs.
-  Like noteso, but with disequality on the current shape and its enarmonic equivalent
-  "
-  [?q ?shape-ref]
-  (l/project [?shape-ref]
-             (let [_shape (jigsaw/->shape ?shape-ref)
-                   ; Fix shapes without notes
-                   shape (if (contains? _shape :notes)
-                           _shape
-                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))
-                   pcis (map theory/pitches (:pitches shape))]
-               (with-fresh
-                 (noteso ?shape (:notes shape))
-                 (l/featurec ?shape {:pitch ?pitch :name ?name :pcis ?pcis})
-                 (l/!= (:name shape) ?name)
-                  ; Don't use same pitch or enharmonic equivalent
-                 (l/firsto ?pcis ?first-pci)
-                 (l/!= (first pcis) ?first-pci)
-                 (l/== ?q ?shape)))))
 
 ; What else could the C major chord be?
 (comment
@@ -609,7 +619,7 @@
             (neighboro ?a ?c)
             (shape!= ?b ?c)
             ; Base visited on pitch+names...
-            (shape-ido ?cid ?c)
+            (shape-refo ?cid ?c)
             (not-membero ?cid ?v)
             (l/conso ?cid ?v ?v')
             ; But store contextualized versions of shapes for path later
@@ -749,17 +759,6 @@
            (resolvo* :A_major [:chord-degree/V :chord-degree/I] ?chords)
            (l/is q ?chords (fn [chords] (map #(theory/transpose % :M3) chords))))))
 
-(defn ?=
-  "Fuzzy shape; get similar shapes to ?shape; can include ?shape"
-  [?possible-shape ?shape-ref]
-  (l/project [?shape-ref]
-             (let [_shape (jigsaw/->shape ?shape-ref)
-                   ; Fix shapes without notes
-                   shape (if (contains? _shape :notes)
-                           _shape
-                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))]
-               (noteso ?possible-shape (:notes shape)))))
-
 (comment
   (l/run 2 [q]
          (with-fresh
@@ -806,16 +805,6 @@
 ;   :name :maj,
 ;   :context :chord-degree/I,
 ;   :parent-shape {:pitch :Bb, :name :major}})
-
-(comment
-  (l/run 2 [q]
-         (with-fresh
-           (?= ?chord :C_maj)
-           (l/featurec ?chord {:pcis ?pcis})
-           (not-membero 4 ?pcis)
-           (l/membero 3 ?pcis)
-           ; (resolvo ?scale :chord-degree/I ?chord)
-           (l/== q [?chord #_?scale]))))
 
 ; (jig ...)               ; syntax wrapper
 ; C_maj                   ; realized chord
@@ -871,13 +860,6 @@
 ; Path-finding
 ; [C_maj --> ?x --> D_m]
 ; [C_maj --> ?x --> ?{:pitch :A}y]
-
-; (defmacro jig [& body]
-;   `(for [form# [~@body]]
-;      ~form#))
-
-; (jig
-;  '[C_maj])
 
 ; TODO: Neighboring paths; account for fuzziness
 ; TODO: input piece of music, figure out the structure (i.e. progressions, modulations; most likely brute-force DFS/BFS)
