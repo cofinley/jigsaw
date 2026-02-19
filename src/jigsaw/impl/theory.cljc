@@ -806,7 +806,7 @@
                      str/upper-case)]
     (get m stripped)))
 
-(defn derive-chord-degree
+(defn contextualize-chord
   "From a scale and chord, find the chord degree (roman numeral + optional quality)"
   [scale chord]
   (let [scale-pitch-index (.indexOf (:pitches scale) (first (:pitches chord)))]
@@ -823,19 +823,10 @@
             chord-degree (str
                           accidental
                           ((if major? str/upper-case str/lower-case) roman-num)
-                          ; TODO improve chord quality suffix; feels too hacky
-                          (cond
-                            (utils/in? intervals :A5) "+"
-                            (and (utils/in? intervals :d5) (not= :m7b5 chord-name)) "o"
-                            :else "")
                           (case chord-name
-                            :m7b5 "%"
-                            :dim7 "7" ; 'o' added above
-                            :dim ""
-                            :maj7 "M7"
-                            :m7 "7"
-                            :7 "7"
-                            ""))]
+                            :maj ""
+                            :m ""
+                            (name chord-name)))]
         (keyword "chord-degree" chord-degree)))))
 
 (defn resolve-chord-degree
@@ -996,15 +987,35 @@
       {:pitch (first pitches)
        :name new-scale-name})))
 
-(defn scales->mode [src-scale dest-scale]
+(defn contextualize-scale [src-scale dest-scale]
   (let [src-pitch-set (set (:pitches src-scale))
-        dest-pitch-set (set (:pitches dest-scale))]
-    (when (= src-pitch-set dest-pitch-set)
-      (first
-       (for [rotation (range 1 (count (:pitches src-scale)))
-             :let [rotated-pitches (utils/rotate (:pitches src-scale) rotation)]
-             :when (= rotated-pitches (:pitches dest-scale))]
-         (keyword "mode" (roman-numeral (inc rotation))))))))
+        dest-pitch-set (set (:pitches dest-scale))
+        minor-modes [:minor :harmonic-minor :melodic-minor]]
+    (or
+     ; Parallel mode (i.e. C major <-> C minor)
+     (when (and (= (:pitch src-scale) (:pitch dest-scale))
+                (or (and (= (:name src-scale) :major)
+                         (utils/in? minor-modes (:name dest-scale)))
+                    (and (= (:name dest-scale) :major)
+                         (utils/in? minor-modes (:name src-scale)))))
+       :mode/parallel)
+     ; Normal modes
+     (when (= src-pitch-set dest-pitch-set)
+       (first
+        (for [rotation (range 1 (count (:pitches src-scale)))
+              :let [rotated-pitches (utils/rotate (:pitches src-scale) rotation)]
+              :when (= rotated-pitches (:pitches dest-scale))]
+          (keyword "mode" (roman-numeral (inc rotation)))))))))
+
+(comment
+  (let [src-scale (->shape :C_major)
+        dest-scale (->shape :A_minor)]
+    #_(= (:pitch src-scale) (:pitch dest-scale))
+    #_(or (and (= (:name src-scale) :major)
+               (utils/in? [:minor :harmonic-minor :melodic-minor] (:name dest-scale)))
+          (and (= (:name dest-scale) :major)
+               (utils/in? [:minor :harmonic-minor :melodic-minor] (:name src-scale))))
+    (contextualize-scale src-scale dest-scale)))
 
 (defn ->shape
   "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"

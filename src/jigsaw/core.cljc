@@ -15,9 +15,9 @@
   (let [src-type (if (theory/chord? src-shape) :chord :scale)
         dest-type (if (theory/chord? dest-shape) :chord :scale)]
     (case [src-type dest-type]
-      [:chord :scale] (theory/derive-chord-degree dest-shape src-shape)
-      [:scale :chord] (theory/derive-chord-degree src-shape dest-shape)
-      [:scale :scale] (theory/scales->mode src-shape dest-shape)
+      [:chord :scale] (theory/contextualize-chord dest-shape src-shape)
+      [:scale :chord] (theory/contextualize-chord src-shape dest-shape)
+      [:scale :scale] (theory/contextualize-scale src-shape dest-shape)
       nil)))
 
 (defn ->progression
@@ -112,10 +112,18 @@
 (defn scale->modes
   [scale]
   {:pre [(theory/scale? scale)]}
-  (for [n (range 1 (count (:pitches scale)))
-        :let [mode (theory/scale->mode scale n)
-              context (contextualize scale (->shape mode))]]
-    (assoc mode :context context :parent-shape (select-keys scale [:pitch :name]))))
+  (let [scale-ref (select-keys scale [:pitch :name])]
+    (concat
+     (for [n (range 1 (count (:pitches scale)))
+           :let [mode (theory/scale->mode scale n)
+                 context (contextualize scale (->shape mode))]]
+       (assoc mode :context context :parent-shape scale-ref))
+     (when (= (:name scale) :major)
+       (for [minor-mode [:minor :harmonic-minor :melodic-minor]]
+         {:pitch (:pitch scale)
+          :name minor-mode
+          :context :mode/parallel
+          :parent-shape scale-ref})))))
 
 (defn chord->chords
   [chord]
