@@ -118,12 +118,18 @@
            :let [mode (theory/scale->mode scale n)
                  context (contextualize scale (->shape mode))]]
        (assoc mode :context context :parent-shape scale-ref))
+     ; Parallel keys/modes
      (when (= (:name scale) :major)
        (for [minor-mode [:minor :harmonic-minor :melodic-minor]]
          {:pitch (:pitch scale)
           :name minor-mode
           :context :mode/parallel
-          :parent-shape scale-ref})))))
+          :parent-shape scale-ref}))
+     (when (utils/in? [:minor :harmonic-minor :melodic-minor] (:name scale))
+       [{:pitch (:pitch scale)
+         :name :major
+         :context :mode/parallel
+         :parent-shape scale-ref}]))))
 
 (defn chord->chords
   [chord]
@@ -268,11 +274,9 @@
 (def connect-shapes-memo (memoize connect-shapes))
 
 ;; TODO
-;;  - Chord progressions/cadences from scales (i.e. shape of shapes)
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
 ;;  - Key signature, proper accidentals on music staff
-;;  - factor in context more
 ;;  - highlight overlapping nodes
 ;;  - mood identification, scale and progression, add colors
 

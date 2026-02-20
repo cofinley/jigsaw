@@ -497,7 +497,26 @@
         :iii 3
         :viio 7
         :iio 2
-        :bIII+ 3)))
+        :bIII+ 3))
+
+    (testing "with chord-degree-parts"
+      (are+ [degree want] (= want (theory/chord-degree-parts degree))
+        :chord-degree/I        {:accidental "" :roman-numeral "I" :name :maj}
+        :chord-degree/bI       {:accidental "b" :roman-numeral "I" :name :maj}
+        :chord-degree/#I       {:accidental "#" :roman-numeral "I" :name :maj}
+        :chord-degree/I7       {:accidental "" :roman-numeral "I" :name :7}
+        :chord-degree/Idim7    {:accidental "" :roman-numeral "I" :name :dim7}
+        :chord-degree/viim7b5  {:accidental "" :roman-numeral "vii" :name :m7b5}
+        :chord-degree/bviim7b5 {:accidental "b" :roman-numeral "vii" :name :m7b5}
+        :chord-degree/i        {:accidental "" :roman-numeral "i" :name :m}
+        :chord-degree/im7      {:accidental "" :roman-numeral "i" :name :m7}))
+
+    (testing "with resolve-chord-degree"
+      (are+ [scale-ref degree want] (= ((juxt :pitch :name) (theory/->shape want))
+                                       ((juxt :pitch :name) (theory/resolve-chord-degree (theory/->shape scale-ref) degree)))
+        :C_major :chord-degree/I :C_maj
+        :C_major :chord-degree/i :C_m
+        :C_major :chord-degree/ii :D_m)))
 
   (testing "heuristics"
     (are+ [set1 set2 m] (= m (theory/calculate-heuristics set1 set2))

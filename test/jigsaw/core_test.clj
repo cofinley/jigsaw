@@ -96,17 +96,12 @@
                     :pitches [:Eb :Ab :Bb :Db :F :C]})))
 
   (testing "->progression"
-    (are+ [tonic chord-degrees want] (= (map #(select-keys % [:pitch :name]) want)
+    (are+ [tonic chord-degrees want] (= (map #(select-keys (jigsaw/->shape %) [:pitch :name]) want)
                                         (map #(select-keys % [:pitch :name]) (jigsaw/->progression tonic chord-degrees)))
-      :C_major [:ii :V :I] [(jigsaw/->shape :D_m)
-                            (jigsaw/->shape :G_maj)
-                            (jigsaw/->shape :C_maj)]
-      :C_major [:bii :V :I] [(jigsaw/->shape :Db_m)
-                             (jigsaw/->shape :G_maj)
-                             (jigsaw/->shape :C_maj)]
-      :C_major [:ii7 :V7 :IM7] [(jigsaw/->shape :D_m7)
-                                (jigsaw/->shape :G_7)
-                                (jigsaw/->shape :C_maj7)]))
+      :C_major [:ii :V :I] [:D_m :G_maj :C_maj]
+      :C_major [:bii :V :I] [:Db_m :G_maj :C_maj]
+      :C_major [:iim7 :V7 :Imaj7] [:D_m7 :G_7 :C_maj7]
+      :C_major [:viidim] [:B_dim]))
 
   (testing "scale->chords"
     (are+ [pitch scale-name expected] (= expected (map #(select-keys % [:pitch :name :context]) (jigsaw/scale->chords (jigsaw/->shape pitch scale-name))))
@@ -554,7 +549,14 @@
                                    {:pitch :B, :name :locrian :context :mode/VII}
                                    {:pitch :C, :name :minor :context :mode/parallel}
                                    {:pitch :C, :name :harmonic-minor :context :mode/parallel}
-                                   {:pitch :C, :name :melodic-minor :context :mode/parallel})))
+                                   {:pitch :C, :name :melodic-minor :context :mode/parallel})
+      (jigsaw/->shape :C :minor) '({:pitch :D, :name :locrian :context :mode/II}
+                                   {:pitch :Eb, :name :major :context :mode/III}
+                                   {:pitch :F, :name :dorian :context :mode/IV}
+                                   {:pitch :G, :name :phrygian :context :mode/V}
+                                   {:pitch :Ab, :name :lydian :context :mode/VI}
+                                   {:pitch :Bb, :name :mixolydian :context :mode/VII}
+                                   {:pitch :C, :name :major :context :mode/parallel})))
 
   (testing "notes->shapes"
     (testing "with basic inversions"
@@ -613,5 +615,6 @@
       :C_major :D_dorian :mode/II
       :D_dorian :C_major :mode/VII
       :C_major :C_minor :mode/parallel
+      :C_minor :C_major :mode/parallel
       ; Relative key is just labeled as 6th/Aeolian mode
       :C_major :A_minor :mode/VI)))

@@ -452,6 +452,9 @@
 ;                             #(s/valid? ::chord (:context %))))
 
 ; TBD
+
+(def chord-degree-pattern #"(?<accidental>[b#]?)(?<degree>[viVI]+)(?<quality>[a-z0-9]*)")
+(s/def ::chord-degree (s/and ::context #(re-find chord-degree-pattern %)))
 (s/def ::progression-ref (s/keys :req-un [::degrees]))
 (s/def ::progression (s/coll-of ::chord))
 
@@ -467,17 +470,17 @@
          "I–IV–bVII–IV" {:degrees [:I :IV :bVII :IV] :quality :mixolydian}
          "ii–V–I" {:degrees [:ii :V :I] :quality :major}
          "ii–V–I with tritone substitution" {:degrees [:ii :bII :I] :quality :major}
-         "ii-V-I with bIII+ as dominant substitute" {:degrees [:ii :bIII+ :I] :quality :mixolydian}
-         ; Diminished represented as 'o' for easier typing
-         ; Secondary dominant; represent / with _ for Clojure keyword reader compatibility
-         "viio7/V–V–I" {:degrees [:viio7_V :V :I] :quality :major}
+         "ii-V-I with bIII+ as dominant substitute" {:degrees [:ii :bIIIaug :I] :quality :mixolydian}
+         ; Secondary dominant; extended dominants not supported yet (TODO); represent / with _ for Clojure keyword reader compatibility
+         "viio7/V–V–I" {:degrees [:viidim7_V :V :I] :quality :major}
          "Andalusian cadence" {:degrees [:iv :III :bII :I] :quality :phrygian-dominant}
          "Backdoor progression" {:degrees [:ii :bVII :I] :quality :major}
-         ; Half-diminished represented as % for easier typing
-         #_#_"Bird changes" {:degrees [:I :vii% :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
+         ; Too noisy for search?
+         #_#_"Bird changes" {:degrees [:I :viim7b5 :III7 :vi :II7 :v :I7 :IV7 :iv :bVII7 :iii :VI7 :biii :bVI7 :ii :V7 :I :VI7 :ii :V] :quality :major}
          "Chromatic descending 5–6 sequence" {:degrees [:I :V :bVII :IV] :quality :mixolydian}
          "Circle progression" {:degrees [:vi :ii :V :I] :quality :major}
-         "Coltrane changes" {:degrees [:I :V_bVI :bVI :V_III :III :V :I] :quality :major}
+         ; Needs extended dominant support
+         #_#_"Coltrane changes" {:degrees [:I :V_bVI :bVI :V_III :III :V :I] :quality :major}
          "Eight-bar blues" {:degrees [:I :V :IV :IV :I :V :I :V] :quality :major}
          "Folia" {:degrees [:i :V :i :bVII :bIII :bVII :i :V :i :V :i :bVII :bIII :bVII :i :V :i] :quality :minor}
          "Irregular resolution" {:degrees [:V7 :III7] :quality :major}
@@ -492,8 +495,7 @@
          "bVII–V7 cadence" {:degrees [:bVII :V :I] :quality :mixolydian}
          "V–IV–I turnaround" {:degrees [:V :IV :I] :quality :major}
          "I–bVII–bVI–bVII" {:degrees [:I :bVII :bVI :bVII] :quality :minor}
-         ; Major 7th chord; represent with M7 for Clojure keyword reader compatibility
-         "Royal road" {:degrees [:IVM7 :V7 :iii7 :vi] :quality :major}
+         "Royal road" {:degrees [:IVmaj7 :V7 :iiim7 :vi] :quality :major}
          "bVI-bVII-I" {:degrees [:bVI :bVII :I] :quality :major}})))
 
 ; :C (pitch)
@@ -829,43 +831,33 @@
                             (name chord-name)))]
         (keyword "chord-degree" chord-degree)))))
 
+(defn chord-degree-parts [degree]
+  (let [[_ accidental roman-numeral chord-name] (re-find chord-degree-pattern (name degree))
+        adjusted-chord-name (if (= "" chord-name)
+                              (if (re-find #"[IV]" roman-numeral)
+                                :maj
+                                :m)
+                              chord-name)]
+    {:accidental accidental
+     :roman-numeral roman-numeral
+     :name (keyword adjusted-chord-name)}))
+
 (defn resolve-chord-degree
-  "
-  From a scale and a chord degree (roman numeral + optional quality), find the chord
-
-  Prefix:
-    #
-    b
-
-  Major    I
-  Minor    i
-  Dim      io
-  Major 7th    ...M7
-  Minor 7th    ...7 (lowercase roman numeral)
-  Dom. 7th     ...7 (uppercase roman numeral)
-  Dim 7th      ...o7
-  Half-dim 7th ...%
-  "
   [scale chord-degree]
   ; TODO: allow secondary chords? (i.e. V/V (represented as :V-V))
-  (let [chord-name (condp #(some? (re-find %1 %2)) (name chord-degree)
-                     ; TODO: use normal chord names (unless :maj or :m (blanks))
-                     #"%" :m7b5
-                     #"o7" :dim7
-                     #"o" :dim
-                     #"M7" :maj7
-                     #"[IV]7" :7
-                     #"[iv]7" :m7
-                     #"[IV]" :maj
-                     #"[iv]" :m)
+  ; TODO: validate roman numeral casing and chord name (e.g. dominant 7th is uppercase; diminished chords are lowercase; check if minor third is present?)
+  (let [{accidental :accidental roman-numeral :roman-numeral chord-name :name} (chord-degree-parts chord-degree)
         scale-degree-int->pitch (reduce (fn [m [scale-degree pitch]]
                                           (assoc m (utils/parse-int (name scale-degree)) pitch))
                                         {}
                                         (zipmap (:degrees scale) (:pitches scale)))
-        chord-degree-int (roman-numeral->int chord-degree)
+        chord-degree-int (roman-numeral->int roman-numeral)
         pitch (scale-degree-int->pitch chord-degree-int)
-        new-pitch (keyword (str (name pitch) (re-find #"[#b]" (name chord-degree))))]
-    {:pitch new-pitch :name chord-name :context (keyword "chord-degree" (name chord-degree))}))
+        new-pitch (keyword (str (name pitch) accidental))]
+    {:pitch new-pitch
+     :name chord-name
+     :context (keyword "chord-degree" (name chord-degree))
+     :parent-shape (select-keys scale [:pitch :name])}))
 
 ;; KEY
 
@@ -1008,16 +1000,6 @@
               :when (= rotated-pitches (:pitches dest-scale))]
           (keyword "mode" (roman-numeral (inc rotation)))))))))
 
-(comment
-  (let [src-scale (->shape :C_major)
-        dest-scale (->shape :A_minor)]
-    #_(= (:pitch src-scale) (:pitch dest-scale))
-    #_(or (and (= (:name src-scale) :major)
-               (utils/in? [:minor :harmonic-minor :melodic-minor] (:name dest-scale)))
-          (and (= (:name dest-scale) :major)
-               (utils/in? [:minor :harmonic-minor :melodic-minor] (:name src-scale))))
-    (contextualize-scale src-scale dest-scale)))
-
 (defn ->shape
   "Given a starting pitch/note and a shape definition, derive the rest of the shape (e.g. pitches, intervals, degrees, notes (if x is a note))"
   ([x]
@@ -1045,6 +1027,16 @@
                     :pitches pitches})
        true (dissoc :aliases)
        (note? x) (assoc :notes (mapv (partial transpose-memo note) intervals))))))
+
+(defn ->shape-ref [shape]
+  (select-keys shape [:pitch :name]))
+
+(defn ->shape-keyword [shape]
+  (keyword (str (:pitch shape) "_" (:name shape))))
+
+(defn shapes-equal? [s1 s2]
+  (= (-> s1 ->shape ->shape-ref)
+     (-> s2 ->shape ->shape-ref)))
 
 (comment
   (assert (true? (pitch? :C)))
