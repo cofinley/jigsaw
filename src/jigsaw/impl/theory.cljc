@@ -859,6 +859,20 @@
      :context (keyword "chord-degree" (name chord-degree))
      :parent-shape (select-keys scale [:pitch :name])}))
 
+(def chord-degrees-to-simplify
+  [:maj7 :m7 :7
+   :maj9 :m9 :9
+   :maj13 :m13 :13])
+
+(defn simplify-chord-degree
+  "Truncate/strip chord degree qualities; for finding progressions by degrees; sometimes extended chords are implied but not written (e.g. ii-V-I)"
+  [degree]
+  (let [parts (chord-degree-parts degree)
+        patterns (map #(re-pattern (name %)) chord-degrees-to-simplify)]
+    (if (some #(re-find % (name (:name parts))) patterns)
+      (keyword "chord-degree" (str (:accidental parts) (:roman-numeral parts)))
+      degree)))
+
 ;; KEY
 
 (defn circle-of-fifths [major-or-minor]

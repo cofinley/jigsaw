@@ -516,7 +516,21 @@
                                        ((juxt :pitch :name) (theory/resolve-chord-degree (theory/->shape scale-ref) degree)))
         :C_major :chord-degree/I :C_maj
         :C_major :chord-degree/i :C_m
-        :C_major :chord-degree/ii :D_m)))
+        :C_major :chord-degree/ii :D_m))
+
+    (testing "simplify-chord-degree"
+      (are+ [degree want] (= want (theory/simplify-chord-degree degree))
+        :chord-degree/I :chord-degree/I
+        :chord-degree/I7 :chord-degree/I
+        :chord-degree/I9 :chord-degree/I
+        :chord-degree/I13 :chord-degree/I
+        :chord-degree/Imaj7 :chord-degree/I
+        :chord-degree/Imaj9 :chord-degree/I
+        :chord-degree/Imaj13 :chord-degree/I
+        :chord-degree/i :chord-degree/i
+        :chord-degree/im7 :chord-degree/i
+        :chord-degree/im9 :chord-degree/i
+        :chord-degree/im13 :chord-degree/i)))
 
   (testing "heuristics"
     (are+ [set1 set2 m] (= m (theory/calculate-heuristics set1 set2))

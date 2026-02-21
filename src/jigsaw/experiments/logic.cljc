@@ -138,8 +138,12 @@
   ([[?shape . ?rest-shapes] [?contextualized-shape . ?rest-contextualized-shapes] _ _]
    (l/fresh [?neighbor ?context ?parent-shape]
             (neighboro ?shape ?neighbor)
-            (l/featurec ?neighbor {:pitch common-pitch :name common-name :context ?context :parent-shape ?parent-shape})
-            (l/conjo ?shape {:context ?context :parent-shape ?parent-shape} ?contextualized-shape)
+            (l/featurec ?neighbor {:pitch common-pitch
+                                   :name common-name
+                                   :context ?context
+                                   :parent-shape ?parent-shape})
+            (l/conjo ?shape {:context ?context
+                             :parent-shape ?parent-shape} ?contextualized-shape)
             (connect-neighbors ?rest-shapes ?rest-contextualized-shapes common-pitch common-name))))
 
 (defn connecto [shapes connection contextualized-shapes]
@@ -150,9 +154,9 @@
 ; Support input of shapes or note-seqs which map to one or more shapes
 (l/defne prepare-shapes [xs shapes]
   ([() ()])
-  ([[x . rest-xs] [shape . rest-shapes]]
-   (shapeo x shape)
-   (prepare-shapes rest-xs rest-shapes)))
+  ([[?x . ?rest-xs] [?shape . ?rest-shapes]]
+   (shapeo ?x ?shape)
+   (prepare-shapes ?rest-xs ?rest-shapes)))
 
 (defn transposo
   "Transpose pitch/note/shape by interval"
@@ -160,12 +164,12 @@
   (l/project [from]
              (l/== to (theory/transpose from interval multiplier))))
 
-(defn heuristico [shape1 shape2 h]
-  (l/project [shape1 shape2]
+(defn heuristico [from to h]
+  (l/project [from to]
              (l/== h (into {}
                            (map (fn [[k v]] (vector k (int (* 100 v))))
-                                (theory/calculate-heuristics (:pitches (jigsaw/->shape shape1))
-                                                             (:pitches (jigsaw/->shape shape2))))))))
+                                (theory/calculate-heuristics (:pitches (jigsaw/->shape from))
+                                                             (:pitches (jigsaw/->shape to))))))))
 
 (defn fuzzy-neighborc [from to]
   (with-fresh
@@ -185,26 +189,26 @@
 
 (defn progresso2
   "Find compatible progresion and resolve its chords, given some scale and chord degrees"
-  [q scale-ref degrees & {:keys [p]
-                          :or {p set/subset?}}]
+  [scale-ref degrees prog & {:keys [p]
+                             :or {p set/subset?}}]
   (l/project [scale-ref degrees]
-             (l/membero q (->> theory/chord-progressions
-                               (filter (fn [[prog-name details]]
-                                         (p (set degrees) (set (:degrees details)))))
-                               (map (fn [[prog-name details]]
-                                      [prog-name (assoc details :resolved-degrees (map #(theory/resolve-chord-degree (jigsaw/->shape scale-ref) %) (:degrees details)))]))))))
+             (l/membero prog (->> theory/chord-progressions
+                                  (filter (fn [[prog-name details]]
+                                            (p (set degrees) (set (:degrees details)))))
+                                  (map (fn [[prog-name details]]
+                                         [prog-name (assoc details :resolved-degrees (map #(theory/resolve-chord-degree (jigsaw/->shape scale-ref) %) (:degrees details)))]))))))
 
 (defn progresso
   "Find compatible progresion, given some chords (with degree contexts)"
   [contextualized-chords prog & {:keys [pred] :or {pred set/subset?}}]
   ; TODO: just pass in degrees, not full chords
-  ; TODO: maybe strip out basic qualities for searchability? (e.g. iim7 V7 Imaj7 -> ii V I)
-  ;   - i.e. ii V I can mean triads, extended chords, etc.. Don't want to restrict finding progressions too heavily.
   (l/project [contextualized-chords]
              (l/membero prog (->> theory/chord-progressions
                                   (filter (fn [[_ details]]
-                                            (pred (set (map :context contextualized-chords))
-                                                  (set (:degrees details)))))))))
+                                            (or (pred (set (map :context contextualized-chords))
+                                                      (set (:degrees details)))
+                                                (pred (set (map (comp theory/simplify-chord-degree :context) contextualized-chords))
+                                                      (set (:degrees details))))))))))
 
 ; Find path between two shapes
 (l/defne not-membero [x l]
@@ -345,9 +349,9 @@
 ;
 ; Coltrane
 ; [(C_major ii)
-;  (t- (C_major V I) M3)
-;  (t- (C_major V I) (t* M3 2))
-;  (t- (C_major V I) (t* M3 3))
+;  ((t- M3 C_major) V I)))
+;  ((t- C_major (t* M3 2)) V I)
+;  ((t- C_major (t* M3 3)) V I)
 ;  (C_major V I)] 
 ; 
 ; Fit
@@ -362,6 +366,7 @@
 ; [C_maj --> ?x --> ?{:pitch :A}y]
 
 ; TODO: Neighboring paths; account for fuzziness
+
 ; TODO: input piece of music, figure out the structure (i.e. progressions, modulations; most likely brute-force DFS/BFS)
 
 (defn partitiono [l p]
@@ -371,7 +376,7 @@
                                 ; Only use partitions with at least two elements for every part
                                (filter (fn [part]
                                          (every? (fn [seqs]
-                                                   (< 0 (count seqs))) part)))))))
+                                                   (< 1 (count seqs))) part)))))))
 
 (l/defne mapo [g input output]
   ([_ () ()])
@@ -379,9 +384,9 @@
    (g head out-head)
    (mapo g tail out-tail)))
 
-(defn segmento [l ?connections ?contextualized-shapess ?partition]
+(defn segmento [l connections contextualized-shapess partition]
   (l/project [l]
-             (partitiono l ?partition)
+             (partitiono l partition)
              (mapo (fn [shape-seq out]
                      (l/project [shape-seq]
                                 (with-fresh
@@ -390,8 +395,7 @@
                                   (l/== out {:connection ?connection
                                              :contextualized-shapes ?contextualized-shapes
                                              :progression ?prog}))))
-                   ?partition
-                   ?connections)))
+                   partition connections)))
 
 ; Parsing/segmentation
 (comment
