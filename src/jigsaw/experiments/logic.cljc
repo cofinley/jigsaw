@@ -4,6 +4,7 @@
   (:require
    [clojure.core.logic :as l]
    [clojure.core.logic.fd :as fd]
+   [clojure.math.combinatorics :as combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [jigsaw.core :as jigsaw]
@@ -39,33 +40,34 @@
 
 (defn noteso
   "Potential shapes from notes"
-  [q notes]
+  [notes ?shape]
   (l/project [notes]
-             (l/membero q (jigsaw/notes->shapes notes :max-shapes 500))))
+             (l/membero ?shape (jigsaw/notes->shapes notes :max-shapes 500))))
 
-(defn shapeo [?shape x]
+(defn shapeo [x shape]
   (l/project [x]
              (cond
-               (theory/shape? x) (l/== ?shape x)
-               (theory/notes? x) (noteso ?shape x)
-               :else (l/== ?shape (jigsaw/->shape x)))))
+               (theory/shape? x) (l/== shape x)
+               (theory/notes? x) (noteso x shape)
+               :else (l/== shape (jigsaw/->shape x)))))
 
-(defn neighboro
-  "Shapes from shape"
-  [from to]
-  (l/project [from]
-             (l/membero to (->shapes from))))
+(l/defne ^:tabled neighboro [from to]
+  ([f t]
+   (l/project [f]
+              (l/membero t (->shapes f)))))
+
+; (macroexpand '(l/run 1 [q] (neighboro 1 2)))
 
 (defn ?=
   "Fuzzy shape; get similar shapes to ?shape; can include ?shape"
-  [?possible-shape ?shape-ref]
-  (l/project [?shape-ref]
-             (let [_shape (jigsaw/->shape ?shape-ref)
+  [shape-ref shape]
+  (l/project [shape-ref]
+             (let [_shape (jigsaw/->shape shape-ref)
                    ; Ensure shape has notes
-                   shape (if (contains? _shape :notes)
-                           _shape
-                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))]
-               (noteso ?possible-shape (:notes shape)))))
+                   note-shape (if (contains? _shape :notes)
+                                _shape
+                                (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))]
+               (noteso (:notes note-shape) shape))))
 
 ;; Different projections; find different ways to think about same notes (PCIs)
 (defn alto
@@ -73,24 +75,24 @@
   Given a shape, find alternative ways of thinking about that shape (what else could it be?), based on PCIs.
   Like noteso or ?=, but with disequality on the current shape and its enarmonic equivalent
   "
-  [?possible-shape ?shape-ref]
-  (l/project [?shape-ref]
-             (let [_shape (jigsaw/->shape ?shape-ref)
+  [shape-ref shape]
+  (l/project [shape-ref]
+             (let [_shape (jigsaw/->shape shape-ref)
                    ; Ensure shape has notes
-                   shape (if (contains? _shape :notes)
-                           _shape
-                           (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))
-                   pcis (map theory/pitches (:pitches shape))]
+                   note-shape (if (contains? _shape :notes)
+                                _shape
+                                (jigsaw/->shape (theory/pitch->note (:pitch _shape)) (:name _shape)))
+                   pcis (map theory/pitches (:pitches note-shape))]
                (with-fresh
-                 (noteso ?possible-shape (:notes shape))
-                 (l/featurec ?possible-shape {:pitch ?pitch :name ?name :pcis ?pcis})
-                 (l/!= (:name shape) ?name)
+                 (noteso (:notes note-shape) shape)
+                 (l/featurec shape {:pitch ?pitch :name ?name :pcis ?pcis})
+                 (l/!= (:name note-shape) ?name)
                  ; Don't use same pitch or enharmonic equivalent
                  (l/firsto ?pcis ?first-pci)
                  (l/!= (first pcis) ?first-pci)))))
 
-(defn shape-refo [?id ?shape]
-  (l/is ?id ?shape #(theory/->shape-ref %)))
+(defn shape-refo [shape id]
+  (l/is id shape #(theory/->shape-ref %)))
 
 (defn shape==
   "Shape equality, based on pitch + name"
@@ -103,10 +105,10 @@
       (l/featurec a {:pitch ?pitch :name ?name})
       (l/featurec b {:pitch ?pitch :name ?name})]
      ; Alternative check if not
-     [(shapeo ?shape1 a)
-      (shapeo ?shape2 b)
-      (shape-refo ?ref1 ?shape1)
-      (shape-refo ?ref2 ?shape2)
+     [(shapeo a ?shape1)
+      (shapeo b ?shape2)
+      (shape-refo ?shape1 ?ref1)
+      (shape-refo ?shape2 ?ref2)
       (l/== ?ref1 ?ref2)])))
 
 (defn shape!=
@@ -122,54 +124,52 @@
       (l/conde
        [(l/!= ?pitch1 ?pitch2)]
        [(l/!= ?name1 ?name2)])]
-     [(shapeo ?shape1 a)
-      (shapeo ?shape2 b)
-      (shape-refo ?ref1 ?shape1)
-      (shape-refo ?ref2 ?shape2)
+     [(shapeo a ?shape1)
+      (shapeo b ?shape2)
+      (shape-refo ?shape1 ?ref1)
+      (shape-refo ?shape2 ?ref2)
       (l/!= ?ref1 ?ref2)])))
 
 ; Connect; given one or more starting points, find how they connect; finds common diatonic complementary shape (i.e. chord<->scale)
 
 ; Recursive goal to find shared neighbor shape; collect pitch & name of neighbor as well as the shapes contextualized to that neighbor
-(l/defne connect-neighbors [shapes ?contextualized-shapes ?common-pitch ?common-name]
+(l/defne connect-neighbors [shapes contextualized-shapes common-pitch common-name]
   ([() () _ _])
-  ([[shape . rest-shapes] [?contextualized-shape . ?rest-contextualized-shapes] _ _]
-   (l/fresh [?neighbor ?context]
-            (neighboro shape ?neighbor)
-            (l/featurec ?neighbor {:pitch ?common-pitch :name ?common-name :context ?context})
-            (l/conjo shape {:context ?context} ?contextualized-shape)
-            (connect-neighbors rest-shapes ?rest-contextualized-shapes ?common-pitch ?common-name))))
+  ([[?shape . ?rest-shapes] [?contextualized-shape . ?rest-contextualized-shapes] _ _]
+   (l/fresh [?neighbor ?context ?parent-shape]
+            (neighboro ?shape ?neighbor)
+            (l/featurec ?neighbor {:pitch common-pitch :name common-name :context ?context :parent-shape ?parent-shape})
+            (l/conjo ?shape {:context ?context :parent-shape ?parent-shape} ?contextualized-shape)
+            (connect-neighbors ?rest-shapes ?rest-contextualized-shapes common-pitch common-name))))
 
-(defn connecto [q shapes]
+(defn connecto [shapes connection contextualized-shapes]
   (with-fresh
-    (l/== ?connection {:pitch ?common-pitch :name ?common-name})
-    (connect-neighbors shapes ?contextualized-shapes ?common-pitch ?common-name)
-    (l/== q {:connection ?connection
-             :contextualized-shapes ?contextualized-shapes})))
+    (l/== connection {:pitch ?common-pitch :name ?common-name})
+    (connect-neighbors shapes contextualized-shapes ?common-pitch ?common-name)))
 
 ; Support input of shapes or note-seqs which map to one or more shapes
-(l/defne prepare-shapes [?shapes xs]
+(l/defne prepare-shapes [xs shapes]
   ([() ()])
-  ([[?shape . ?rest-shapes] [x . rest-xs]]
-   (shapeo ?shape x)
-   (prepare-shapes ?rest-shapes rest-xs)))
+  ([[x . rest-xs] [shape . rest-shapes]]
+   (shapeo x shape)
+   (prepare-shapes rest-xs rest-shapes)))
 
 (defn transposo
   "Transpose pitch/note/shape by interval"
-  [q x interval & [multiplier]]
-  (l/project [x]
-             (l/== q (theory/transpose x interval multiplier))))
+  [from interval to & [multiplier]]
+  (l/project [from]
+             (l/== to (theory/transpose from interval multiplier))))
 
-(defn heuristico [q shape1 shape2]
+(defn heuristico [shape1 shape2 h]
   (l/project [shape1 shape2]
-             (l/== q (into {}
+             (l/== h (into {}
                            (map (fn [[k v]] (vector k (int (* 100 v))))
                                 (theory/calculate-heuristics (:pitches (jigsaw/->shape shape1))
                                                              (:pitches (jigsaw/->shape shape2))))))))
 
 (defn fuzzy-neighborc [from to]
   (with-fresh
-    (heuristico ?h from to)
+    (heuristico from to ?h)
     (l/featurec ?h {:overlap ?overlap :same-pitch-count? ?pc})
     (l/conde
       ; Perfect pitch match
@@ -196,13 +196,15 @@
 
 (defn progresso
   "Find compatible progresion, given some chords (with degree contexts)"
-  [q contextualized-chords & {:keys [pred] :or {pred set/subset?}}]
+  [contextualized-chords prog & {:keys [pred] :or {pred set/subset?}}]
   ; TODO: just pass in degrees, not full chords
+  ; TODO: maybe strip out basic qualities for searchability? (e.g. iim7 V7 Imaj7 -> ii V I)
+  ;   - i.e. ii V I can mean triads, extended chords, etc.. Don't want to restrict finding progressions too heavily.
   (l/project [contextualized-chords]
-             (l/membero q (->> theory/chord-progressions
-                               (filter (fn [[_ details]]
-                                         (pred (set (map :context contextualized-chords))
-                                               (set (:degrees details)))))))))
+             (l/membero prog (->> theory/chord-progressions
+                                  (filter (fn [[_ details]]
+                                            (pred (set (map :context contextualized-chords))
+                                                  (set (:degrees details)))))))))
 
 ; Find path between two shapes
 (l/defne not-membero [x l]
@@ -250,7 +252,7 @@
             (neighboro ?a ?c)
             (shape!= ?b ?c)
             ; Base visited on pitch+names...
-            (shape-refo ?cid ?c)
+            (shape-refo ?c ?cid)
             (not-membero ?cid ?v)
             (l/conso ?cid ?v ?v')
             ; But store contextualized versions of shapes for path later
@@ -265,24 +267,24 @@
              (travelo start end [start] [start] depth path)
              (reverseo path [] res))))
 
-(defn resolvo [?scale ?degree ?chord]
+(defn resolvo [scale degree chord]
   (l/conde
    ; Need scale
-   [(l/== true (l/lvar? ?scale))
-    (neighboro ?chord ?scale)
-    (l/featurec ?scale {:context ?degree})]
+   [(l/== true (l/lvar? scale))
+    (neighboro chord scale)
+    (l/featurec scale {:context degree})]
    ; Need degree
-   [(l/== true (l/lvar? ?degree))
+   [(l/== true (l/lvar? degree))
     (l/fresh [?chord-neighbor]
-             (neighboro ?scale ?chord-neighbor)
-             (shape== ?chord ?chord-neighbor)
-             (l/featurec ?chord-neighbor {:context ?degree}))]
+             (neighboro scale ?chord-neighbor)
+             (shape== chord ?chord-neighbor)
+             (l/featurec ?chord-neighbor {:context degree}))]
    ; Need chord
-   [(l/== true (l/lvar? ?chord))
-    (neighboro ?scale ?chord)
-    (l/featurec ?chord {:context ?degree})]))
+   [(l/== true (l/lvar? chord))
+    (neighboro scale chord)
+    (l/featurec chord {:context degree})]))
 
-(l/defne resolvo* [?scale ?degrees ?chords]
+(l/defne resolvo* [scale degrees chords]
   ([?s [] []])
   ([?s [?deg . ?rest-degs] [?chord . ?rest-chords]]
    (l/conde
@@ -361,3 +363,42 @@
 
 ; TODO: Neighboring paths; account for fuzziness
 ; TODO: input piece of music, figure out the structure (i.e. progressions, modulations; most likely brute-force DFS/BFS)
+
+(defn partitiono [l p]
+  (l/project [l]
+             (l/membero p (->> l
+                               combo/partitions
+                                ; Only use partitions with at least two elements for every part
+                               (filter (fn [part]
+                                         (every? (fn [seqs]
+                                                   (< 0 (count seqs))) part)))))))
+
+(l/defne mapo [g input output]
+  ([_ () ()])
+  ([_ (head . tail) (out-head . out-tail)]
+   (g head out-head)
+   (mapo g tail out-tail)))
+
+(defn segmento [l ?connections ?contextualized-shapess ?partition]
+  (l/project [l]
+             (partitiono l ?partition)
+             (mapo (fn [shape-seq out]
+                     (l/project [shape-seq]
+                                (with-fresh
+                                  (connecto shape-seq ?connection ?contextualized-shapes)
+                                  (progresso ?contextualized-shapes ?prog)
+                                  (l/== out {:connection ?connection
+                                             :contextualized-shapes ?contextualized-shapes
+                                             :progression ?prog}))))
+                   ?partition
+                   ?connections)))
+
+; Parsing/segmentation
+(comment
+  (l/run 1 [q]
+         (with-fresh
+           ; Maybe instead of partition -> map neighboro -> connecto -> progresso
+           ; Do chords -> degree qualities -> find progressions
+           (prepare-shapes [:D_m :G_maj :C_maj :C_m :F_maj :Bb_maj] ?shapes)
+           (segmento ?shapes ?cs ?s ?p)
+           (l/== q ?cs))))

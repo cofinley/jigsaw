@@ -147,7 +147,7 @@
              (jl/neighboro ?scale ?v)
              (l/featurec ?v {:context :chord-degree/V7})
              ; Find the shape which is a tritone away from the V chord
-             (jl/transposo ?sub ?v :d5)
+             (jl/transposo ?v :d5 ?sub)
 
              (jl/neighboro ?scale ?i)
              (l/featurec ?i {:context :chord-degree/Imaj7})
@@ -191,7 +191,7 @@
                (l/featurec ?i2 {:context :chord-degree/Imaj7})
 
               ; Key goes down another third
-               (jl/transposo ?key3 ?key2 :M3 -1)
+               (jl/transposo ?key2 :M3 ?key3 -1)
 
               ; New V-I
                (jl/neighboro ?key3 ?v3)
@@ -214,7 +214,7 @@
       (are+ [run want] (= want run)
         (l/run 1 [q]
                (jl/with-fresh
-                 (jl/prepare-shapes q [:C_maj])))
+                 (jl/prepare-shapes [:C_maj] q)))
         '(({:intervals [:P1 :M3 :P5]
             :pitch :C
             :name :maj
@@ -224,7 +224,7 @@
       (are+ [run want] (= want run)
         (l/run 1 [q]
                (jl/with-fresh
-                 (jl/prepare-shapes q [[:C4 :E4 :G4]])))
+                 (jl/prepare-shapes [[:C4 :E4 :G4]] q)))
         '(({:pitch :C
             :name :maj
             :heuristics
@@ -246,20 +246,23 @@
               chords [ii v]]
           (l/run 1 [q]
                  (jl/with-fresh
-                   (jl/connecto ?conn chords)
-                   (l/== q ?conn))))
+                   (jl/connecto chords ?conn ?shapes)
+                   (l/== q {:connection ?conn
+                            :contextualized-shapes ?shapes}))))
         '({:connection {:pitch :C, :name :major},
            :contextualized-shapes
            ({:intervals [:P1 :m3 :P5]
              :pitch :D
              :name :m
              :pitches [:D :F :A]
-             :context :chord-degree/ii}
+             :context :chord-degree/ii
+             :parent-shape {:pitch :C :name :major}}
             {:intervals [:P1 :M3 :P5]
              :pitch :G
              :name :maj
              :pitches [:G :B :D]
-             :context :chord-degree/V})})))
+             :context :chord-degree/V
+             :parent-shape {:pitch :C :name :major}})})))
 
     (testing "with note seqs"
       (are+ [run want] (= want run)
@@ -267,9 +270,10 @@
                          [:D4 :F4 :A4]]]
           (l/run 1 [q]
                  (jl/with-fresh
-                   (jl/prepare-shapes ?shapes note-seqs)
-                   (jl/connecto ?conn ?shapes)
-                   (l/== q ?conn))))
+                   (jl/prepare-shapes note-seqs ?shapes)
+                   (jl/connecto ?shapes ?conn ?new-shapes)
+                   (l/== q {:connection ?conn
+                            :contextualized-shapes ?new-shapes}))))
         '({:connection {:pitch :C, :name :major}
            :contextualized-shapes
            ({:pitch :C
@@ -284,7 +288,8 @@
               :shares-root? 1},
              :pcis [0 4 7],
              :input [:C4 :E4 :G4],
-             :context :chord-degree/I}
+             :context :chord-degree/I
+             :parent-shape {:pitch :C, :name :major}}
             {:pitch :D,
              :name :m,
              :heuristics
@@ -297,7 +302,8 @@
               :shares-root? 1},
              :pcis [2 5 9],
              :input [:D4 :F4 :A4],
-             :context :chord-degree/ii})}))))
+             :context :chord-degree/ii
+             :parent-shape {:pitch :C, :name :major}})}))))
 
   (testing "fuzzy-neighborc"
     (are+ [run want] (= want run)
@@ -326,23 +332,26 @@
             chords [ii v]]
         (l/run 1 [q]
                (jl/with-fresh
-                 (jl/prepare-shapes ?shapes chords)
-                 (jl/connecto ?conn ?shapes)
-                 (l/featurec ?conn {:contextualized-shapes ?chords})
-                 (jl/progresso ?prog ?chords)
-                 (l/== q [?conn ?prog]))))
+                 (jl/prepare-shapes chords ?shapes)
+                 (jl/connecto ?shapes ?conn ?new-shapes)
+                 (jl/progresso ?new-shapes ?prog)
+                 (l/== q [{:connection ?conn
+                           :contextualized-shapes ?new-shapes}
+                          ?prog]))))
       '([{:connection {:pitch :C, :name :major},
           :contextualized-shapes
           ({:intervals [:P1 :m3 :P5],
             :pitch :D,
             :name :m,
             :pitches [:D :F :A],
-            :context :chord-degree/ii}
+            :context :chord-degree/ii
+            :parent-shape {:pitch :C, :name :major}}
            {:intervals [:P1 :M3 :P5],
             :pitch :G,
             :name :maj,
             :pitches [:G :B :D],
-            :context :chord-degree/V})}
+            :context :chord-degree/V
+            :parent-shape {:pitch :C, :name :major}})}
          ["Montgomery–Ward bridge"
           {:degrees
            [:chord-degree/I
@@ -356,7 +365,7 @@
       ; What else could the C maj chord be (excluding C maj and its enharmonic equivalents)?
       (l/run 2 [q]
              (jl/with-fresh
-               (jl/alto q :C_maj)))
+               (jl/alto :C_maj q)))
       '({:pitch :Fb,
          :name :m#5,
          :bass :C,
@@ -389,7 +398,7 @@
       ; What else could the C maj chord be (including C maj, enharmonic equivalents)?
       (l/run 2 [q]
              (jl/with-fresh
-               (jl/?= q :C_maj)))
+               (jl/?= :C_maj q)))
       '({:pitch :C,
          :name :maj,
          :heuristics

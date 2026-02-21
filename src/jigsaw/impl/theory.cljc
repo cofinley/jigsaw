@@ -173,8 +173,8 @@
 (s/def ::shape (s/merge ::shape-blueprint
                         ::shape-ref
                         (s/keys :req-un [(or ::pitches ::notes)])))
-(defn shape-ref? [x] (s/valid? ::shape-ref x))
-(defn shape? [x] (s/valid? ::shape x))
+(def shape-ref? (memoize (fn [x] (s/valid? ::shape-ref x))))
+(def shape? (memoize (fn [x] (s/valid? ::shape x))))
 
 (s/def ::bass ::pitch)
 
@@ -426,8 +426,8 @@
 (s/def ::scale (s/and ::shape
                       #(contains? scales (:name %))))
 
-(defn chord? [x] (s/valid? ::chord x))
-(defn scale? [x] (s/valid? ::scale x))
+(def chord? (memoize (fn [x] (s/valid? ::chord x))))
+(def scale? (memoize (fn [x] (s/valid? ::scale x))))
 
 ; Shape name, i.e. quality, e.g. maj7
 (def name->shape (merge chords scales))
