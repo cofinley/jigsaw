@@ -111,12 +111,13 @@
 
 (defn scale->modes
   [scale]
-  {:pre [(theory/scale? scale)]}
+  ; {:pre [(theory/scale? scale)]}
   (let [scale-ref (select-keys scale [:pitch :name])]
     (concat
      (for [n (range 1 (count (:pitches scale)))
-           :let [mode (theory/scale->mode scale n)
-                 context (contextualize scale (->shape mode))]]
+           :let [mode (theory/scale->mode scale n)]
+           :when (some? mode)
+           :let [context (contextualize scale (->shape mode))]]
        (assoc mode :context context :parent-shape scale-ref))
      ; Parallel keys/modes
      (when (= (:name scale) :major)

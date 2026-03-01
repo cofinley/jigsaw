@@ -40,15 +40,15 @@
 
 (defn noteso
   "Potential shapes from notes"
-  [notes ?shape]
+  [notes shape]
   (l/project [notes]
-             (l/membero ?shape (jigsaw/notes->shapes notes :max-shapes 500))))
+             (l/membero shape (jigsaw/notes->shapes notes :max-shapes 500))))
 
 (defn shapeo [x shape]
   (l/project [x]
              (cond
                (theory/shape? x) (l/== shape x)
-               (theory/notes? x) (noteso x shape)
+               (theory/notes? x) (let [x (vec x)] (noteso x shape))
                :else (l/== shape (jigsaw/->shape x)))))
 
 (l/defne ^:tabled neighboro [from to]
@@ -147,9 +147,10 @@
             (connect-neighbors ?rest-shapes ?rest-contextualized-shapes common-pitch common-name))))
 
 (defn connecto [shapes connection contextualized-shapes]
-  (with-fresh
-    (l/== connection {:pitch ?common-pitch :name ?common-name})
-    (connect-neighbors shapes contextualized-shapes ?common-pitch ?common-name)))
+  ; (with-fresh
+  (l/fresh [?common-pitch ?common-name]
+           (l/== connection {:pitch ?common-pitch :name ?common-name})
+           (connect-neighbors shapes contextualized-shapes ?common-pitch ?common-name)))
 
 ; Support input of shapes or note-seqs which map to one or more shapes
 (l/defne prepare-shapes [xs shapes]
@@ -406,3 +407,128 @@
            (prepare-shapes [:D_m :G_maj :C_maj :C_m :F_maj :Bb_maj] ?shapes)
            (segmento ?shapes ?cs ?s ?p)
            (l/== q ?cs))))
+
+(comment
+  (let [parent-data [{:notes #{:F#4 :C5 :E5 :A4}, :type :input-piano, :pcis #{6 0 4 9}}
+                     {:notes #{:Gb4 :Eb5 :B4 :A4}, :type :input-piano}
+                     {:notes #{:G4 :E4 :B4}, :type :input-piano}]]
+    (jigsaw/connect-memo (map :notes parent-data) :chord :max-shapes 1)))
+; {{:pitch :Fb, :name :bebop-harmonic-minor}
+;  ({:input #{#{:C5 :F#4 :E5 :A4}},
+;    :found
+;    {:pitch :Gb,
+;     :name :m7b5,
+;     :heuristics
+;     {:contains? 1,
+;      :fully-contains? 0,
+;      :contained-in? 1,
+;      :fully-contained-in? 0,
+;      :overlap 1.0,
+;      :same-pitch-count? 1,
+;      :shares-root? 0}},
+;    :context :chord-degree/iim7b5}
+;   {:input #{#{:G4 :E4 :B4}},
+;    :found
+;    {:pitch :Fb,
+;     :name :m,
+;     :heuristics
+;     {:contains? 1,
+;      :fully-contains? 0,
+;      :contained-in? 1,
+;      :fully-contained-in? 0,
+;      :overlap 1.0,
+;      :same-pitch-count? 1,
+;      :shares-root? 0}},
+;    :context :chord-degree/i}
+;   {:input #{#{:Gb4 :Eb5 :B4 :A4}},
+;    :found
+;    {:pitch :Cb,
+;     :name :7,
+;     :bass :Gb,
+;     :heuristics
+;     {:contains? 1,
+;      :fully-contains? 0,
+;      :contained-in? 1,
+;      :fully-contained-in? 0,
+;      :overlap 1.0,
+;      :same-pitch-count? 1,
+;      :shares-root? 0}},
+;    :context :chord-degree/V7})}
+
+(comment
+  (reduce
+   (fn [m [conn shapes]]
+     (assoc m conn (map (fn [shape]
+                          {:input (:input shape)
+                           :found (dissoc shape :input)}) shapes)))
+   {}
+   (let [parent-data [{:notes [:F#4 :C5 :E5 :A4], :type :input-piano, :pcis #{6 0 4 9}}
+                      {:notes [:Gb4 :Eb5 :B4 :A4], :type :input-piano}
+                      {:notes [:G4 :E4 :B4], :type :input-piano}]
+         note-seqs (map :notes parent-data)]
+     (l/run 1 [q]
+            (with-fresh
+              (prepare-shapes note-seqs ?shapes)
+              (connecto ?shapes ?conn ?shapes')
+              (l/== q [?conn ?shapes']))))))
+; {{:pitch :Eb, :name :ultralocrian}
+;  ({:input [:F#4 :C5 :E5 :A4],
+;    :found
+;    {:pitch :Gb,
+;     :name :m7b5,
+;     :heuristics
+;     {:contains? 1,
+;      :fully-contains? 0,
+;      :contained-in? 1,
+;      :fully-contained-in? 0,
+;      :overlap 1.0,
+;      :same-pitch-count? 1,
+;      :shares-root? 1},
+;     :pcis [6 9 0 4],
+;     :context :chord-degree/biiim7b5,
+;     :parent-shape {:pitch :Eb, :name :ultralocrian}}}
+;   {:input [:Gb4 :Eb5 :B4 :A4],
+;    :found
+;    {:pitch :Cb,
+;     :name :7,
+;     :bass :Gb,
+;     :heuristics
+;     {:contains? 1,
+;      :fully-contains? 0,
+;      :contained-in? 1,
+;      :fully-contained-in? 0,
+;      :overlap 1.0,
+;      :same-pitch-count? 1,
+;      :shares-root? 0},
+;     :pcis [11 3 6 9],
+;     :context :chord-degree/bVI7,
+;     :parent-shape {:pitch :Eb, :name :ultralocrian}}}
+;   {:input [:G4 :E4 :B4],
+;    :found
+;    {:pitch :Fb,
+;     :name :m,
+;     :heuristics
+;     {:contains? 1,
+;      :fully-contains? 0,
+;      :contained-in? 1,
+;      :fully-contained-in? 0,
+;      :overlap 1.0,
+;      :same-pitch-count? 1,
+;      :shares-root? 0},
+;     :pcis [4 7 11],
+;     :context :chord-degree/bii,
+;     :parent-shape {:pitch :Eb, :name :ultralocrian}}})}
+
+(defn connect [note-seqs & [n]]
+  (reduce
+   (fn [m [conn shapes]]
+     (assoc m conn (map (fn [shape]
+                          {:input (:input shape)
+                           :found (dissoc shape :input)}) shapes)))
+   {}
+   (l/run (or n 1) [q]
+          ; (with-fresh
+          (l/fresh [?shapes ?conn ?shapes']
+                   (prepare-shapes note-seqs ?shapes)
+                   (connecto ?shapes ?conn ?shapes')
+                   (l/== q {?conn ?shapes'})))))

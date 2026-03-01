@@ -540,23 +540,23 @@
                   {:pitch :Bb, :name :bebop-major, :context :chord-degree/ii13sus4}]))
 
   (testing "scale->modes"
-    (are+ [base-scale modes] (= modes (map #(select-keys % [:pitch :name :context]) (jigsaw/scale->modes base-scale)))
-      (jigsaw/->shape :C :major) '({:pitch :D, :name :dorian :context :mode/II}
-                                   {:pitch :E, :name :phrygian :context :mode/III}
-                                   {:pitch :F, :name :lydian :context :mode/IV}
-                                   {:pitch :G, :name :mixolydian :context :mode/V}
-                                   {:pitch :A, :name :minor :context :mode/VI}
-                                   {:pitch :B, :name :locrian :context :mode/VII}
-                                   {:pitch :C, :name :minor :context :mode/parallel}
-                                   {:pitch :C, :name :harmonic-minor :context :mode/parallel}
-                                   {:pitch :C, :name :melodic-minor :context :mode/parallel})
-      (jigsaw/->shape :C :minor) '({:pitch :D, :name :locrian :context :mode/II}
-                                   {:pitch :Eb, :name :major :context :mode/III}
-                                   {:pitch :F, :name :dorian :context :mode/IV}
-                                   {:pitch :G, :name :phrygian :context :mode/V}
-                                   {:pitch :Ab, :name :lydian :context :mode/VI}
-                                   {:pitch :Bb, :name :mixolydian :context :mode/VII}
-                                   {:pitch :C, :name :major :context :mode/parallel})))
+    (are+ [base-scale modes] (= modes (map #(select-keys % [:pitch :name :context]) (jigsaw/scale->modes (jigsaw/->shape base-scale))))
+      :C_major '({:pitch :D, :name :dorian :context :mode/II}
+                 {:pitch :E, :name :phrygian :context :mode/III}
+                 {:pitch :F, :name :lydian :context :mode/IV}
+                 {:pitch :G, :name :mixolydian :context :mode/V}
+                 {:pitch :A, :name :minor :context :mode/VI}
+                 {:pitch :B, :name :locrian :context :mode/VII}
+                 {:pitch :C, :name :minor :context :mode/parallel}
+                 {:pitch :C, :name :harmonic-minor :context :mode/parallel}
+                 {:pitch :C, :name :melodic-minor :context :mode/parallel})
+      :C_minor '({:pitch :D, :name :locrian :context :mode/II}
+                 {:pitch :Eb, :name :major :context :mode/III}
+                 {:pitch :F, :name :dorian :context :mode/IV}
+                 {:pitch :G, :name :phrygian :context :mode/V}
+                 {:pitch :Ab, :name :lydian :context :mode/VI}
+                 {:pitch :Bb, :name :mixolydian :context :mode/VII}
+                 {:pitch :C, :name :major :context :mode/parallel})))
 
   (testing "notes->shapes"
     (testing "with basic inversions"
@@ -617,4 +617,5 @@
       :C_major :C_minor :mode/parallel
       :C_minor :C_major :mode/parallel
       ; Relative key is just labeled as 6th/Aeolian mode
-      :C_major :A_minor :mode/VI)))
+      :C_major :A_minor :mode/VI
+      #_#_#_:Ebb_locrian :Ab_lydian :mode/V)))

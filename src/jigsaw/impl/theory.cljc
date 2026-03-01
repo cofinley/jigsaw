@@ -419,11 +419,11 @@
 (def intervals->scales
   (reduce-kv (fn [m scale-name {:keys [:intervals]}] (assoc m intervals scale-name)) {} scales))
 
-(s/def ::chord (s/and ::shape
+(s/def ::chord (s/and ::shape-ref
                       #(contains? chords (:name %))
                       (s/keys :opt-un [::bass])))
 
-(s/def ::scale (s/and ::shape
+(s/def ::scale (s/and ::shape-ref
                       #(contains? scales (:name %))))
 
 (def chord? (memoize (fn [x] (s/valid? ::chord x))))
