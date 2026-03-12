@@ -39,7 +39,7 @@
               [table {:ms @scales
                       :row-render {"Tonic" :pitch
                                    "Name" :name
-                                   "Chord's Degree" :degree
+                                   "Chord's Degree" :context
                                    "Piano" (fn [shape]
                                              [piano-preview
                                               shape

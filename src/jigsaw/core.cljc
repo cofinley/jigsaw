@@ -15,7 +15,7 @@
   (let [src-type (if (theory/chord? src-shape) :chord :scale)
         dest-type (if (theory/chord? dest-shape) :chord :scale)]
     (case [src-type dest-type]
-      [:chord :scale] (theory/contextualize-chord dest-shape src-shape)
+      [:chord :scale] (theory/contextualize-chord->scale src-shape dest-shape)
       [:scale :chord] (theory/contextualize-chord src-shape dest-shape)
       [:scale :scale] (theory/contextualize-scale src-shape dest-shape)
       nil)))
@@ -85,7 +85,7 @@
           :when (set/subset? (set (:pitches chord)) pitch-set)]
       {:pitch (:pitch chord)
        :name (:name chord)
-       :context (contextualize chord scale)
+       :context (contextualize scale chord)
        :parent-shape (select-keys scale [:pitch :name])})))
 
 ; Find scales from chords
@@ -100,13 +100,13 @@
     ; (sort-by #(theory/roman-numeral->int (:context %))
     (for [scale all-scales
           :when (set/subset? pitch-set (set (:pitches scale)))
-          :let [chord-degree (contextualize chord scale)]
+          :let [scale-degree (contextualize chord scale)]
           :when (if (some? degree)
-                  (= degree (theory/roman-numeral->int chord-degree))
+                  (= degree (theory/roman-numeral->int scale-degree))
                   true)]
       {:pitch (:pitch scale)
        :name (:name scale)
-       :context chord-degree
+       :context scale-degree
        :parent-shape (select-keys scale [:pitch :name])})))
 
 (defn scale->modes
@@ -150,6 +150,8 @@
             (chord->chords shape))
     (concat (scale->chords shape)
             (scale->modes shape))))
+
+; TODO/IDEA: list of visited contexts?
 
 (defn connect-shapes
   [shapes]
@@ -292,7 +294,7 @@
   (->progression :C_major [:ii :V :I])
   ;; Shape -> shapes
   (chord->scales (->shape :C :maj))
-  (scale->chords (->shape :C :major))
+  (scale->chords (->shape :C :minor))
   (scale->modes (->shape :G_lydian-pentatonic))
   (notes->shapes (:notes (->shape :C4_maj)) :chord)
   ;; (generalized version)

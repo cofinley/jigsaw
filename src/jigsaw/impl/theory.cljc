@@ -178,6 +178,13 @@
 
 (s/def ::bass ::pitch)
 
+;; Derived
+
+;; Chord: Maj, Maj7, min7, minMaj7
+;;   Made up of root pitch (which will have a scale degree, when figured out (e.g. I, IV)) and intervals (relative to the root)
+;;      Cannot rely solely on semitones since more than one interval can share the same amount of semitones
+;;   Has positions (root)/can be inverted (first, second inversion) when root not lowest note
+
 (def chords
   (array-map
    ;; Major
@@ -296,15 +303,10 @@
    :q          {:intervals [:P1 :P4 :m7 :m10]               :aliases ["quartal"]}
    :11b9       {:intervals [:P1 :P5 :m7 :m9 :P11]}))
 
-;; Derived
-;; Chord: Maj, Maj7, min7, minMaj7
-;;   Made up of root pitch (which will have a scale degree, when figured out (e.g. I, IV)) and intervals (relative to the root)
-;;      Cannot rely solely on semitones since more than one interval can share the same amount of semitones
-;;   Has positions (root)/can be inverted (first, second inversion) when root not lowest note
-;; Scale: Maj, min
+;; Scale: Major, minor
 ;;   Absolute distances: degrees
 ;;   Relative distances: intervals
-;;   Has modes, which are similar to inversions (same intervals as base scale, new tonic)
+;;   Has modes, which are similar to inversions (same pitches as base scale, new tonic and re-contextualized intervals)
 ;;   Tonic (1) is the key
 ;;   Chords can be derived from a scale
 
@@ -830,6 +832,17 @@
                             :m ""
                             (name chord-name)))]
         (keyword "chord-degree" chord-degree)))))
+
+(defn contextualize-chord->scale [chord scale]
+  (let [scale-pitch-index (.indexOf (:pitches scale) (first (:pitches chord)))]
+    (when (<= 0 scale-pitch-index)
+      (let [scale-degree (nth (:degrees scale)
+                              scale-pitch-index)
+            degree-str (name scale-degree)
+            accidental (if (< 1 (count degree-str)) (first degree-str) "")
+            degree-num (utils/parse-int degree-str)
+            roman-num (roman-numeral degree-num)]
+        (keyword "scale-degree" (str accidental roman-num))))))
 
 (defn chord-degree-parts [degree]
   (let [[_ accidental roman-numeral chord-name] (re-find chord-degree-pattern (name degree))
