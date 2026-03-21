@@ -1,5 +1,7 @@
 (ns jigsaw.experiments.datomic
   (:require
+   [clojure.math.combinatorics :as combo]
+   [clojure.set :as set]
    [datascript.core :as d]
    [datascript.storage.sql.core :as storage-sql]
    [jigsaw.core :as jigsaw]
@@ -86,14 +88,14 @@
                            ; :db/cardinality :db.cardinality/one}
    })
 
-(comment
-  ; Model small structures in addition to super structures?
-  ; i.e. using many cardinality?
-  :pci/9
-  :pitch/A
-  :interval/P5
-  :scale-degree/bII
-  :chord-degree/bIImaj7)
+; (comment
+;   ; Model small structures in addition to super structures?
+;   ; i.e. using many cardinality?
+;   :pci/9
+;   :pitch/A
+;   :interval/P5
+;   :scale-degree/bII
+;   :chord-degree/bIImaj7)
 
 (defn resolve-all-shapes [shape-type]
   (for [pitch theory/simple-pitch-keys
@@ -144,24 +146,6 @@
 (defn notes->pci-set [notes]
   (set (map #(-> % theory/parts :pci) notes)))
 
-; (defn notes->shapes [db notes n]
-;   (->>
-;    (d/q
-;     '[:find (pull ?e [:pitch :name]) ?index
-;       :keys e index
-;       :in $ ?input-pcis
-;       :where
-;       [?e :pci-set ?pcis]
-;       [(theory/jaccard-index ?pcis ?input-pcis) ?index]
-;       [(> ?index 0.6)]]
-;     db
-;     (notes->pci-set notes))
-;    (sort-by :index >)
-;    (take n)))
-
-; (comment
-;   (notes->shapes db [:C4 :E4 :G4] 5))
-
 (defn connect-rules [n]
   (let [entity-sym (fn [i] (symbol (str "?e" (inc i))))
         context-sym (fn [i] (symbol (str "?context" (inc i))))]
@@ -175,10 +159,10 @@
 
 (def base-rules
   '[[(notes->shapes ?notes ?e ?index)
-     [(set (map #(-> % theory/parts :pci) ?notes)) ?pcis]
-     [?e :pci-set ?e-pcis]
-     [(theory/jaccard-index ?pcis ?e-pcis) ?index]
-     [(>= ?index 0.8)]]
+     [(jigsaw.experiments.datomic/notes->pci-set ?notes) ?pcis]
+     [?e :pci-set ?pcis']
+     [(theory/jaccard-index ?pcis ?pcis') ?index]
+     [(>= ?index 0.5)]]
 
     [(neighbor ?from ?to ?context)
      [?edge :edge/from ?from]
@@ -222,10 +206,72 @@
      [?e' :pitch ?pitch']
      [(theory/pitches ?pitch) ?fp]
      [(theory/pitches ?pitch') ?fp']
-     [(not= ?fp ?fp')]]])
+     [(not= ?fp ?fp')]]
+
+    [(fit ?e ?target ?e' ?index)
+     (neighbor ?target ?e')
+     [?e :pci-set ?pcis]
+     [?e' :pci-set ?pcis']
+     [(count ?pcis) ?pcs]
+     [(count ?pcis') ?pcs']
+     [(<= ?pcs ?pcs')]
+     [(theory/jaccard-index ?pcis ?pcis') ?index]
+     [(>= ?index 0.5)]]
+
+    [(fit-pci ?pcis ?target ?e' ?index)
+     (neighbor ?target ?e')
+     [?e' :pci-set ?pcis']
+     [(count ?pcis) ?pcs]
+     [(count ?pcis') ?pcs']
+     [(<= ?pcs ?pcs')]
+     [(theory/jaccard-index ?pcis ?pcis') ?index]
+     [(>= ?index 0.5)]]
+
+    [(partition ?coll ?partitioning)
+     ; Max of n-1 partitions, i.e. don't allow all elements to have their own partition
+     [(count ?coll) ?n]
+     [(dec ?n) ?max]
+     [(combo/partitions ?coll :max ?max) [?partitioning ...]]]
+
+    ; Shared nearest neighbors
+    [(snn ?coll ?shared-neighbors)
+     [(jigsaw.experiments.datomic/snn ?coll) ?shared-neighbors]]
+
+    ; Shared nearest neighbors as jaccard index
+    [(snn-jaccard ?coll ?index)
+     [(jigsaw.experiments.datomic/snn-jaccard ?coll) ?index]]
+
+    ; Shared nearest neighbors, for each partition
+    [(partition-snn ?partitioning ?shared-neighbors-per-partition)
+     [(jigsaw.experiments.datomic/partition-snn ?partitioning) ?shared-neighbors-per-partition]]
+
+    ; Average jaccard index for a list of partitions (seq of seqs)
+    [(partition-snn-jaccard ?partitioning ?avg-index)
+     [(jigsaw.experiments.datomic/partition-snn-jaccard ?partitioning) ?avg-index]]])
 
 (def rules
   (concat base-rules (connect-rules 10)))
+
+(defn shape->neighbors [shape-eid]
+  (set (d/q '[:find [?neighbor ...]
+              :in $ % ?e
+              :where
+              (neighbor ?e ?neighbor)]
+            db rules shape-eid)))
+
+(defn snn [coll]
+  (apply set/intersection (map shape->neighbors coll)))
+
+(defn snn-jaccard [coll]
+  (apply theory/jaccard-index (map shape->neighbors coll)))
+
+(defn partition-snn [partitioning]
+  (map snn partitioning))
+
+(defn partition-snn-jaccard [partitioning]
+  (let [indexes (map snn-jaccard partitioning)
+        sum (reduce + indexes)]
+    (float (/ sum (count partitioning)))))
 
 (comment
   (d/q '[:find (pull ?b [:pitch+name]) ?context
@@ -700,51 +746,157 @@
            [(theory/jaccard-index ?pcis ?chord-pcis) ?index]
            [(>= ?index 0.5)]]
          db rules pci-set)))
+; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
+;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
+;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
+;  [{:pci-set #{0 7 2}, :pitch+name [:G :sus4]} 0.5]
+;  [{:pci-set #{0 7 4}, :pitch+name [:C :maj]} 0.5])
 
 (comment
-  (filter #(contains? theory/chords (-> % :chord :pitch+name second))
-          (let [pci-set (set (map theory/pitches [:G :Db :Gb :A]))]
-            (d/q '[:find
-                   (pull ?source [:pitch+name :pitches])
-                   ?index
-                   (pull ?scale [:pitch+name :pitches])
-                   :keys chord index scale
-                   :in $ % ?pcis
-                   :where
-                   ; [?source :pitch :G]
-                   [?source :pci-set ?src-pcis]
-                   [(theory/jaccard-index ?pcis ?src-pcis) ?index]
-                   [(>= ?index 0.8)]
-                   [(set/subset? ?pcis ?src-pcis)]
-                   (neighbor ?source ?scale)]
-                 db rules pci-set))))
-
-(comment
-  (let [pci-set1 (set (map theory/pitches [:G :Db :Bb]))
-        pci-set2 (set (map theory/pitches [:Gb :A :C]))
-        pci-set3 (set (map theory/pitches [:F :C :G :D]))]
+  ; Fit, using PCIs as start
+  (let [chord (jigsaw/->shape :C_m)
+        pitches (notes->pci-set (:pitches chord))]
     (d/q '[:find
-           (pull ?a [:pitch+name]) #_?index1
-           (pull ?b [:pitch+name]) #_?index2
-           (pull ?c [:pitch+name]) #_?index3
-           (pull ?neighbor [:pitch+name])
-           :in $ % ?pcis1 ?pcis2 ?pcis3
+           (pull ?chord [:pitch+name :pci-set])
+           ?index
+           :in $ % ?pcis
            :where
-           [?a :pci-set ?pcis-a]
-           ; [?a :pitch+name [:G :dim]]
-           [?b :pci-set ?pcis-b]
-           [?c :pci-set ?pcis-c]
-           [(theory/jaccard-index ?pcis1 ?pcis-a) ?index1]
-           [(>= ?index1 0.7)]
-           ; [(set/subset? ?pcis1 ?pcis-a)]
-           [(theory/jaccard-index ?pcis2 ?pcis-b) ?index2]
-           [(>= ?index2 0.7)]
-           ; [(set/subset? ?pcis2 ?pcis-b)]
-           [(theory/jaccard-index ?pcis3 ?pcis-c) ?index3]
-           [(>= ?index3 0.7)]
-           ; [(set/subset? ?pcis3 ?pcis-c)]
-           ; (alt= ?a ?a')
-           ; (alt= ?b ?b')
-           ; (alt= ?c ?c')
-           (connect-3 ?neighbor ?a ?b ?c)]
-         db rules pci-set1 pci-set2 pci-set3)))
+           [?target :pitch+name [:C :major]]
+           (fit-pci ?pcis ?target ?chord ?index)]
+         db rules pitches)))
+; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
+;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
+;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
+;  [{:pci-set #{0 7 2}, :pitch+name [:G :sus4]} 0.5]
+;  [{:pci-set #{0 7 4}, :pitch+name [:C :maj]} 0.5])
+
+(comment
+  ; Fit, using shape as start
+  (d/q '[:find
+         (pull ?chord' [:pitch+name :pci-set])
+         ?index
+         :in $ %
+         :where
+         [?chord :pitch+name [:C :m]]
+         [?target :pitch+name [:C :major]]
+         (fit ?chord ?target ?chord' ?index)]
+       db rules))
+; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
+;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
+;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
+;  [{:pci-set #{0 7 2}, :pitch+name [:G :sus4]} 0.5]
+;  [{:pci-set #{0 7 4}, :pitch+name [:C :maj]} 0.5])
+
+(comment
+  ; Fit second chord based on parent of first chord
+  (let [notes1 #{:C# :E :Ab :B} ; sounds good
+        notes2 #{:Bb :D :Gb :A} ; doesn't sound as good, keep going on first
+        ]
+    (d/q '[:find
+           (pull ?target [:pitch+name])
+           (pull ?e1 [:pitch+name]) ?i1 ?context
+           (pull ?e2 [:pitch+name :pitches]) ?ldist ?context2
+          ; (pull ?e2' [:pitch+name]) ?index
+           :in $ % ?notes1 ?notes2
+           :where
+           (notes->shapes ?notes1 ?e1 ?i1)
+           [?e1 :name :m7]
+           ; [(= 1.0 ?i1)]
+           (neighbor ?target ?e1 ?context)
+           ; (notes->shapes ?notes2 ?e2 ?i2)
+           [(jigsaw.experiments.datomic/notes->pci-set ?notes2) ?pcis]
+           [?e2 :pci-set ?pcis']
+           [(theory/ldist ?pcis ?pcis') ?ldist]
+           [(<= ?ldist 1)]
+           ; [(<= 0.9 ?i2)]
+           (neighbor ?target ?e2 ?context2)
+                    ; (fit ?e2 ?target ?e2' ?index)
+           #_[(>= 0.9 ?index)]]
+         db rules notes1 notes2)))
+
+; Clustering
+;   - Playing one or more shapes
+;   - Connecting automatically to scale(s)
+;   - But no obvious connection, it gets partitioned into subsets
+;     - Shared neighbors (connections) and average jaccard found per partitioning
+
+(comment
+  (snn [1 2 3])
+  (partition-snn [[1 2] [3]])
+  (partition-snn-jaccard [[1 2] [3]]))
+
+(comment
+  (d/q '[:find ?p ?avg-index
+         :in $ %
+         :where
+         [?a :pitch :C]
+         [?a :name :maj]
+         [?b :pitch :D]
+         [?b :name :m]
+         [?c :pitch :E]
+         [?c :name :m]
+         [(vector ?a ?b ?c) ?coll]
+         (partition ?coll ?p)
+         (partition-snn-jaccard ?p ?avg-index)]
+       db rules))
+; #{[([1 433 857]) 0.07258064]
+;   [([1] [433 857]) 0.56435645]
+;   [([1 433] [857]) 0.5816327]
+;   [([1 857] [433]) 0.6551724]}
+
+(comment
+  ; Given chords as raw notes,
+  ;   find possible shapes and from those shapes,
+  ;     find a partitioning of them which minimizes separation and maximizes their shared neighbors (connections)
+  (->> (let [n1 #{:C :E :G}
+             n2 #{:D :F :A}
+             n3 #{:E :G :B}]
+         (d/q '[:find
+                (pull ?e1 [:db/id :pitch+name])
+                (pull ?e2 [:db/id :pitch+name])
+                (pull ?e3 [:db/id :pitch+name])
+                ?partitions
+                #_?snns  ; shared neighbors per partition
+                ?avg-index
+                :keys e1 e2 e3 partitions #_snns avg-partition-jaccard-index
+                :in $ % ?n1 ?n2 ?n3
+                :where
+                (notes->shapes ?n1 ?e1 ?i1)
+                [(<= 0.9 ?i1)]
+                (notes->shapes ?n2 ?e2 ?i2)
+                [(<= 0.9 ?i2)]
+                (notes->shapes ?n3 ?e3 ?i3)
+                [(<= 0.9 ?i3)]
+                [(vector ?e1 ?e2 ?e3) ?coll]
+                (partition ?coll ?partitions)
+                #_(partition-snn ?p ?snns)
+                (partition-snn-jaccard ?partitions ?avg-index)]
+              db rules n1 n2 n3))
+       (remove #(zero? (:avg-partition-jaccard-index %)))
+       (sort-by (juxt #(count (:partitions %)) (comp - :avg-partition-jaccard-index)))
+       (take 5))) ; nil
+; ({:e1 {:pitch+name [:C :maj], :db/id 1},
+;   :e2 {:pitch+name [:D :m], :db/id 433},
+;   :e3 {:pitch+name [:E :m], :db/id 857},
+;   :partitions ([1 433 857]),
+;   :avg-partition-jaccard-index 0.07258064}
+;  {:e1 {:pitch+name [:C :maj], :db/id 1},
+;   :e2 {:pitch+name [:D :m], :db/id 433},
+;   :e3 {:pitch+name [:E :m], :db/id 857},
+;   :partitions ([1 857] [433]),
+;   :avg-partition-jaccard-index 0.6551724}
+;  {:e1 {:pitch+name [:C :maj], :db/id 1},
+;   :e2 {:pitch+name [:D :m], :db/id 433},
+;   :e3 {:pitch+name [:E :m], :db/id 857},
+;   :partitions ([1 433] [857]),
+;   :avg-partition-jaccard-index 0.5816327}
+;  {:e1 {:pitch+name [:C :maj], :db/id 1},
+;   :e2 {:pitch+name [:D :m], :db/id 433},
+;   :e3 {:pitch+name [:Fb :m], :db/id 751},
+;   :partitions ([1 433] [751]),
+;   :avg-partition-jaccard-index 0.5816327}
+;  {:e1 {:pitch+name [:Fb :m#5], :db/id 776},
+;   :e2 {:pitch+name [:D :m], :db/id 433},
+;   :e3 {:pitch+name [:E :m], :db/id 857},
+;   :partitions ([776] [433 857]),
+;   :avg-partition-jaccard-index 0.56435645})

@@ -920,19 +920,25 @@
 
 ;;;; SEARCH ;;;;
 
-(defn jaccard-index [set1 set2]
-  (let [intersection (count (set/intersection set1 set2))
-        union (count (set/union set1 set2))]
+(defn jaccard-index [& sets]
+  (let [intersection (count (apply set/intersection sets))
+        union (count (apply set/union sets))]
     (if (zero? union)
       0.0
       (float (/ intersection union)))))
+
+(defn ldist [set1 set2]
+  (let [larger (if (<= (count set1) (count set2)) set2 set1)
+        smaller (if (<= (count set1) (count set2)) set1 set2)]
+    (count (set/difference larger smaller))))
 
 (def heuristic-labels
   {:contains? "partially contains"
    :fully-contains? "fully contains"
    :contained-in? "is partially contained by"
    :fully-contained-in? "is fully contained by"
-   :overlap "overlaps with"})
+   :overlap "overlaps with"
+   :ldist "has a diff of"})
 
 (defn heuristic->float [x]
   (case x
