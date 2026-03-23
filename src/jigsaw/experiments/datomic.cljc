@@ -161,7 +161,7 @@
   '[[(notes->shapes ?notes ?e ?index)
      [(jigsaw.experiments.datomic/notes->pci-set ?notes) ?pcis]
      [?e :pci-set ?pcis']
-     [(theory/jaccard-index ?pcis ?pcis') ?index]
+     [(jigsaw.impl.theory/jaccard-index ?pcis ?pcis') ?index]
      [(>= ?index 0.5)]]
 
     [(neighbor ?from ?to ?context)
@@ -169,15 +169,10 @@
      [?edge :edge/to ?to]
      [?edge :edge/context ?context]]
 
-    ; [(neighbor ?to ?from ?context)
-    ;  [?edge :edge/from ?from]
-    ;  [?edge :edge/to ?to]
-    ;  [?edge :edge/context ?context]]
-
     [(transpose ?e ?interval ?multiplier ?e')
      [?e :pitch ?pitch]
      [?e :name ?name]
-     [(theory/transpose ?pitch ?interval ?multiplier) ?p']
+     [(jigsaw.impl.theory/transpose ?pitch ?interval ?multiplier) ?p']
      [?e' :pitch ?p']
      [?e' :name ?name]]
 
@@ -185,53 +180,41 @@
     [(alt ?e ?e' ?index)
      [?e :pci-set ?pcis]
      [?e' :pci-set ?pcis']
-     [(not= ?e ?e')]
-     [(theory/jaccard-index ?pcis ?pcis') ?index]
-     [(>= ?index 0.9)]]
-
-    ; Overlapping PCIs, same shape allowed
-    [(alt= ?e ?e' ?index)
-     [?e :pci-set ?pcis]
-     [?e' :pci-set ?pcis']
-     [(theory/jaccard-index ?pcis ?pcis') ?index]
+     [(jigsaw.impl.theory/jaccard-index ?pcis ?pcis') ?index]
      [(>= ?index 0.9)]]
 
     ; Overlapping PCIs, not same shape nor starting PCI (i.e. enharmonic equivalent)
     [(alt!= ?e ?e' ?index)
-     [?e :pci-set ?pcis]
-     [?e' :pci-set ?pcis']
-     [(theory/jaccard-index ?pcis ?pcis') ?index]
-     [(>= ?index 0.9)]
+     (alt ?e ?e' ?index)
+     [(not= ?e ?e')]
      [?e :pitch ?pitch]
      [?e' :pitch ?pitch']
-     [(theory/pitches ?pitch) ?fp]
-     [(theory/pitches ?pitch') ?fp']
-     [(not= ?fp ?fp')]]
+     [(jigsaw.impl.theory/pitches ?pitch) ?pci]
+     [(jigsaw.impl.theory/pitches ?pitch') ?pci']
+     [(not= ?pci ?pci')]]
 
-    [(fit ?e ?target ?e' ?index)
-     (neighbor ?target ?e')
-     [?e :pci-set ?pcis]
-     [?e' :pci-set ?pcis']
-     [(count ?pcis) ?pcs]
-     [(count ?pcis') ?pcs']
-     [(<= ?pcs ?pcs')]
-     [(theory/jaccard-index ?pcis ?pcis') ?index]
-     [(>= ?index 0.5)]]
+    [(shape? ?e)
+     [(clojure.core/integer? ?e)]
+     [?e :pitch _]]
 
-    [(fit-pci ?pcis ?target ?e' ?index)
-     (neighbor ?target ?e')
-     [?e' :pci-set ?pcis']
-     [(count ?pcis) ?pcs]
-     [(count ?pcis') ?pcs']
-     [(<= ?pcs ?pcs')]
-     [(theory/jaccard-index ?pcis ?pcis') ?index]
-     [(>= ?index 0.5)]]
+    ; From notes
+    [(fit ?input ?target ?e ?index)
+     (not (shape? ?input))
+     (neighbor ?target ?e)
+     (notes->shapes ?input ?e ?index)]
+
+    ; From shape
+    [(fit ?input ?target ?e ?index)
+     (shape? ?input)
+     (neighbor ?target ?e)
+     [?input :pitches ?pitches]
+     (notes->shapes ?pitches ?e ?index)]
 
     [(partition ?coll ?partitioning)
      ; Max of n-1 partitions, i.e. don't allow all elements to have their own partition
      [(count ?coll) ?n]
      [(dec ?n) ?max]
-     [(combo/partitions ?coll :max ?max) [?partitioning ...]]]
+     [(clojure.math.combinatorics/partitions ?coll :max ?max) [?partitioning ...]]]
 
     ; Shared nearest neighbors
     [(snn ?coll ?shared-neighbors)
@@ -252,6 +235,7 @@
 (def rules
   (concat base-rules (connect-rules 10)))
 
+; Shared nearest neighbor helpers
 (defn shape->neighbors [shape-eid]
   (set (d/q '[:find [?neighbor ...]
               :in $ % ?e
@@ -259,11 +243,13 @@
               (neighbor ?e ?neighbor)]
             db rules shape-eid)))
 
+(def shape->neighbors-memo (memoize shape->neighbors))
+
 (defn snn [coll]
-  (apply set/intersection (map shape->neighbors coll)))
+  (apply set/intersection (map shape->neighbors-memo coll)))
 
 (defn snn-jaccard [coll]
-  (apply theory/jaccard-index (map shape->neighbors coll)))
+  (apply theory/jaccard-index (map shape->neighbors-memo coll)))
 
 (defn partition-snn [partitioning]
   (map snn partitioning))
@@ -272,128 +258,6 @@
   (let [indexes (map snn-jaccard partitioning)
         sum (reduce + indexes)]
     (float (/ sum (count partitioning)))))
-
-(comment
-  (d/q '[:find (pull ?b [:pitch+name]) ?context
-         :in $ %
-         :where
-         [?a :pitch :C]
-         [?a :name :major]
-         (neighbor ?a ?b ?context)]
-       db rules))
-
-(comment
-  ; Cmaj -> ? -> something which is a second mode of the thing before it
-  (d/q '[:find ?context
-         (pull ?b [:pitch+name])
-         (pull ?c [:pitch+name])
-         :in $ %
-         :where
-         [?a :pitch :C]
-         [?a :name :maj]
-         (neighbor ?a ?b ?context)
-         (neighbor ?b ?c :mode/II)]
-       db rules))
-
-(comment
-  ; Cmaj -> ? -> something which is a second mode of the thing before it
-  (d/q '[:find (pull ?b [:pitch+name])
-         :in $ %
-         :where
-         ; Start at C major chord
-         [?a :pitch :C]
-         [?a :name :maj]
-
-         ; Find scale where it's a V chord
-         (neighbor ?a ?b :scale-degree/V)
-         ; Find the corresponding I chord (specifically major 7th) of the scale
-         (neighbor ?b ?c :chord-degree/Imaj7)]
-
-       db rules))
-; ([{:pitch+name [:F :bebop-major]}]
-;  [{:pitch+name [:F :harmonic-major]}]
-;  [{:pitch+name [:F :bebop]}]
-;  [{:pitch+name [:F :major]}]
-;  [{:pitch+name [:F :lydian]}])
-
-(comment
-  ; Secondary dominant
-  (d/q '[:find (pull ?v-v [:pitch+name])
-         :in $ %
-         :where
-         ; Start at C major chord
-         [?start-scale :pitch :C]
-         [?start-scale :name :major]
-         ; Find tonic
-         (neighbor ?start-scale ?i :chord-degree/I)
-         ; Find V
-         (neighbor ?start-scale ?v :chord-degree/V)
-         ; Find scale where V is a I
-         (neighbor ?v ?dom-scale :scale-degree/I)
-         ; Find V of that scale
-         (neighbor ?dom-scale ?v-v :chord-degree/V)]
-       db rules))
-; ([{:pitch+name [:D :maj]}])
-
-(comment
-  ; Tritone substitution
-  (d/q '[:find
-         (pull ?ii [:pitch+name])
-         (pull ?sub [:pitch+name])
-         (pull ?i [:pitch+name])
-         :in $ %
-         :where
-         [?scale :pitch :C]
-         [?scale :name :major]
-         (neighbor ?scale ?ii :chord-degree/iim7)
-         (neighbor ?scale ?v :chord-degree/V7)
-         (neighbor ?scale ?i :chord-degree/Imaj7)
-         (transpose ?v :d5 1 ?sub)]
-       db rules))
-; ([{:pitch+name [:D :m7]}
-;   {:pitch+name [:Db :7]}
-;   {:pitch+name [:C :maj7]}])
-
-(comment
-  ; Coltrane changes
-  (d/q '[:find
-         (pull ?ii [:pitch+name])
-         (pull ?v2 [:pitch+name])
-         (pull ?i2 [:pitch+name])
-         (pull ?v3 [:pitch+name])
-         (pull ?i3 [:pitch+name])
-         (pull ?v [:pitch+name])
-         (pull ?i [:pitch+name])
-         :in $ %
-         :where
-         [?key1 :pitch :C]
-         [?key1 :name :major]
-         ; Normal ii-V-I
-         (neighbor ?key1 ?ii :chord-degree/iim7)
-         (neighbor ?key1 ?v :chord-degree/V7)
-         (neighbor ?key1 ?i :chord-degree/Imaj7)
-
-         ; Key goes down a third
-         (transpose ?key1 :M3 -1 ?key2)
-
-         ; New V-I
-         (neighbor ?key2 ?v2 :chord-degree/V7)
-         (neighbor ?key2 ?i2 :chord-degree/Imaj7)
-
-         ; Key goes down another third
-         (transpose ?key2 :M3 -1 ?key3)
-
-         ; New V-I
-         (neighbor ?key3 ?v3 :chord-degree/V7)
-         (neighbor ?key3 ?i3 :chord-degree/Imaj7)]
-       db rules))
-; ([{:pitch+name [:D :m7]}
-;   {:pitch+name [:Eb :7]}
-;   {:pitch+name [:Ab :maj7]}
-;   {:pitch+name [:Cb :7]}
-;   {:pitch+name [:Fb :maj7]}
-;   {:pitch+name [:G :7]}
-;   {:pitch+name [:C :maj7]}])
 
 (comment
   ; Connect
@@ -468,105 +332,6 @@
 ;  [{:pitch+name [:A :bebop-harmonic-minor]}]
 ;  [{:pitch+name [:G :composite-blues]}]
 ;  [{:pitch+name [:F :lydian]}])
-
-(comment
-  ; Alt
-
-  ; Overlapping PCIs, but not same shape
-  (d/q '[:find (pull ?b [:pitch+name]) ?index
-         :in $ %
-         :where
-         [?a :pitch :C]
-         [?a :name :maj]
-         (alt ?a ?b ?index)]
-       db rules)
-; ([{:pitch+name [:Fb :m#5]} 1.0]
-;  [{:pitch+name [:E :m#5]} 1.0]
-;  [{:pitch+name [:B# :maj]} 1.0])
-
-  ; Overlapping PCIs, and could be same shape
-  (d/q '[:find (pull ?b [:pitch+name]) ?index
-         :in $ %
-         :where
-         [?a :pitch :C]
-         [?a :name :maj]
-         (alt= ?a ?b ?index)]
-       db rules)
-; ([{:pitch+name [:Fb :m#5]} 1.0]
-;  [{:pitch+name [:E :m#5]} 1.0]
-;  [{:pitch+name [:B# :maj]} 1.0]
-;  [{:pitch+name [:C :maj]} 1.0])
-
-  ; Overlapping PCIs, but not same shape or enharmonic equivalent
-  (d/q '[:find (pull ?b [:pitch+name]) ?index
-         :in $ %
-         :where
-         [?a :pitch :C]
-         [?a :name :maj]
-         (alt!= ?a ?b ?index)]
-       db rules))
-; ([{:pitch+name [:Fb :m#5]} 1.0]
-;  [{:pitch+name [:E :m#5]} 1.0])
-
-(comment
-  ; Resolve
-  (d/q '[:find (pull ?scale [:pitch+name])
-         :in $ %
-         :where
-         [?chord :pitch :E]
-         [?chord :name :maj]
-         (neighbor ?chord ?scale :scale-degree/V)]
-       db rules)
-; ([{:pitch+name [:A :harmonic-minor]}]
-;  [{:pitch+name [:A :minor-hexatonic]}]
-;  [{:pitch+name [:A :melodic-minor]}]
-;  [{:pitch+name [:A :lydian]}]
-;  [{:pitch+name [:A :bebop-major]}]
-;  [{:pitch+name [:A :bebop]}]
-;  [{:pitch+name [:A :major]}]
-;  [{:pitch+name [:A :bebop-harmonic-minor]}]
-;  [{:pitch+name [:A :minor-six-diminished]}]
-;  [{:pitch+name [:A :hungarian-minor]}]
-;  [{:pitch+name [:A :harmonic-major]}]
-;  [{:pitch+name [:A :lydian-diminished]}])
-
-  (d/q '[:find ?deg
-         :in $ %
-         :where
-         [?chord :pitch :E]
-         [?chord :name :maj]
-         [?scale :pitch :A]
-         [?scale :name :major]
-         (neighbor ?chord ?scale ?deg)]
-       db rules)
-  ; #{[:scale-degree/V]}
-
-  (d/q '[:find (pull ?chord [:pitch+name])
-         :in $ %
-         :where
-         [?scale :pitch :A]
-         [?scale :name :major]
-         (neighbor ?chord ?scale :scale-degree/V)]
-       db rules))
-; ([{:pitch+name [:E :maj]}]
-;  [{:pitch+name [:E :6]}]
-;  [{:pitch+name [:E :sus24]}]
-;  [{:pitch+name [:E :sus4]}]
-;  [{:pitch+name [:E :11]}]
-;  [{:pitch+name [:E :Madd9]}]
-;  [{:pitch+name [:E :9]}]
-;  [{:pitch+name [:E :7sus4]}]
-;  [{:pitch+name [:E :9no5]}]
-;  [{:pitch+name [:E :13sus4]}]
-;  [{:pitch+name [:E :6add9]}]
-;  [{:pitch+name [:E :7]}]
-;  [{:pitch+name [:E :7no5]}]
-;  [{:pitch+name [:E :5]}]
-;  [{:pitch+name [:E :13no5]}]
-;  [{:pitch+name [:E :sus2]}]
-;  [{:pitch+name [:E :9sus4]}]
-;  [{:pitch+name [:E :7add6]}]
-;  [{:pitch+name [:E :13]}])
 
 ; Path(s)
 
@@ -729,41 +494,18 @@
   (connect [[:C :maj] [:D :m]]))
 
 (comment
-  ; Fit, find closest compatible shape to a target shape from notes/pcis
-  (let [chord (jigsaw/->shape :C_m)
-        pci-set (set (map theory/pitches (:pitches chord)))]
+  ; Fit, using notes/pitches as start
+  (let [chord (jigsaw/->shape :C4_m)]
+    (prn (:notes chord))
     (d/q '[:find
            (pull ?chord [:pitch+name :pci-set])
            ?index
-           :in $ % ?pcis
+           ?notes
+           :in $ % ?notes
            :where
            [?target :pitch+name [:C :major]]
-           (neighbor ?target ?chord)
-           [?chord :pci-set ?chord-pcis]
-           [(count ?chord-pcis) ?cc]
-           [(count ?pcis) ?pc]
-           [(>= ?cc ?pc)]
-           [(theory/jaccard-index ?pcis ?chord-pcis) ?index]
-           [(>= ?index 0.5)]]
-         db rules pci-set)))
-; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
-;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
-;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
-;  [{:pci-set #{0 7 2}, :pitch+name [:G :sus4]} 0.5]
-;  [{:pci-set #{0 7 4}, :pitch+name [:C :maj]} 0.5])
-
-(comment
-  ; Fit, using PCIs as start
-  (let [chord (jigsaw/->shape :C_m)
-        pitches (notes->pci-set (:pitches chord))]
-    (d/q '[:find
-           (pull ?chord [:pitch+name :pci-set])
-           ?index
-           :in $ % ?pcis
-           :where
-           [?target :pitch+name [:C :major]]
-           (fit-pci ?pcis ?target ?chord ?index)]
-         db rules pitches)))
+           (fit ?notes ?target ?chord ?index)]
+         db rules (:notes chord))))
 ; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
 ;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
 ;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
@@ -818,14 +560,12 @@
 ;   - Playing one or more shapes
 ;   - Connecting automatically to scale(s)
 ;   - But no obvious connection, it gets partitioned into subsets
-;     - Shared neighbors (connections) and average jaccard found per partitioning
+;     - Shared nearest neighbors (SNN, connections) and average jaccard found per partitioning
 
 (comment
   (snn [1 2 3])
   (partition-snn [[1 2] [3]])
-  (partition-snn-jaccard [[1 2] [3]]))
-
-(comment
+  (partition-snn-jaccard [[1 2] [3]])
   (d/q '[:find ?p ?avg-index
          :in $ %
          :where
@@ -844,59 +584,58 @@
 ;   [([1 433] [857]) 0.5816327]
 ;   [([1 857] [433]) 0.6551724]}
 
+(defn entity-shape-ref [eid]
+  (d/pull db [:pitch :name :db/id] eid))
+
+(def entity-shape-ref-memo (memoize entity-shape-ref))
+
+(defn cluster
+  "
+  Like connect, but doesn't assume one shared connection for all inputs, could be multiple clusters.
+  Given chords as raw notes, find possible shapes
+    and from those shapes,
+      find a partitioning/clustering of them which minimizes separation and maximizes their shared neighbors (connections)
+
+  Returns n results, defaults to 5
+  "
+  [note-seqs & n]
+  (let [note-seq-syms (map (fn [_] (gensym "?n-")) note-seqs)
+        syms (map (fn [_] (gensym "?e-")) note-seqs)
+        ; sym-keys (map-indexed (fn [i _] (symbol (str "e" i))) note-seqs)
+        index-syms (map (fn [_] (gensym "?i-")) note-seqs)
+        ; snns (gensym "?snns")
+        coll (gensym "?coll")
+        partitioning (gensym "?p")
+        avg-index (gensym "?index")
+        query {:find `[~coll
+                       #_~@(for [sym syms]
+                             `(~'pull ~sym [:db/id :pitch :name]))
+                       ~partitioning
+                       ; ~snns  ; shared neighbors per partition
+                       ~avg-index]
+               :keys `[~'es #_~@sym-keys ~'partitions ~'avg-partition-jaccard-index]
+               :in `[~'$ ~'% ~@note-seq-syms]
+               :where `[~@(mapcat identity
+                                  (for [i (range (count note-seqs))
+                                        :let [n (nth note-seq-syms i)
+                                              e (nth syms i)
+                                              index (nth index-syms i)]]
+                                    `[(~'notes->shapes ~n ~e ~index)
+                                      [(<= 0.9 ~index)]]))
+                        [(~'vector ~@syms) ~coll]
+                        (~'partition ~coll ~partitioning)
+                        ; (~'partition-snn ~p ~snns)
+                        (~'partition-snn-jaccard ~partitioning ~avg-index)
+                        [(~'not= 0.0 ~avg-index)]]}]
+    (->> (apply d/q query db rules note-seqs)
+         (sort-by (juxt #(count (:partitions %)) (comp - :avg-partition-jaccard-index)))
+         (take (or n 5))
+         (map (fn [result]
+                (dissoc (assoc result :matched-shapes (zipmap note-seqs (map entity-shape-ref-memo (:es result))))
+                        :es))))))
+
 (comment
-  ; Given chords as raw notes,
-  ;   find possible shapes and from those shapes,
-  ;     find a partitioning of them which minimizes separation and maximizes their shared neighbors (connections)
-  (->> (let [n1 #{:C :E :G}
-             n2 #{:D :F :A}
-             n3 #{:E :G :B}]
-         (d/q '[:find
-                (pull ?e1 [:db/id :pitch+name])
-                (pull ?e2 [:db/id :pitch+name])
-                (pull ?e3 [:db/id :pitch+name])
-                ?partitions
-                #_?snns  ; shared neighbors per partition
-                ?avg-index
-                :keys e1 e2 e3 partitions #_snns avg-partition-jaccard-index
-                :in $ % ?n1 ?n2 ?n3
-                :where
-                (notes->shapes ?n1 ?e1 ?i1)
-                [(<= 0.9 ?i1)]
-                (notes->shapes ?n2 ?e2 ?i2)
-                [(<= 0.9 ?i2)]
-                (notes->shapes ?n3 ?e3 ?i3)
-                [(<= 0.9 ?i3)]
-                [(vector ?e1 ?e2 ?e3) ?coll]
-                (partition ?coll ?partitions)
-                #_(partition-snn ?p ?snns)
-                (partition-snn-jaccard ?partitions ?avg-index)]
-              db rules n1 n2 n3))
-       (remove #(zero? (:avg-partition-jaccard-index %)))
-       (sort-by (juxt #(count (:partitions %)) (comp - :avg-partition-jaccard-index)))
-       (take 5))) ; nil
-; ({:e1 {:pitch+name [:C :maj], :db/id 1},
-;   :e2 {:pitch+name [:D :m], :db/id 433},
-;   :e3 {:pitch+name [:E :m], :db/id 857},
-;   :partitions ([1 433 857]),
-;   :avg-partition-jaccard-index 0.07258064}
-;  {:e1 {:pitch+name [:C :maj], :db/id 1},
-;   :e2 {:pitch+name [:D :m], :db/id 433},
-;   :e3 {:pitch+name [:E :m], :db/id 857},
-;   :partitions ([1 857] [433]),
-;   :avg-partition-jaccard-index 0.6551724}
-;  {:e1 {:pitch+name [:C :maj], :db/id 1},
-;   :e2 {:pitch+name [:D :m], :db/id 433},
-;   :e3 {:pitch+name [:E :m], :db/id 857},
-;   :partitions ([1 433] [857]),
-;   :avg-partition-jaccard-index 0.5816327}
-;  {:e1 {:pitch+name [:C :maj], :db/id 1},
-;   :e2 {:pitch+name [:D :m], :db/id 433},
-;   :e3 {:pitch+name [:Fb :m], :db/id 751},
-;   :partitions ([1 433] [751]),
-;   :avg-partition-jaccard-index 0.5816327}
-;  {:e1 {:pitch+name [:Fb :m#5], :db/id 776},
-;   :e2 {:pitch+name [:D :m], :db/id 433},
-;   :e3 {:pitch+name [:E :m], :db/id 857},
-;   :partitions ([776] [433 857]),
-;   :avg-partition-jaccard-index 0.56435645})
+  (cluster [#{:C :E :G}
+            #{:D :F :A}
+            #{:E :G :B}]))
+
