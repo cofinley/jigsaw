@@ -146,18 +146,7 @@
 (defn notes->pci-set [notes]
   (set (map #(-> % theory/parts :pci) notes)))
 
-(defn connect-rules [n]
-  (let [entity-sym (fn [i] (symbol (str "?e" (inc i))))
-        context-sym (fn [i] (symbol (str "?context" (inc i))))]
-    (vec (for [rule-arity (range 2 (inc n))
-               :let [entity-syms (map entity-sym (range rule-arity))]]
-           `[(~(symbol (str "connect-" rule-arity)) ~'?connection ~@entity-syms)
-             ~@(for [i (range rule-arity)
-                     :let [e (nth entity-syms i)
-                           c (context-sym i)]]
-                 `(~'neighbor ~e ~'?connection ~c))]))))
-
-(def base-rules
+(def rules
   '[[(notes->shapes ?notes ?e ?index)
      [(jigsaw.experiments.datomic/notes->pci-set ?notes) ?pcis]
      [?e :pci-set ?pcis']
@@ -169,6 +158,20 @@
      [?edge :edge/to ?to]
      [?edge :edge/context ?context]]
 
+    [(connect ?coll ?conn)
+     [(clojure.core/count ?coll) ?len]
+     [(= ?len 1)]
+     [(clojure.core/first ?coll) ?first]
+     (neighbor ?first ?conn _)]
+
+    [(connect ?coll ?conn)
+     [(clojure.core/count ?coll) ?len]
+     [(> ?len 1)]
+     [(clojure.core/first ?coll) ?first]
+     (neighbor ?first ?conn _)
+     [(clojure.core/rest ?coll) ?rest]
+     (connect ?rest ?conn)]
+
     [(transpose ?e ?interval ?multiplier ?e')
      [?e :pitch ?pitch]
      [?e :name ?name]
@@ -178,9 +181,8 @@
 
     ; Overlapping PCIs, not same shape
     [(alt ?e ?e' ?index)
-     [?e :pci-set ?pcis]
-     [?e' :pci-set ?pcis']
-     [(jigsaw.impl.theory/jaccard-index ?pcis ?pcis') ?index]
+     [?e :pitches ?pitches]
+     (notes->shapes ?pitches ?e' ?index)
      [(>= ?index 0.9)]]
 
     ; Overlapping PCIs, not same shape nor starting PCI (i.e. enharmonic equivalent)
@@ -232,8 +234,9 @@
     [(partition-snn-jaccard ?partitioning ?avg-index)
      [(jigsaw.experiments.datomic/partition-snn-jaccard ?partitioning) ?avg-index]]])
 
-(def rules
-  (concat base-rules (connect-rules 10)))
+(defn log [& args]
+  (prn args)
+  true)
 
 ; Shared nearest neighbor helpers
 (defn shape->neighbors [shape-eid]
@@ -258,80 +261,6 @@
   (let [indexes (map snn-jaccard partitioning)
         sum (reduce + indexes)]
     (float (/ sum (count partitioning)))))
-
-(comment
-  ; Connect
-  (let [shapes [[:C :maj] [:D :m] [:E :m] [:F :maj]]
-        nbr (gensym "?")
-        syms (reduce #(assoc %1 %2 (gensym "?")) {} shapes)
-        query {:find `[(~'pull ~nbr [:pitch+name])]
-               :in '[$ %]
-               :where (vec (mapcat identity (for [[shape sym] syms]
-                                              `[[~sym :pitch+name ~shape]
-                                                (~'neighbor ~sym ~nbr)])))}]
-    #_query
-    (d/q query db rules)))
-; {:find [(pull ?17446 [*])],
-;  :in [$ %],
-;  :where
-;  [[?17447 :pitch+name [:C :maj]]
-;   (neighbor ?17447 ?17446)
-;   [?17448 :pitch+name [:D :m]]
-;   (neighbor ?17448 ?17446)
-;   [?17449 :pitch+name [:E :m]]
-;   (neighbor ?17449 ?17446)
-;   [?17450 :pitch+name [:F :maj]]
-;   (neighbor ?17450 ?17446)]}
-;
-; ([{:pitch+name [:G :bebop-minor]}]
-;  [{:pitch+name [:A :minor]}]
-;  [{:pitch+name [:G :bebop]}]
-;  [{:pitch+name [:C :bebop]}]
-;  [{:pitch+name [:B :bebop-locrian]}]
-;  [{:pitch+name [:E :bebop-locrian]}]
-;  [{:pitch+name [:C :major]}]
-;  [{:pitch+name [:E :spanish-heptatonic]}]
-;  [{:pitch+name [:G :mixolydian]}]
-;  [{:pitch+name [:D :dorian]}]
-;  [{:pitch+name [:D :composite-blues]}]
-;  [{:pitch+name [:D :bebop-minor]}]
-;  [{:pitch+name [:B :locrian]}]
-;  [{:pitch+name [:E :phrygian]}]
-;  [{:pitch+name [:C :bebop-major]}]
-;  [{:pitch+name [:A :bebop-harmonic-minor]}]
-;  [{:pitch+name [:G :composite-blues]}]
-;  [{:pitch+name [:F :lydian]}])
-
-(comment
-  ; Connect using generated rules
-  (d/q '[:find
-         (pull ?neighbor [:pitch+name])
-         :in $ %
-         :where
-         [?c :pitch+name [:C :maj]]
-         [?d :pitch+name [:D :m]]
-         [?e :pitch+name [:E :m]]
-         [?f :pitch+name [:F :maj]]
-         (connect-4 ?neighbor ?c ?d ?e ?f)]
-       db rules))
-; ([{:pitch+name [:G :bebop-minor]}]
-;  [{:pitch+name [:A :minor]}]
-;  [{:pitch+name [:G :bebop]}]
-;  [{:pitch+name [:C :bebop]}]
-;  [{:pitch+name [:B :bebop-locrian]}]
-;  [{:pitch+name [:E :bebop-locrian]}]
-;  [{:pitch+name [:C :major]}]
-;  [{:pitch+name [:E :spanish-heptatonic]}]
-;  [{:pitch+name [:G :mixolydian]}]
-;  [{:pitch+name [:D :dorian]}]
-;  [{:pitch+name [:D :composite-blues]}]
-;  [{:pitch+name [:D :bebop-minor]}]
-;  [{:pitch+name [:B :locrian]}]
-;  [{:pitch+name [:E :phrygian]}]
-;  [{:pitch+name [:C :bebop-major]}]
-;  [{:pitch+name [:A :bebop-harmonic-minor]}]
-;  [{:pitch+name [:G :composite-blues]}]
-;  [{:pitch+name [:F :lydian]}])
 
 ; Path(s)
 
@@ -417,10 +346,10 @@
          :where
          [?c :pitch+name [:C :maj]]
          [?f :pitch+name [:F :maj]]
-         ; alt= : can be Cmaj or something else
-         (alt= ?c ?c-alt)
-         (alt= ?f ?f-alt)
-         (connect-2 ?neighbor ?c-alt ?f-alt)]
+         (alt ?c ?c-alt)
+         (alt ?f ?f-alt)
+         [(vector ?c-alt ?f-alt) ?coll]
+         (connect ?coll ?neighbor)]
        db rules))
 
 (comment
@@ -494,64 +423,28 @@
   (connect [[:C :maj] [:D :m]]))
 
 (comment
-  ; Fit, using notes/pitches as start
-  (let [chord (jigsaw/->shape :C4_m)]
-    (prn (:notes chord))
-    (d/q '[:find
-           (pull ?chord [:pitch+name :pci-set])
-           ?index
-           ?notes
-           :in $ % ?notes
-           :where
-           [?target :pitch+name [:C :major]]
-           (fit ?notes ?target ?chord ?index)]
-         db rules (:notes chord))))
-; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
-;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
-;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
-;  [{:pci-set #{0 7 2}, :pitch+name [:G :sus4]} 0.5]
-;  [{:pci-set #{0 7 4}, :pitch+name [:C :maj]} 0.5])
-
-(comment
-  ; Fit, using shape as start
-  (d/q '[:find
-         (pull ?chord' [:pitch+name :pci-set])
-         ?index
-         :in $ %
-         :where
-         [?chord :pitch+name [:C :m]]
-         [?target :pitch+name [:C :major]]
-         (fit ?chord ?target ?chord' ?index)]
-       db rules))
-; ([{:pci-set #{0 7 2}, :pitch+name [:C :sus2]} 0.5]
-;  [{:pci-set #{0 7 5}, :pitch+name [:C :sus4]} 0.5]
-;  [{:pci-set #{0 7 5}, :pitch+name [:F :sus2]} 0.5]
-;  [{:pci-set #{0 7 2}, :pitch+name [:G :sus4]} 0.5]
-;  [{:pci-set #{0 7 4}, :pitch+name [:C :maj]} 0.5])
-
-(comment
   ; Fit second chord based on parent of first chord
   (let [notes1 #{:C# :E :Ab :B} ; sounds good
         notes2 #{:Bb :D :Gb :A} ; doesn't sound as good, keep going on first
         ]
     (d/q '[:find
            (pull ?target [:pitch+name])
-           (pull ?e1 [:pitch+name]) ?i1 ?context
-           (pull ?e2 [:pitch+name :pitches]) ?ldist ?context2
+           (pull ?e1 [:pitch+name]) #_?i1 ?context
+           (pull ?e2 [:pitch+name]) #_?ldist ?context2
           ; (pull ?e2' [:pitch+name]) ?index
            :in $ % ?notes1 ?notes2
            :where
            (notes->shapes ?notes1 ?e1 ?i1)
            [?e1 :name :m7]
            ; [(= 1.0 ?i1)]
-           (neighbor ?target ?e1 ?context)
-           ; (notes->shapes ?notes2 ?e2 ?i2)
-           [(jigsaw.experiments.datomic/notes->pci-set ?notes2) ?pcis]
-           [?e2 :pci-set ?pcis']
-           [(theory/ldist ?pcis ?pcis') ?ldist]
-           [(<= ?ldist 1)]
+           (neighbor ?e1 ?target ?context)
+           (notes->shapes ?notes2 ?e2 ?i2)
            ; [(<= 0.9 ?i2)]
-           (neighbor ?target ?e2 ?context2)
+           ; [(jigsaw.experiments.datomic/notes->pci-set ?notes2) ?pcis]
+           ; [?e2 :pci-set ?pcis']
+           ; [(theory/ldist ?pcis ?pcis') ?ldist]
+           ; [(<= ?ldist 1)]
+           (neighbor ?e2 ?target ?context2)
                     ; (fit ?e2 ?target ?e2' ?index)
            #_[(>= 0.9 ?index)]]
          db rules notes1 notes2)))
@@ -637,5 +530,5 @@
 (comment
   (cluster [#{:C :E :G}
             #{:D :F :A}
-            #{:E :G :B}]))
-
+            #{:E :G :B}
+            #{:F :A :C}]))

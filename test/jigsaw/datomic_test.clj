@@ -152,6 +152,37 @@
                     (neighbor ?key3 ?i3 :chord-degree/Imaj7)]
                   jd/db jd/rules)))))
 
+  (testing "connect"
+    (is (= '([{:pitch+name [:G :bebop-minor]}]
+             [{:pitch+name [:A :minor]}]
+             [{:pitch+name [:G :bebop]}]
+             [{:pitch+name [:C :bebop]}]
+             [{:pitch+name [:B :bebop-locrian]}]
+             [{:pitch+name [:E :bebop-locrian]}]
+             [{:pitch+name [:C :major]}]
+             [{:pitch+name [:E :spanish-heptatonic]}]
+             [{:pitch+name [:G :mixolydian]}]
+             [{:pitch+name [:D :dorian]}]
+             [{:pitch+name [:D :composite-blues]}]
+             [{:pitch+name [:D :bebop-minor]}]
+             [{:pitch+name [:B :locrian]}]
+             [{:pitch+name [:E :phrygian]}]
+             [{:pitch+name [:C :bebop-major]}]
+             [{:pitch+name [:A :bebop-harmonic-minor]}]
+             [{:pitch+name [:G :composite-blues]}]
+             [{:pitch+name [:F :lydian]}])
+           (d/q '[:find
+                  (pull ?neighbor [:pitch+name])
+                  :in $ %
+                  :where
+                  [?c :pitch+name [:C :maj]]
+                  [?d :pitch+name [:D :m]]
+                  [?e :pitch+name [:E :m]]
+                  [?f :pitch+name [:F :maj]]
+                  [(vector ?c ?d ?e ?f) ?coll]
+                  (connect ?coll ?neighbor)]
+                jd/db jd/rules))))
+
   (testing "alts"
     (testing "alt"
       ; Overlapping PCIs, can be same shape
