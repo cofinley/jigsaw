@@ -1,6 +1,7 @@
 (ns jigsaw.core
   (:require
    [clojure.set :as set]
+   [clojure.math.combinatorics :as combo]
    [jigsaw.impl.theory :as theory]
    [jigsaw.utils :as utils]))
 
@@ -275,6 +276,46 @@
 (def notes->shapes-memo (memoize notes->shapes))
 (def connect-memo (memoize connect))
 (def connect-shapes-memo (memoize connect-shapes))
+(def shape->shapes-memo (memoize shape->shapes))
+
+(defn avg [& nums]
+  (float (/ (reduce + nums) (count nums))))
+
+(defn cluster [note-seqs & {:keys [max-results max-shapes max-clusters]
+                            :or {max-results 5
+                                 max-shapes 10
+                                 max-clusters 3}}]
+  (let [shapes (map (fn [note-seq] (notes->shapes note-seq :max-shapes max-shapes)) note-seqs)
+        shape-ref->neighbors (reduce (fn [m shape] (assoc m (theory/->shape-ref shape) (map theory/->shape-ref (shape->shapes-memo shape)))) {} (map ->shape (flatten shapes)))
+        snn (fn [shape-refs] (apply set/intersection (map #(set (shape-ref->neighbors %)) shape-refs)))
+        snn-jaccard (fn [shape-refs] (apply theory/jaccard-index (map #(set (shape-ref->neighbors %)) shape-refs)))
+        max-partitions (dec (count note-seqs))]
+    (->> (for [combination (apply combo/cartesian-product shapes)
+               :let [trace (zipmap note-seqs combination)
+                     combination-refs (map theory/->shape-ref combination)]
+               partitioning (combo/partitions combination-refs :max (min max-partitions max-clusters))
+               :let [partitioning-snn-index (->> partitioning (map snn-jaccard) (apply avg))]
+               :when (not= 0.0 partitioning-snn-index)
+               :let [partitioning-snn (->> partitioning (map snn))]
+               :when (every? seq partitioning-snn)]
+           {:trace trace
+            :avg-shape-overlap (apply avg (map #(get-in % [:heuristics :overlap]) (vals trace)))
+            :clusters partitioning
+            :snn-index partitioning-snn-index
+            :snn partitioning-snn})
+         (sort-by (juxt #(count (:clusters %))
+                        (comp - :avg-shape-overlap)
+                        (comp - :snn-index)))
+         (take max-results))))
+
+(comment
+  (notes->shapes #{:E4 :G4 :B4})
+  (cluster [#{:C4 :E4 :G4} #{:D4 :F4 :A4} #{:E4 :G4 :B4}] :max-clusters 1)
+
+  (cluster [#{:Eb4 :Bb4 :C5 :F5}
+            #{:Ab2 :Eb3 :Bb3 :Eb4}
+            #{:Gb2 :Db3 :B3 :E4}] :max-results 1)
+  (shape->shapes (->shape :C_q)))
 
 ;; TODO
 ;;  - Preview scales on top of chord (progression)

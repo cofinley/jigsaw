@@ -410,7 +410,7 @@
    ; :kafi-raga {:intervals [:P1 :m3 :M3 :P4 :P5 :M6 :m7 :M7] :degrees [:1 :b3 :3 :4 :5 :6 :b7 :7]}
    ; :messiaen's-mode-#6 {:intervals [:P1 :M2 :M3 :P4 :A4 :A5 :A6 :M7] :degrees [:1 :2 :3 :4 :#4 :#5 :#6 :7]}
    ;; 9-note
-   :composite-blues {:intervals [:P1 :M2 :m3 :M3 :P4 :d5 :P5 :M6 :m7] :degrees [:1 :2 :b3 :3 :4 :b5 :5 :6 :b7]}
+   ; :composite-blues {:intervals [:P1 :M2 :m3 :M3 :P4 :d5 :P5 :M6 :m7] :degrees [:1 :2 :b3 :3 :4 :b5 :5 :6 :b7]}
    ; :messiaen's-mode-#3 {:intervals [:P1 :M2 :m3 :M3 :A4 :P5 :m6 :m7 :M7] :degrees [:1 :2 :b3 :3 :#4 :5 :b6 :b7 :7]}
    ;; 10-note
    ; :messiaen's-mode-#7 {:intervals [:P1 :m2 :M2 :m3 :P4 :A4 :P5 :m6 :M6 :M7] :degrees [:1 :b2 :2 :b3 :4 :#4 :5 :b6 :6 :7]}
