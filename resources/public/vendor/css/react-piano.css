@@ -91,6 +91,10 @@
   flex: 1;
   /* Align children .ReactPiano__NoteLabel to the bottom of the key */
   align-self: flex-end;
+  color: var(--xy-node-background-color, var(--xy-node-background-color-default));
+  font-size: 1.2rem;
+  opacity: 0.5;
+  font-weight: bold;
 }
 
 .ReactPiano__NoteLabel {
@@ -99,9 +103,9 @@
   text-transform: capitalize;
   /* Disable text selection */
   -webkit-user-select: none;
-     -moz-user-select: none;
-      -ms-user-select: none;
-          user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .ReactPiano__NoteLabel--accidental {

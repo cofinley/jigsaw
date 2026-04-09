@@ -10,6 +10,12 @@
   (when config/debug?
     (println "dev mode")))
 
+(defn get-midi-access []
+  (-> (.requestMIDIAccess js/navigator)
+      (.then (fn [access]
+               (re-frame/dispatch-sync [::events/on-midi-access access])
+               (re-frame/dispatch-sync [::events/on-midi-select-input nil])))))
+
 (defn ^:dev/after-load mount-root []
   (re-frame/clear-subscription-cache!)
   (let [root-el (.getElementById js/document "app")]
@@ -19,4 +25,5 @@
 (defn init []
   (re-frame/dispatch [::events/initialize-db])
   (dev-setup)
-  (mount-root))
+  (mount-root)
+  (get-midi-access))

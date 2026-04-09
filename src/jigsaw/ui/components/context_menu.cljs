@@ -39,6 +39,7 @@
    :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape :function-transpose]
    :function-fit-shape [:function-chord-scales :function-scale-chords :function-find-shape :function-transpose]
    :function-connect-shapes [:function-scale-chords :function-find-shape :function-transpose]
+   :function-cluster-shapes [:function-scale-chords :function-find-shape :function-transpose]
    :function-transpose [:function-chord-scales :function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]})
 
 (defn node-context-menu [{:keys [type] :as props}]

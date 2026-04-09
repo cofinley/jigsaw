@@ -318,8 +318,7 @@
 
   (cluster [#{:Eb4 :Bb4 :C5 :F5}
             #{:Ab2 :Eb3 :Bb3 :Eb4}
-            #{:Gb2 :Db3 :B3 :E4}] :max-results 3)
-  (shape->shapes (->shape :C_q)))
+            #{:Gb2 :Db3 :B3 :E4}] :max-results 3))
 
 ;; TODO
 ;;  - Preview scales on top of chord (progression)

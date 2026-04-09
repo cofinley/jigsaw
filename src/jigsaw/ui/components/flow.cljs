@@ -14,6 +14,7 @@
                             BaseEdge
                             getBezierPath
                             Controls
+                            MiniMap
                             applyNodeChanges
                             applyEdgeChanges
                             addEdge
@@ -121,7 +122,7 @@
       [:> Panel {:position "top-right"}
        [select {:on-change #(re-frame/dispatch [::events/add-node {:type (-> % .-target .-value)}])
                 :value ""
-                :class "text-gray-100"}
+                :class "text-gray-100 bg-neutral-800"}
         (cons
          [:option {:disabled true :value ""} "(Add Node)"]
          (for [[cat-k cat-label] node-categories]
@@ -132,7 +133,12 @@
       [:> Background]
       (when node-menu
         [node-context-menu (merge {:on-click on-pane-click} node-menu)])
-      [:> Controls]]]))
+      [:> Controls]
+      [:> MiniMap
+       {:nodeStrokeWidth 3
+        :pannable true
+        :zoomable true
+        :zoomStep 3}]]]))
 
 (defn flow []
   [:> ReactFlowProvider

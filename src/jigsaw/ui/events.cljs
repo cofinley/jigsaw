@@ -1,47 +1,32 @@
 (ns jigsaw.ui.events
   (:require
+   ["soundfont-player" :as soundfont]
    [clojure.string :as str]
    [jigsaw.core :as jigsaw]
    [jigsaw.impl.theory :as theory]
    [jigsaw.ui.db :as db]
-   [re-frame.core :as re-frame]
-   ["soundfont-player" :as soundfont]))
+   [jigsaw.ui.midi :as midi]
+   [re-frame.core :as re-frame]))
 
-(re-frame/reg-event-fx
- ::initialize-db
- (fn [_ _]
-   {:db db/default-db
-    :fx [[:dispatch [::add-node {:id "a" :type :input-piano :position {:x 0 :y 0} :data {:notes #{:Gb4 :A4 :C5 :E5}}}]]
-         [:dispatch [::add-node {:id "b" :type :input-piano :position {:x 0 :y 400} :data {:notes #{:Gb4 :A4 :B4 :Eb5}}}]]
-         [:dispatch [::add-node {:id "c" :type :input-piano :position {:x 0 :y 800} :data {:notes #{:E4 :G4 :B4}}}]]
-         [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 900 :y 200} :data {:view-type :output-piano}}]]
-         [:dispatch [::add-edge {:id "a->d" :source "a" :target "d"}]]
-         [:dispatch [::add-edge {:id "b->d" :source "b" :target "d"}]]
-         [:dispatch [::add-edge {:id "c->d" :source "c" :target "d"}]]
+#_(re-frame/reg-event-fx
+   ::initialize-db
+   (fn [_ _]
+     {:db db/default-db
+      :fx [[:dispatch [::add-node {:id "a" :type :input-piano :position {:x 0 :y 0} :data {:notes #{:Gb4 :A4 :C5 :E5}}}]]
+           [:dispatch [::add-node {:id "b" :type :input-piano :position {:x 0 :y 400} :data {:notes #{:Gb4 :A4 :B4 :Eb5}}}]]
+           [:dispatch [::add-node {:id "c" :type :input-piano :position {:x 0 :y 800} :data {:notes #{:E4 :G4 :B4}}}]]
+           [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 900 :y 200} :data {:view-type :output-piano}}]]
+           [:dispatch [::add-edge {:id "a->d" :source "a" :target "d"}]]
+           [:dispatch [::add-edge {:id "b->d" :source "b" :target "d"}]]
+           [:dispatch [::add-edge {:id "c->d" :source "c" :target "d"}]]
          ;[:dispatch [::update-edge-props "c->d" {:data {:highlighted? true}}]]
-         ]}))
-
-;; Computation declarations
-(defmulti should-compute? (fn [parent-data data] (:type data)))
-(defmulti compute-node (fn [parent-data data] (:type data)))
-
-;; Graph functions
-
-(re-frame/reg-event-db
- ::set-nodes
- (fn [db [_ nodes]]
-   (assoc db :nodes nodes)))
-
-(re-frame/reg-event-db
- ::set-edges
- (fn [db [_ edges]]
-   (assoc db :edges edges)))
+           ]}))
 
 (defn get-parent-data-for-node [db node-id]
   (let [node-type (get-in db [:node-data node-id :type])]
     (case node-type
       ; Multiple parents
-      (:function-connect-shapes :function-fit-shape)
+      (:function-connect-shapes :function-fit-shape :function-cluster-shapes)
       (let [sources (filter #(= (.-target %) node-id) (:edges db))
             source-ids (map #(.-source %) sources)]
         (map #(get-in db [:node-data %]) source-ids))
@@ -50,12 +35,63 @@
         (when (seq sources)
           (get-in db [:node-data (.-source (first sources))]))))))
 
+(defn stale-function-ancestors
+  "Find ancestor function nodes for recomputing"
+  [db]
+  (let [fn-type? #(str/includes? (.-type %) "function")
+        ancestor? #(let [parent-node (get-parent-data-for-node db (.-id %))]
+                     (and parent-node (:type parent-node) (str/includes? (name (:type parent-node)) "input")))]
+    (->> (:nodes db)
+         (filter #(and (fn-type? %) (ancestor? %)))
+         (map #(.-id %)))))
+
+(re-frame/reg-event-fx
+ ::initialize-stale-nodes
+ (fn [{:keys [db]} [_]]
+   {:fx (for [id (stale-function-ancestors db)]
+          [:dispatch [::recompute id]])}))
+
+(re-frame/reg-event-fx  ;; Use -fx over -db to access cofx
+ ::initialize-db
+ [(re-frame/inject-cofx :local-store-data)]  ;; Custom interceptor using cofx (defined in db.cljs), read from localStorage on init
+ (fn [{:keys [db local-store-data]} _]
+   (let [stale-ids (stale-function-ancestors db)]
+     {:db (merge db/default-db
+                 (if (keys local-store-data) local-store-data {}))
+      :fx [[:dispatch [::initialize-stale-nodes]]]})))
+
+(def data->local-store (re-frame/after db/data->local-store))  ;; Store state in localStorage after each event
+
+(def interceptors [#_(re-frame/path :data)
+                   data->local-store])  ;; Define all interceptors
+
+;; Effectful handlers handle whole :db but sometimes we still need to save the nested :data to localStorage
+(def db->local-store [(re-frame/after (fn [db _] (db/data->local-store db)))])
+
+;; Computation declarations
+(defmulti should-compute? (fn [parent-data data] (:type data)))
+(defmulti compute-node (fn [parent-data data] (:type data)))
+
+;; Graph functions
+(re-frame/reg-event-db
+ ::set-nodes
+ ; interceptors
+ (fn [db [_ nodes]]
+   (assoc db :nodes nodes)))
+
+(re-frame/reg-event-db
+ ::set-edges
+ ; interceptors
+ (fn [db [_ edges]]
+   (assoc db :edges edges)))
+
 (defn add-edge [db edge]
   (assoc db :edges (clj->js (conj (js->clj (:edges db))
                                   (clj->js (assoc edge :type :custom-edge))))))
 
 (re-frame/reg-event-fx
  ::add-edge
+ db->local-store
  (fn [{:keys [db]} [_ edge]]
    (let [new-db (add-edge db edge)
          target-id (:target edge)
@@ -114,6 +150,7 @@
 
 (re-frame/reg-event-fx
  ::add-node
+ db->local-store
  (fn [{:keys [db]} [_ node-props & [parent-id]]]
    (let [[node-id new-db] (create-node db node-props parent-id)
          parent-data (when (some? parent-id) (get-parent-data-for-node new-db node-id))
@@ -135,6 +172,7 @@
 
 (re-frame/reg-event-db
  ::delete-node
+ interceptors
  (fn [db [_ id]]
    (delete-node db id)))
 
@@ -146,6 +184,7 @@
 
 (re-frame/reg-event-fx
  ::update-node-data
+ db->local-store
  (fn [{:keys [db]} [_ id data]]
    (let [old-data (get-in db [:node-data id])
          new-data (merge old-data data)
@@ -195,6 +234,19 @@
     (if (every? #(contains? % :name) parent-data)
       (jigsaw/connect-shapes-memo parent-data :chord)
       (jigsaw/connect-memo (map :notes parent-data) :chord :max-shapes max-shapes))))
+
+(defmethod should-compute? :function-cluster-shapes [parent-data data]
+  (and (> (count parent-data) 1)
+       (every? #(contains? % :notes) parent-data)))
+(defmethod compute-node :function-cluster-shapes [parent-data data]
+  (let [max-results (or (:max-results data) 1)
+        max-shapes (or (:max-shapes data) 10)
+        note-seqs (map :notes parent-data)
+        max-clusters (or (:max-clusters data) (dec (count note-seqs)))]
+    (jigsaw/cluster note-seqs
+                    :max-results max-results
+                    :max-shapes max-shapes
+                    :max-clusters max-clusters)))
 
 (defmethod should-compute? :function-fit-shape [parent-data data]
   (= (count parent-data) 2))
@@ -304,6 +356,7 @@
 ;; Drag and drop functionality
 (re-frame/reg-event-db
  ::create-node-from-drag
+ interceptors
  (fn [db [_ shape-data position]]
    (when (theory/shape-ref? shape-data)
      (let [node-type (cond
@@ -316,3 +369,158 @@
                                   :position position
                                   :data (assoc shape :view-type :output-piano)}))
          db)))))
+
+;; MIDI
+
+(defn add-note [db note]
+  (let [recording-id (:recording-id db)
+        current-notes (get-in db [:node-data recording-id :notes])
+        current-pcis (get-in db [:node-data recording-id :pcis])
+        pci (-> note theory/parts :pci)]
+    (re-frame/dispatch [::update-node-data recording-id {:notes (set (conj current-notes note))
+                                                         :pcis (set (conj current-pcis pci))}])
+    db
+    #_(-> db (update-in db [:node-data recording-id :notes] conj note))))
+
+(defn add-new-input-midi-node [db]
+  (let [child-id (:connecting-id db)
+        [id new-db] (create-node db {:type :input-piano})]
+    (cond-> new-db
+      true (assoc :recording-id id)
+      (some? child-id) (add-edge {:id (str id "->" child-id) :source id :target child-id}))))
+
+(defn add-new-input-and-find-shapes-node [db]
+  (let [[id db'] (create-node db {:type :input-piano})
+        [_ db''] (create-node db' {:type :function-find-shape} id)]
+    (-> db''
+        (assoc :recording-id id))))
+
+(defn toggle-connecting [db]
+  (let [connecting-id (:connecting-id db)]
+    (if connecting-id
+      (assoc db :connecting-id nil)
+      ; (let [[id db'] (create-node db {:type :function-connect-shapes})]
+      (let [[id db'] (create-node db {:type :function-cluster-shapes})]
+        (assoc db' :connecting-id id)))))
+
+(re-frame/reg-event-db
+ ::toggle-recording
+ (fn [db [_ id]]
+   (assoc db :recording-id (if (= id (:recording-id db))
+                             nil
+                             id))))
+
+(defn update-trigger [db trigger note]
+  (-> db
+      (assoc :recording-id nil)
+      (assoc-in [:settings :midi-triggers trigger] note)))
+
+(re-frame/reg-event-fx
+ ::on-midi-message
+ db->local-store
+ (fn [{:keys [db]} [_ msg]]
+   (let [event (midi/parse-midi-data (.-data msg))
+         note-on? (= :note-on (:command event))
+         ; note-off? (= :note-off (:command event))
+         ; control-change? (= :control-change (:command event))
+         recording-id (:recording-id db)
+         note (theory/midi->note (:note event))
+         new-node-midi-trigger? (= note (-> db :settings :midi-triggers :new-node))
+         toggle-connecting-midi-trigger? (= note (-> db :settings :midi-triggers :toggle-connecting))
+         new-node-find-shapes-midi-trigger? (= note (-> db :settings :midi-triggers :new-node-find-shapes))
+         stop-recording-midi-trigger? (= note (-> db :settings :midi-triggers :stop-recording))
+         ;; TODO process db changes in separate function, maybe all of this, maybe just live-note part
+         new-db (cond
+                  note-on? (cond
+                             stop-recording-midi-trigger? (assoc db :recording-id nil)
+                             new-node-midi-trigger? (add-new-input-midi-node db)
+                             new-node-find-shapes-midi-trigger? (add-new-input-and-find-shapes-node db)
+                             toggle-connecting-midi-trigger? (toggle-connecting db)
+                             recording-id (case recording-id
+                                            :new-node (update-trigger db :new-node note)
+                                            :new-node-find-shapes (update-trigger db :new-node-find-shapes note)
+                                            :toggle-connecting (update-trigger db :toggle-connecting note)
+                                            :stop-recording (update-trigger db :stop-recording note)
+                                            (add-note db note)))
+                  #_#_note-off? (when-not recording-id
+                                  (-> db
+                                      (update-in [:live-notes :active] disj note)
+                                      (cond->
+                                       currently-sustained? (update-in [:live-notes :finished] conj note))))
+                  #_#_control-change? (let [sustain? (and (= 64 (:cc event)) (= 127 (:value event)))]
+                                        (-> db
+                                            (assoc :sustain? sustain?)
+                                            (cond->
+                                             sustain? (assoc-in [:live-notes :finished] (get-in db [:live-notes :active]))
+                                             :else (assoc-in [:live-notes :finished] #{}))))
+                  :else db)]
+     {:db new-db
+      #_#_:dispatch-debounce [::live-block [::on-live-block-add (:live-notes new-db)] live-block-debounce]})))
+
+(re-frame/reg-event-db
+ ::on-midi-access
+ (fn [db [_ access]]
+   (assoc db :midi-access access)))
+
+(re-frame/reg-fx
+ :watch-midi-input  ;; Custom effect for event handler below
+ (fn [input]
+   (when input
+     (js/console.log "Listening to MIDI " (.-name input))
+     (set! (.-onmidimessage input) #(re-frame/dispatch ^:flush-dom [::on-midi-message %])))))
+
+(re-frame/reg-fx
+ ::play-notes
+ (fn [{:keys [output notes broken? individual-notes?]
+       :or {broken? false}}]
+   (let [sorted-notes (sort notes)]
+     (if individual-notes?
+       (midi/play-scale output sorted-notes)
+       (midi/play-chord output sorted-notes :broken? broken?)))))
+
+(re-frame/reg-event-fx
+ ::play-notes-midi
+ (fn
+   ([{:keys [db]} [_ notes & {:keys [broken? individual-notes?]
+                              :or {broken? (:play-chords-broken? db)
+                                   individual-notes? false}}]]
+
+    (let [midis (map theory/note->midi notes)
+          output-name (:midi-output db)
+          outputs (some->> db :midi-access .-outputs .values)
+          output (some->> outputs (filter #(= (.-name %) output-name)) first)]
+      {::play-notes {:output output :notes midis :broken? broken? :individual-notes? individual-notes?}}))))
+
+;; Settings
+
+(re-frame/reg-event-fx
+ ::on-midi-select-input
+ db->local-store
+ (fn [{:keys [db]} [_ input-name]]
+   (let [input-name (or input-name (get-in db [:settings :midi-input]))
+         inputs (some->> db :midi-access .-inputs .values)
+         input (some->> inputs (filter #(= (.-name %) input-name)) first)]
+     {:db (assoc-in db [:settings :midi-input] input-name)
+      :watch-midi-input input})))
+
+(re-frame/reg-event-db
+ ::on-midi-select-output
+ interceptors
+ (fn [db [_ output-name]]
+   (assoc-in db [:settings :midi-output] output-name)))
+
+(re-frame/reg-event-db
+ ::on-play-chords-broken-change
+ interceptors
+ (fn [db [_ broken?]]
+   (assoc-in db [:settings :play-chords-broken?] broken?)))
+
+(re-frame/reg-event-db
+ ::reset-settings
+ interceptors
+ (fn [db _]
+   (assoc db
+          :settings {:midi-input nil
+                     :midi-output nil
+                     :midi-triggers {:new-node nil
+                                     :stop-recording nil}})))

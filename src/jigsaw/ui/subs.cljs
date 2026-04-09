@@ -65,3 +65,51 @@
  ::function-result
  (fn [db [_ id]]
    (get-in db [:function-results id])))
+
+;; MIDI
+
+(re-frame/reg-sub
+ ::midi-access
+ :-> :midi-access)
+
+(re-frame/reg-sub
+ ::midi-input
+ (fn [db]
+   (-> db :settings :midi-input)))
+
+(re-frame/reg-sub
+ ::midi-output
+ (fn [db]
+   (-> db :settings :midi-output)))
+
+(re-frame/reg-sub
+ ::play-chords-broken?
+ :-> :play-chords-broken?)
+
+(re-frame/reg-sub
+ ::midi-triggers
+ (fn [db]
+   (-> db :settings :midi-triggers)))
+
+(re-frame/reg-sub
+ ::new-node-midi-trigger
+ :-> :new-node-midi-trigger)
+
+(re-frame/reg-sub
+ ::stop-recording-midi-trigger
+ :-> :stop-recording-midi-trigger)
+
+(re-frame/reg-sub
+ ::recording-id
+ (fn [db [_]]
+   (:recording-id db)))
+
+(re-frame/reg-sub
+ ::recording?
+ (fn [db [_ id]]
+   (= id (:recording-id db))))
+
+(re-frame/reg-sub
+ ::connecting?
+ (fn [db [_ id]]
+   (= id (:connecting-id db))))

@@ -58,13 +58,16 @@
 (defn function-connect-shapes-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
         parent-data (re-frame/subscribe [::subs/multi-parent-data id])
-        connections (re-frame/subscribe [::subs/function-result id])]
+        connections (re-frame/subscribe [::subs/function-result id])
+        connecting? (re-frame/subscribe [::subs/connecting? id])]
     [node {:title "Connect Shapes"
            :id id
            :data @data
            :parent-data @parent-data
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
+     (when @connecting?
+       [:span "Connecting..."])
      [:label {:class "flex gap-2 items-center mb-4 text-xl"}
       [:span {:class "font-semibold "} "Max Shapes"]
       [:input {:type "number"

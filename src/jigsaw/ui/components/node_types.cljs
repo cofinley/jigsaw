@@ -1,14 +1,15 @@
 (ns jigsaw.ui.components.node-types
   (:require
+   [jigsaw.ui.components.function-cluster-shapes-node :refer [function-cluster-shapes-node]]
    [jigsaw.ui.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
+   [jigsaw.ui.components.function-find-chords-by-degrees-node :refer [function-find-chords-by-degrees-node]]
    [jigsaw.ui.components.function-find-chords-node :refer [function-find-chords-node]]
    [jigsaw.ui.components.function-find-scales-node :refer [function-find-scales-node]]
    [jigsaw.ui.components.function-find-shape-node :refer [function-find-shape-node]]
    [jigsaw.ui.components.function-fit-shape-node :refer [function-fit-shape-node]]
    [jigsaw.ui.components.function-transpose-node :refer [function-transpose-node]]
-   [jigsaw.ui.components.function-find-chords-by-degrees-node :refer [function-find-chords-by-degrees-node]]
-   [jigsaw.ui.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.ui.components.input-music-staff-node :refer [input-music-staff-node]]
+   [jigsaw.ui.components.input-piano-node :refer [input-piano-node]]
    [jigsaw.ui.components.input-shape-node :refer [input-shape-node]]))
 
 (def node-categories
@@ -52,6 +53,10 @@
     :category :function
     :label "Connect Shapes"
     :component function-connect-shapes-node}
+   {:type :function-cluster-shapes
+    :category :function
+    :label "Cluster Shapes"
+    :component function-cluster-shapes-node}
    {:type :function-fit-shape
     :category :function
     :label "Fit Notes to Shape"
