@@ -75,13 +75,13 @@
 ;; Graph functions
 (re-frame/reg-event-db
  ::set-nodes
- ; interceptors
+ db->local-store
  (fn [db [_ nodes]]
    (assoc db :nodes nodes)))
 
 (re-frame/reg-event-db
  ::set-edges
- ; interceptors
+ db->local-store
  (fn [db [_ edges]]
    (assoc db :edges edges)))
 
@@ -163,9 +163,9 @@
   (-> db
       (assoc :nodes (clj->js (remove #(= id (get % "id"))
                                      (js->clj (:nodes db)))))
-      (assoc :edges (remove #(or (= id (.-source %))
-                                 (= id (.-target %)))
-                            (:edges db)))
+      (assoc :edges (.filter (:edges db)
+                             #(and (not= id (.-source %))
+                                   (not= id (.-target %)))))
       (update :node-data dissoc id)
       (update :function-results dissoc id)
       (update :node-loading dissoc id)))

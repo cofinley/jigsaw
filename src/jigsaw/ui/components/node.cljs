@@ -62,7 +62,7 @@
                 :let [h (nth handles i)
                       k (str "handle-target-" id "-" i)]
                 :when (= "target" (:type h))]
-            ^{:key k} [handle h])
+            ^{:key k} [handle (assoc h :id k)])
 
           (when @open?
             [:<>
@@ -90,5 +90,5 @@
                 :let [h (nth handles i)
                       k (str "handle-source-" id "-" i)]
                 :when (= "source" (:type h))]
-            ^{:key k} [handle h])])))))
+            ^{:key k} [handle (assoc h :id k)])])))))
 
