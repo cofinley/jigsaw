@@ -56,39 +56,6 @@
          ")")]
    [piano-preview found :parent-notes input]])
 
-;({:trace
-;   {#{:G4 :E4 :C4}
-;    {:pitch :C,
-;     :name :maj,
-;     :heuristics
-;     {},
-;     :pcis [0 4 7],
-;     :input #{:G4 :E4 :C4}},
-;    #{:D4 :F4 :A4}
-;    {:pitch :D,
-;     :name :m,
-;     :heuristics
-;     {},
-;     :pcis [2 5 9],
-;     :input #{:D4 :F4 :A4}},
-;    #{:G4 :E4 :B4}
-;    {:pitch :E,
-;     :name :m,
-;     :heuristics
-;     {},
-;     :pcis [4 7 11],
-;     :input #{:G4 :E4 :B4}}},
-;   :avg-shape-overlap 1.0,
-;   :clusters
-;   ([{:pitch :C, :name :maj}
-;     {:pitch :D, :name :m}
-;     {:pitch :E, :name :m}]),
-;   :avg-connection-overlap 0.06666667,
-;   :connections-by-cluster
-;   (#{{:pitch :C, :name :bebop-major}
-;      {:pitch :E, :name :bebop-locrian}
-;      {:pitch :E, :name :phrygian}})})
-
 (defn function-cluster-shapes-node [props]
   (let [page (r/atom 1)]
     (fn [{:keys [id]}]

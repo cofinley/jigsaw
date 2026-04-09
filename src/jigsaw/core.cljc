@@ -74,7 +74,7 @@
          (sort-by (comp heuristic :heuristics) >)
          (take max-shapes)
          (map #(select-keys % [:pitch :name :bass :heuristics :pcis]))
-         (map #(assoc % :input notes)))))
+         #_(map #(assoc % :input notes)))))
 
 ; Find chords from scales (via matching pitches)
 
@@ -289,23 +289,30 @@
   (let [shapes (if (every? theory/shape? xs)
                  (map vector xs)
                  (map (fn [note-seq] (notes->shapes note-seq :max-shapes max-shapes)) xs))
-        shape-ref->neighbors (reduce (fn [m shape] (assoc m (theory/->shape-ref shape) (map theory/->shape-ref (shape->shapes-memo shape)))) {} (map ->shape (flatten shapes)))
-        snn (fn [shape-refs] (apply set/intersection (map #(set (shape-ref->neighbors %)) shape-refs)))
-        snn-jaccard (fn [shape-refs] (apply theory/jaccard-index (map #(set (shape-ref->neighbors %)) shape-refs)))
+        shape-ref->neighbors (reduce (fn [m shape]
+                                       (assoc m (theory/->shape-ref shape) (map theory/->shape-ref (shape->shapes-memo shape))))
+                                     {}
+                                     (map ->shape (flatten shapes)))
+        snn-info (fn [shape-refs]
+                   (let [neighbors-per-shape (map #(set (shape-ref->neighbors %)) shape-refs)
+                         shared-neighbors (apply set/intersection neighbors-per-shape)
+                         shared-neighbor-jaccard-index (apply theory/jaccard-index neighbors-per-shape)]
+                     {:snn shared-neighbors
+                      :snn-index shared-neighbor-jaccard-index}))
         max-partitions (dec (count xs))]
     (->> (for [combination (apply combo/cartesian-product shapes)
                :let [trace (zipmap xs combination)
                      combination-refs (map theory/->shape-ref combination)]
                partitioning (combo/partitions combination-refs :max (min max-partitions max-clusters))
-               :let [partitioning-snn-index (->> partitioning (map snn-jaccard) (apply avg))]
-               :when (not= 0.0 partitioning-snn-index)
-               :let [partitioning-snn (->> partitioning (map snn))]
-               :when (every? seq partitioning-snn)]
+               :let [partitioning-snn-info (map snn-info partitioning)
+                     partitioning-snn-index (apply avg (map :snn-index partitioning-snn-info))]
+               :when (and (not= 0.0 partitioning-snn-index)
+                          (every? seq (map :snn partitioning-snn-info)))]
            {:trace trace
             :avg-shape-overlap (apply avg (map #(get-in % [:heuristics :overlap] 1.0) (vals trace)))
             :clusters partitioning
             :avg-connection-overlap partitioning-snn-index
-            :connections-by-cluster partitioning-snn})
+            :connections-by-cluster (map :snn partitioning-snn-info)})
          (sort-by (juxt #(count (:clusters %))
                         (comp - :avg-shape-overlap)
                         (comp - :avg-connection-overlap)))
@@ -313,7 +320,7 @@
 
 (comment
   (notes->shapes #{:E4 :G4 :B4})
-  (cluster [#{:C4 :E4 :G4} #{:D4 :F4 :A4} #{:E4 :G4 :B4}] :max-clusters 1)
+  (cluster [#{:C4 :E4 :G4} #{:D4 :F4 :A4} #{:E4 :G4 :B4}])
   (cluster (map ->shape [:C_maj :D_maj :E_m]) :max-clusters 2)
 
   (cluster [#{:Eb4 :Bb4 :C5 :F5}

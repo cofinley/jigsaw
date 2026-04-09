@@ -1,7 +1,7 @@
 # Jigsaw
 
 AKA Chordian Knot
-AKA Alt°
+AKA Alt<sup>o</sup>
 
 Exploring music theory as a graph with heuristics and logic to find harmony and see how the puzzle pieces fit together
 
