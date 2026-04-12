@@ -535,54 +535,35 @@
   (testing "heuristics"
     (are+ [set1 set2 m] (= m (theory/calculate-heuristics set1 set2))
       [] [] {:contained-in? 1
-             :fully-contained-in? 0
              :contains? 1
-             :fully-contains? 0
-             :overlap 0.0
-             :same-pitch-count? 1
-             :shares-root? 0}
+             :overlap 0.0}
       [:C] [] {:contained-in? 0
-               :fully-contained-in? 0
                :contains? 1
-               :fully-contains? 1
-               :overlap 0.0
-               :same-pitch-count? 0
-               :shares-root? 0}
+               :overlap 0.0}
       [] [:C] {:contained-in? 1
-               :fully-contained-in? 1
                :contains? 0
-               :fully-contains? 0
-               :overlap 0.0
-               :same-pitch-count? 0
-               :shares-root? 0}
+               :overlap 0.0}
       [:C] [:C] {:contained-in? 1
-                 :fully-contained-in? 0
                  :contains? 1
-                 :fully-contains? 0
-                 :overlap 1.0
-                 :same-pitch-count? 1
-                 :shares-root? 1}
+                 :overlap 1.0}
       [:C] [:C :D] {:contained-in? 1
-                    :fully-contained-in? 1
                     :contains? 0
-                    :fully-contains? 0
-                    :overlap 0.5
-                    :same-pitch-count? 0
-                    :shares-root? 1}
+                    :overlap 0.5}
       [:C :D] [:C] {:contained-in? 0
-                    :fully-contained-in? 0
                     :contains? 1
-                    :fully-contains? 1
-                    :overlap 0.5
-                    :same-pitch-count? 0
-                    :shares-root? 1}
+                    :overlap 0.5}
       [:C :D :E] [:C] {:contained-in? 0
-                       :fully-contained-in? 0
                        :contains? 1
-                       :fully-contains? 1
-                       :overlap (float (/ 1 3))
-                       :same-pitch-count? 0
-                       :shares-root? 1}))
+                       :overlap (float (/ 1 3))})
+    (testing "ldist"
+      (are+ [s1 s2 want] (= want (theory/ldist s1 s2))
+        #{1 2 3} #{2 3 4} 1
+        #{1 2 3 4} #{1 2 3} 1
+        #{1 2 3} #{1 2 3 4} 1
+        #{1 2} #{1 2 3 4} 2
+        #{1 2 3} #{4 5 6} 3
+        #{} #{} 0
+        #{} #{1} 1)))
 
   (testing "scale->mode"
     (are+ [base-scale-name mode-num want-scale-name] (= want-scale-name (:name (theory/scale->mode (jigsaw/->shape :C base-scale-name) mode-num)))

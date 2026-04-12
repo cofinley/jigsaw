@@ -32,11 +32,12 @@
 
 ; Based on PCI
 (defn resolve-all-shapes [shape-type]
-  (for [pitch theory/simple-pitch-keys
-        shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
-    (let [shape (->shape {:note (theory/pitch->note pitch) :name shape-name})
-          pcis (mapv theory/pitches (:pitches shape))]
-      (assoc shape :pcis pcis))))
+  (doall
+   (for [pitch theory/simple-pitch-keys
+         shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
+     (let [shape (->shape {:note (theory/pitch->note pitch) :name shape-name})
+           pcis (mapv theory/pitches (:pitches shape))]
+       (assoc shape :pcis pcis)))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -55,7 +56,7 @@
                  max-shapes 10
                  selected-pitch nil}}]
   (let [sorted-notes (sort-by theory/note->midi notes)
-        pcis (map #(-> % theory/parts :pci) sorted-notes)
+        pcis (mapv #(-> % theory/parts :pci) sorted-notes)
         shapes (if (= shape-type :chord) all-chords all-scales)
         bass-pitch (theory/identify-bass-pitch notes)]
     (->> shapes
@@ -282,19 +283,20 @@
 (defn avg [& nums]
   (float (/ (reduce + nums) (count nums))))
 
-(defn cluster [xs & {:keys [max-results max-shapes max-clusters]
-                     :or {max-results 5
+(defn cluster [xs & {:keys [shape-type max-results max-shapes max-clusters]
+                     :or {shape-type :chord
+                          max-results 5
                           max-shapes 10
                           max-clusters 3}}]
   (let [shapes (if (every? theory/shape? xs)
                  (map vector xs)
-                 (map (fn [note-seq] (notes->shapes note-seq :max-shapes max-shapes)) xs))
+                 (map (fn [note-seq] (notes->shapes note-seq :max-shapes max-shapes :shape-type shape-type)) xs))
         shape-ref->neighbors (reduce (fn [m shape]
-                                       (assoc m (theory/->shape-ref shape) (map theory/->shape-ref (shape->shapes-memo shape))))
+                                       (assoc m (theory/->shape-ref shape) (set (map theory/->shape-ref (shape->shapes-memo shape)))))
                                      {}
-                                     (map ->shape (flatten shapes)))
-        snn-info (fn [shape-refs]
-                   (let [neighbors-per-shape (map #(set (shape-ref->neighbors %)) shape-refs)
+                                     (doall (map ->shape (flatten shapes))))
+        snn-info (fn [partition]
+                   (let [neighbors-per-shape (map #(set (shape-ref->neighbors %)) partition)
                          shared-neighbors (apply set/intersection neighbors-per-shape)
                          shared-neighbor-jaccard-index (apply theory/jaccard-index neighbors-per-shape)]
                      {:snn shared-neighbors
