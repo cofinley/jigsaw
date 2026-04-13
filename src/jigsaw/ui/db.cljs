@@ -12,10 +12,10 @@
               :midi-output nil
               :midi-triggers {:new-node nil
                               :new-node-find-shapes nil
-                              :toggle-connecting nil
+                              :toggle-clustering nil
                               :stop-recording nil}}
    :recording-id nil
-   :connecting-id nil})
+   :clustering-id nil})
 
 (defn ->node [props & [parent-props]]
   (merge

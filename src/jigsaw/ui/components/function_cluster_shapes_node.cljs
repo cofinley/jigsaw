@@ -62,15 +62,15 @@
       (let [data (re-frame/subscribe [::subs/data id])
             parent-data (re-frame/subscribe [::subs/multi-parent-data id])
             results (re-frame/subscribe [::subs/function-result id])
-            connecting? (re-frame/subscribe [::subs/connecting? id])]
+            clustering (re-frame/subscribe [::subs/clustering id])]
         [node {:title "Cluster Shapes"
                :id id
                :data @data
                :parent-data @parent-data
                :handles [{:type "target" :position "left"}
                          {:type "source" :position "right"}]}
-         (when @connecting?
-           [:span "Connecting..."])
+         (when @clustering
+           [:span "Clustering..."])
          [:div {:class "flex gap-4"}
           [:label {:class "flex gap-2 items-center mb-4 text-xl"}
            [:span {:class "font-semibold "} "Max Clusters"]

@@ -110,6 +110,6 @@
    (= id (:recording-id db))))
 
 (re-frame/reg-sub
- ::connecting?
+ ::clustering?
  (fn [db [_ id]]
-   (= id (:connecting-id db))))
+   (= id (:clustering-id db))))

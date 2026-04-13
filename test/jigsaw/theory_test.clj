@@ -533,7 +533,7 @@
         :chord-degree/im13 :chord-degree/i)))
 
   (testing "heuristics"
-    (are+ [set1 set2 m] (= m (theory/calculate-heuristics set1 set2))
+    (are+ [c1 c2 m] (= m (theory/calculate-heuristics (set c1) (set c2)))
       [] [] {:contained-in? 1
              :contains? 1
              :overlap 0.0}

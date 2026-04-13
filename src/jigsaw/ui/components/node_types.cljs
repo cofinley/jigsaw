@@ -1,7 +1,6 @@
 (ns jigsaw.ui.components.node-types
   (:require
    [jigsaw.ui.components.function-cluster-shapes-node :refer [function-cluster-shapes-node]]
-   [jigsaw.ui.components.function-connect-shapes-node :refer [function-connect-shapes-node]]
    [jigsaw.ui.components.function-find-chords-by-degrees-node :refer [function-find-chords-by-degrees-node]]
    [jigsaw.ui.components.function-find-chords-node :refer [function-find-chords-node]]
    [jigsaw.ui.components.function-find-scales-node :refer [function-find-scales-node]]
@@ -49,10 +48,6 @@
     :category :function
     :label "Find Closest Shapes"
     :component function-find-shape-node}
-   {:type :function-connect-shapes
-    :category :function
-    :label "Connect Shapes"
-    :component function-connect-shapes-node}
    {:type :function-cluster-shapes
     :category :function
     :label "Cluster Shapes"

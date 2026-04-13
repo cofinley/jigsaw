@@ -15,7 +15,7 @@
       :fx [[:dispatch [::add-node {:id "a" :type :input-piano :position {:x 0 :y 0} :data {:notes #{:Gb4 :A4 :C5 :E5}}}]]
            [:dispatch [::add-node {:id "b" :type :input-piano :position {:x 0 :y 400} :data {:notes #{:Gb4 :A4 :B4 :Eb5}}}]]
            [:dispatch [::add-node {:id "c" :type :input-piano :position {:x 0 :y 800} :data {:notes #{:E4 :G4 :B4}}}]]
-           [:dispatch [::add-node {:id "d" :type :function-connect-shapes :position {:x 900 :y 200} :data {:view-type :output-piano}}]]
+           [:dispatch [::add-node {:id "d" :type :function-cluster-shapes :position {:x 900 :y 200} :data {:view-type :output-piano}}]]
            [:dispatch [::add-edge {:id "a->d" :source "a" :target "d"}]]
            [:dispatch [::add-edge {:id "b->d" :source "b" :target "d"}]]
            [:dispatch [::add-edge {:id "c->d" :source "c" :target "d"}]]
@@ -26,7 +26,7 @@
   (let [node-type (get-in db [:node-data node-id :type])]
     (case node-type
       ; Multiple parents
-      (:function-connect-shapes :function-fit-shape :function-cluster-shapes)
+      (:function-fit-shape :function-cluster-shapes)
       (let [sources (filter #(= (.-target %) node-id) (:edges db))
             source-ids (map #(.-source %) sources)]
         (map #(get-in db [:node-data %]) source-ids))
@@ -227,20 +227,12 @@
         resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
     resolved-shapes))
 
-(defmethod should-compute? :function-connect-shapes [parent-data data]
-  (> (count parent-data) 1))
-(defmethod compute-node :function-connect-shapes [parent-data data]
-  (let [max-shapes (or (:max-shapes data) 1)]
-    (if (every? #(contains? % :name) parent-data)
-      (jigsaw/connect-shapes-memo parent-data :chord)
-      (jigsaw/connect-memo (map :notes parent-data) :chord :max-shapes max-shapes))))
-
 (defmethod should-compute? :function-cluster-shapes [parent-data data]
   (and (> (count parent-data) 1)
        (every? #(contains? % :notes) parent-data)))
 (defmethod compute-node :function-cluster-shapes [parent-data data]
   (let [max-results (or (:max-results data) 1)
-        max-shapes (or (:max-shapes data) 10)
+        max-shapes (or (:max-shapes data) 5)
         note-seqs (map :notes parent-data)
         max-clusters (or (:max-clusters data) (dec (count note-seqs)))]
     (jigsaw/cluster note-seqs
@@ -383,7 +375,7 @@
     #_(-> db (update-in db [:node-data recording-id :notes] conj note))))
 
 (defn add-new-input-midi-node [db]
-  (let [child-id (:connecting-id db)
+  (let [child-id (:clustering-id db)
         [id new-db] (create-node db {:type :input-piano})]
     (cond-> new-db
       true (assoc :recording-id id)
@@ -395,13 +387,12 @@
     (-> db''
         (assoc :recording-id id))))
 
-(defn toggle-connecting [db]
-  (let [connecting-id (:connecting-id db)]
-    (if connecting-id
-      (assoc db :connecting-id nil)
-      ; (let [[id db'] (create-node db {:type :function-connect-shapes})]
+(defn toggle-clustering [db]
+  (let [clustering-id (:clustering-id db)]
+    (if clustering-id
+      (assoc db :clustering-id nil)
       (let [[id db'] (create-node db {:type :function-cluster-shapes})]
-        (assoc db' :connecting-id id)))))
+        (assoc db' :clustering-id id)))))
 
 (re-frame/reg-event-db
  ::toggle-recording
@@ -426,7 +417,7 @@
          recording-id (:recording-id db)
          note (theory/midi->note (:note event))
          new-node-midi-trigger? (= note (-> db :settings :midi-triggers :new-node))
-         toggle-connecting-midi-trigger? (= note (-> db :settings :midi-triggers :toggle-connecting))
+         toggle-clustering-midi-trigger? (= note (-> db :settings :midi-triggers :toggle-clustering))
          new-node-find-shapes-midi-trigger? (= note (-> db :settings :midi-triggers :new-node-find-shapes))
          stop-recording-midi-trigger? (= note (-> db :settings :midi-triggers :stop-recording))
          ;; TODO process db changes in separate function, maybe all of this, maybe just live-note part
@@ -435,11 +426,11 @@
                              stop-recording-midi-trigger? (assoc db :recording-id nil)
                              new-node-midi-trigger? (add-new-input-midi-node db)
                              new-node-find-shapes-midi-trigger? (add-new-input-and-find-shapes-node db)
-                             toggle-connecting-midi-trigger? (toggle-connecting db)
+                             toggle-clustering-midi-trigger? (toggle-clustering db)
                              recording-id (case recording-id
                                             :new-node (update-trigger db :new-node note)
                                             :new-node-find-shapes (update-trigger db :new-node-find-shapes note)
-                                            :toggle-connecting (update-trigger db :toggle-connecting note)
+                                            :toggle-clustering (update-trigger db :toggle-clustering note)
                                             :stop-recording (update-trigger db :stop-recording note)
                                             (add-note db note)))
                   #_#_note-off? (when-not recording-id

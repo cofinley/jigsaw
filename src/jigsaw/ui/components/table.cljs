@@ -7,13 +7,13 @@
 (defn is-draggable-row? [x]
   (cond
     (map? x) (theory/shape-ref? x)
-    (vector? x) (is-draggable-row? (first x))  ; connect-shapes row
+    (vector? x) (is-draggable-row? (first x))  ; shape row
     :else false))
 
 (defn handle-drag-start
   [m e]
   (if (vector? m)
-    (handle-drag-start (first m) e)  ; connect-shapes row
+    (handle-drag-start (first m) e)  ; shape row
     (let [data-transfer (.-dataTransfer e)
           drag-data (js/JSON.stringify (clj->js m))]
       (.setData data-transfer "application/json" drag-data)

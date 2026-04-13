@@ -75,7 +75,7 @@
                 (filter #(or (= :overlap heuristic) (= 1 (get-in % [:heuristics heuristic]))))))
          (sort-by (comp heuristic :heuristics) >)
          (take max-shapes)
-         (map #(select-keys % [:pitch :name :bass :heuristics :pcis]))
+         (map #(select-keys % [:pitch :name :bass :heuristics #_:pcis]))
          #_(map #(assoc % :input notes)))))
 
 ; Find chords from scales (via matching pitches)
@@ -157,69 +157,10 @@
 
 ; TODO/IDEA: list of visited contexts?
 
-(defn connect-shapes
-  [shapes]
-  {:pre [(every? theory/shape? shapes)]}
-  (let [shape->comp-shapes (reduce (fn [m shape]
-                                     (assoc m (select-keys shape [:pitch :name :heuristics :bass])
-                                            (set (remove (comp nil? :name)
-                                                         ; Keep comp-shape reusable by removing :degree (added back later)
-                                                         (map #(select-keys % [:pitch :name])
-                                                              (shape->shapes shape))))))
-                                   {} shapes)
-        comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
-    (into
-     {}
-     (for [[comp-shape matched-shapes] comp-shape->shapes
-           :when (= (count shapes) (count matched-shapes))]
-       [comp-shape (sort-by #(theory/roman-numeral->int (:context %))
-                            (map (fn [shape]
-                                   {:found shape
-                                    :context (contextualize (->shape shape)
-                                                            (->shape comp-shape))})
-                                 matched-shapes))]))))
-
-(defn connect
-  "Given some note sets, find connective shapes
-  1. note-sets -> proper shapes
-  2. shapes -> complementary shapes (i.e. chord -> scales and vice versa)
-  3. Show how the complementary shapes connect all the note sets and their proper shapes"
-  [note-seqs input-shape-type & {:keys [max-shapes] :or {max-shapes 1}}]
-  (let [note-seq-sets (set note-seqs)
-        note-seq->shapes (reduce (fn [m note-seq]
-                                   (assoc m note-seq
-                                          (set (map #(select-keys % [:pitch :name :bass :heuristics])
-                                                    (notes->shapes note-seq :shape-type input-shape-type :max-shapes max-shapes)))))
-                                 {}
-                                 note-seqs)
-        shape->note-seqs (utils/invert-map-of-sets note-seq->shapes)
-        shape->comp-shapes (reduce (fn [m shape]
-                                     (assoc m shape
-                                            (set (remove (comp nil? :name)
-                                                         (map #(select-keys % [:pitch :name])
-                                                              (shape->shapes (->shape shape)))))))
-                                   {} (keys shape->note-seqs))
-        comp-shape->shapes (utils/invert-map-of-sets shape->comp-shapes)]
-    (into
-     {}
-     (for [[comp-shape shapes] comp-shape->shapes
-           ; See if complementary shape can account for all note-seqs
-           :let [note-seqs-for-comp-shape (->> shapes
-                                               (mapcat #(get shape->note-seqs %))
-                                               set)]
-           :when (or (= (count note-seq-sets) (count note-seqs-for-comp-shape))
-                     (>= (count shapes) 2))]
-       [comp-shape (sort-by #(theory/roman-numeral->int (:context %))
-                            (map (fn [shape]
-                                   {:input (shape->note-seqs shape)
-                                    :found shape
-                                    :context (contextualize (->shape shape)
-                                                            (->shape comp-shape))})
-                                 shapes))]))))
-
 (defn fit
   "
-  Find closest shape to candidate-notes that is compatible with the target-shape
+  Find closest shape to candidate-notes that is compatible with the target-shape.
+  Like notes->shapes with constraint on its neighbor.
   Addresses extra shapes one doesn't know what to do with or how they fit
   I.e. target-shape of Cmajor and candidate-notes of Cm notes => [Cmaj, ...]
 
@@ -277,25 +218,29 @@
                      (map #(select-keys % [:pitch :name :heuristics]))))))))
 
 (def notes->shapes-memo (memoize notes->shapes))
-(def connect-memo (memoize connect))
-(def connect-shapes-memo (memoize connect-shapes))
 (def shape->shapes-memo (memoize shape->shapes))
 
 (defn avg [& nums]
   (float (/ (reduce + nums) (count nums))))
 
-(defn cluster [xs & {:keys [shape-type max-results max-shapes max-clusters]
-                     :or {shape-type :chord
-                          max-results 3
-                          max-shapes 10
-                          max-clusters 2}}]
+(defn cluster
+  "
+  Find best clustering of xs to minimize total clusters and maximize shared connections per cluster.
+  All inputs, as a single cluster, may not share common connections. Cluster the inputs until each cluster has common connections.
+  xs can be note seqs, which will get turned into some combination of found shapes (max-shapes per note seq).
+  xs can be shapes, which will be used as-is.
+  "
+  [xs & {:keys [shape-type max-results max-shapes max-clusters]
+         :or {shape-type :chord
+              max-results 3
+              max-shapes 5
+              max-clusters 2}}]
   (let [shapes (if (every? theory/shape? xs)
                  (map vector xs)
                  (map (fn [note-seq] (notes->shapes note-seq :max-shapes max-shapes :shape-type shape-type)) xs))
         shape-ref->neighbors (reduce (fn [m shape]
                                        (assoc m (theory/->shape-ref shape) (set (map theory/->shape-ref (shape->shapes-memo shape)))))
-                                     {}
-                                     (doall (map ->shape (flatten shapes))))
+                                     {} (doall (map ->shape (flatten shapes))))
         snn-info (fn [partition]
                    (let [neighbors-per-shape (map #(shape-ref->neighbors %) partition)
                          shared-neighbors (apply set/intersection neighbors-per-shape)]
@@ -355,13 +300,8 @@
   ;; (generalized version)
   (shape->shapes (->shape :C_maj))
   (shape->shapes (->shape :C_major))
-  ;; Shapes -> parent shape
-  (connect-shapes [(->shape :C_maj) (->shape :D_m) (->shape :E_m)])
-  ;;; From notes; more generalized; allows args from notes->shapes
-  (connect [[:C4 :E4 :G4] [:D4 :F4 :A4]] :chord)
-  (connect [(:notes (->shape :C4 :maj)) (:notes (->shape :D4 :m))] :chord)
-  (connect [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :chord :max-shapes 10)
-  (connect [[:C4 :E4 :G4 :B4] [:D4 :F4 :A4]] :scale :max-shapes 30)
+  ;; Shapes -> common parent shape(s)
+  (cluster [(->shape :C_maj) (->shape :D_m) (->shape :E_m)])
+  (cluster [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :max-shapes 5 :max-results 1 :max-clusters 1)
   ;; Shape -> ? -> shape
   (fit (->shape :C4 :major) (:notes (->shape :C4 :m))))
-
