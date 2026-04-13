@@ -921,11 +921,13 @@
 ;;;; SEARCH ;;;;
 
 (defn jaccard-index [& sets]
-  (let [intersection (count (apply set/intersection sets))
-        union (count (apply set/union sets))]
-    (if (zero? union)
+  (let [intersection (count (apply set/intersection sets))]
+    (if (zero? intersection)
       0.0
-      (float (/ intersection union)))))
+      (let [union (count (apply set/union sets))]
+        (if (zero? union)
+          0.0
+          (float (/ intersection union)))))))
 
 (defn ldist [set1 set2]
   (let [larger (if (<= (count set1) (count set2)) set2 set1)
@@ -948,17 +950,18 @@
 
 (defn calculate-heuristics
   "Read as '<input> <heurstic> <possible shape>'"
-  [input candidate]
-  (let [input-set (set input)
-        candidate-set (set candidate)]
-    {:contains? (heuristic->float (set/superset? input-set candidate-set))
-     #_#_:fully-contains? (heuristic->float (and (set/superset? input-set candidate-set) (not= input-set candidate-set)))
-     :contained-in? (heuristic->float (set/subset? input-set candidate-set))
-     #_#_:fully-contained-in? (heuristic->float (and (set/subset? input-set candidate-set) (not= input-set candidate-set)))
-     :overlap (heuristic->float (jaccard-index input-set candidate-set))
-     #_#_:same-pitch-count? (heuristic->float (= (count input-set) (count candidate-set)))
-     #_#_:shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))
-     #_#_:ldist (ldist input-set candidate-set)}))
+  [input-set candidate-set]
+  ; (let [input-set (set input)
+  ;       candidate-set (set candidate)]
+  {:contains? (heuristic->float (set/superset? input-set candidate-set))
+   #_#_:fully-contains? (heuristic->float (and (set/superset? input-set candidate-set) (not= input-set candidate-set)))
+   :contained-in? (heuristic->float (set/subset? input-set candidate-set))
+   #_#_:fully-contained-in? (heuristic->float (and (set/subset? input-set candidate-set) (not= input-set candidate-set)))
+   :overlap (heuristic->float (jaccard-index input-set candidate-set))
+   #_#_:same-pitch-count? (heuristic->float (= (count input-set) (count candidate-set)))
+   #_#_:shares-root? (heuristic->float (and (some? (seq input)) (some? (seq candidate)) (= (first input) (first candidate))))
+   #_#_:ldist (ldist input-set candidate-set)})
+  ; )
 
 ; Helper functions for bass/inversion analysis
 

@@ -37,7 +37,8 @@
          shape-name (keys (if (= shape-type :chord) theory/chords theory/scales))]
      (let [shape (->shape {:note (theory/pitch->note pitch) :name shape-name})
            pcis (mapv theory/pitches (:pitches shape))]
-       (assoc shape :pcis pcis)))))
+       (assoc shape :pcis pcis
+              :pci-set (apply sorted-set pcis))))))
 
 (def all-chords (resolve-all-shapes :chord))
 (def all-scales (resolve-all-shapes :scale))
@@ -56,14 +57,14 @@
                  max-shapes 10
                  selected-pitch nil}}]
   (let [sorted-notes (sort-by theory/note->midi notes)
-        pcis (mapv #(-> % theory/parts :pci) sorted-notes)
+        pci-set (apply sorted-set (map #(-> % theory/parts :pci) sorted-notes))
         shapes (if (= shape-type :chord) all-chords all-scales)
         bass-pitch (theory/identify-bass-pitch notes)]
     (->> shapes
          (into []
                (comp
                 (filter #(if (theory/pitch? selected-pitch) (= selected-pitch (:pitch %)) true))
-                (map #(assoc % :heuristics (theory/calculate-heuristics pcis (:pcis %))))
+                (map #(assoc % :heuristics (theory/calculate-heuristics pci-set (:pci-set %))))
                 ; Add bass note for chords if not in root position; try to align it with chord enharmonics if possible
                 (map #(if (and (= shape-type :chord)
                                bass-pitch
@@ -285,9 +286,9 @@
 
 (defn cluster [xs & {:keys [shape-type max-results max-shapes max-clusters]
                      :or {shape-type :chord
-                          max-results 5
+                          max-results 3
                           max-shapes 10
-                          max-clusters 3}}]
+                          max-clusters 2}}]
   (let [shapes (if (every? theory/shape? xs)
                  (map vector xs)
                  (map (fn [note-seq] (notes->shapes note-seq :max-shapes max-shapes :shape-type shape-type)) xs))
@@ -296,11 +297,12 @@
                                      {}
                                      (doall (map ->shape (flatten shapes))))
         snn-info (fn [partition]
-                   (let [neighbors-per-shape (map #(set (shape-ref->neighbors %)) partition)
-                         shared-neighbors (apply set/intersection neighbors-per-shape)
-                         shared-neighbor-jaccard-index (apply theory/jaccard-index neighbors-per-shape)]
+                   (let [neighbors-per-shape (map #(shape-ref->neighbors %) partition)
+                         shared-neighbors (apply set/intersection neighbors-per-shape)]
                      {:snn shared-neighbors
-                      :snn-index shared-neighbor-jaccard-index}))
+                      :snn-index (if (seq shared-neighbors)
+                                   (apply theory/jaccard-index neighbors-per-shape)
+                                   0.0)}))
         max-partitions (dec (count xs))]
     (->> (for [combination (apply combo/cartesian-product shapes)
                :let [trace (zipmap xs combination)
