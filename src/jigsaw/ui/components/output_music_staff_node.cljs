@@ -40,4 +40,5 @@
     (if (and (every? data [:notes :pitch :name]) (seq notes))
       [score data]
       ;; TODO: allow just notes, maybe key/pitch override?
-      [:p {:class "text-lg"} "Insufficient input; needs notes, pitch, and name"])))
+      ;; TODO: take parent-data into account for key signature (i.e. if parent node is scale)
+      [:p "Insufficient input; needs notes, pitch, and name"])))

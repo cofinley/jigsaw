@@ -48,9 +48,9 @@
           [:div {:class "flex border-b border-neutral-400 mb-4 gap-2"}
            [:div {:class "cursor-pointer"
                   :on-click #(reset! open? (not @open?))}
-            [:span {:class "text-lg cursor-pointer"}
+            [:span {:class "cursor-pointer"}
              (gstr/unescapeEntities (if @open? down-arrow right-arrow))]]
-           [:h4 {:class "w-max font-semibold text-2xl"} title]
+           [:h4 {:class "w-max font-semibold text-lg"} (str title #_" " #_id)]
            [:button {:class "text-neutral-400 cursor-pointer bg-transparent hover:bg-neutral-200 hover:text-neutral-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-neutral-600 dark:hover:text-white"
                      :on-click (fn [e]
                                  (.stopPropagation e)
@@ -71,7 +71,7 @@
 
              (let [view-type (:view-type data)]
                [:div {:class "flex flex-col space-y-4"}
-                [:div {:class "flex space-x-2 items-center mt-4 text-xl"}
+                [:div {:class "flex space-x-2 items-center mt-4"}
                  [:span {:class "font-semibold"} "View"]
                  [select {:value (or view-type "")
                           :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (let [value (-> % .-target .-value)]

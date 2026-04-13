@@ -73,21 +73,21 @@
          (when @clustering
            [:span "Clustering..."])
          [:div {:class "flex gap-4"}
-          [:label {:class "flex gap-2 items-center mb-4 text-xl"}
+          [:label {:class "flex gap-2 items-center mb-4"}
            [:span {:class "font-semibold "} "Max Clusters"]
            [:input {:type "number"
                     :value (or (:max-clusters @data) 2)
                     :on-change #(re-frame/dispatch [::events/update-node-data id {:max-clusters (-> % .-target .-value int)}])
                     :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
                     :size 2}]]
-          [:label {:class "flex gap-2 items-center mb-4 text-xl"}
+          [:label {:class "flex gap-2 items-center mb-4"}
            [:span {:class "font-semibold "} "Max Shapes"]
            [:input {:type "number"
                     :value (or (:max-shapes @data) 3)
                     :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (-> % .-target .-value int)}])
                     :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
                     :size 2}]]
-          [:label {:class "flex gap-2 items-center mb-4 text-xl"}
+          [:label {:class "flex gap-2 items-center mb-4"}
            [:span {:class "font-semibold "} "Max Results"]
            [:input {:type "number"
                     :value (or (:max-results @data) 1)
@@ -107,7 +107,7 @@
                       :let [cluster (nth (:clusters result) i)
                             connections (nth (:connections-by-cluster result) i)]]
                   [:div
-                   [:div {:class "flex gap-4 text-2xl mb-4"}
+                   [:div {:class "flex gap-4 text-lg mb-4"}
                     [:span {:class "font-semibold"} "Cluster:"]
                     (map (fn [shape-ref]
                            [:span (str (name (:pitch shape-ref))
@@ -132,5 +132,5 @@
                            :on-row-click (fn [shape-ref] (re-frame/dispatch [::events/update-node-data id (jigsaw/->shape (theory/pitch->note (:pitch shape-ref)) (:name shape-ref))]))
                            :row-selected? (fn [shape-ref] (and (= (:pitch @data) (:pitch shape-ref))
                                                                (= (:name @data) (:name shape-ref))))}]]))]
-             [:p {:class "text-lg"} "No results"])
-           [:p {:class "text-lg"} "Connect more than one"])]))))
+             [:p "No results"])
+           [:p "Connect more than one"])]))))

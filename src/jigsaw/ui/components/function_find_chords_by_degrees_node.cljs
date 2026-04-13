@@ -22,7 +22,7 @@
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if @parent-data
-       [:div {:class "flex flex-col space-y-2 items-start text-xl"}
+       [:div {:class "flex flex-col space-y-2 items-start"}
         [:p {:class "space-x-4"}
          [:span {:class "font-semibold"} "Scale"]
          [:span (str (name (:pitch @parent-data)) " " (name (:name @parent-data)))]]
@@ -33,7 +33,7 @@
                   :value (or (:chord-degrees-str @data) "")
                   :on-change #(re-frame/dispatch [::events/update-node-data id {:chord-degrees-str (-> % .-target .-value)}])}]]
         (if (theory/scale? @parent-data)
-          [:div {:class "flex flex-col text-xl items-start space-y-4"}
+          [:div {:class "flex flex-col items-start space-y-4"}
            (when @chords
              [table {:ms @chords
                      :row-render {"Root" :pitch
@@ -50,5 +50,5 @@
                      :on-row-click (fn [shape]
                                      (re-frame/dispatch [::events/update-node-data id
                                                          (jigsaw/->shape (assoc shape :note (theory/pitch->note (:pitch shape))))]))}])]
-          [:p {:class "text-lg"} "Input is not a scale"])]
-       [:p {:class "text-lg"} "No input"])]))
+          [:p "Input is not a scale"])]
+       [:p "No input"])]))

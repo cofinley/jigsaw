@@ -24,7 +24,7 @@
      (if @parent-data
        (if (theory/chord? @parent-data)
          (let [selected-degree (:selected-degree @data)]
-           [:div {:class "flex flex-col text-xl items-start space-y-4"}
+           [:div {:class "flex flex-col items-start space-y-4"}
             [:label {:class "space-x-4"}
              [:span {:class "font-semibold"} "Degree"]
              [select {:value selected-degree
@@ -51,5 +51,5 @@
                       :on-row-click (fn [shape]
                                       (re-frame/dispatch [::events/update-node-data id
                                                           (jigsaw/->shape (assoc shape :note (theory/pitch->note (:pitch shape))))]))}])])
-         [:p {:class "text-lg"} "Input is not a chord"])
-       [:p {:class "text-lg"} "No input"])]))
+         [:p "Input is not a chord"])
+       [:p "No input"])]))

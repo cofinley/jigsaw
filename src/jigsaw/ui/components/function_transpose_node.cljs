@@ -26,7 +26,7 @@
      (if @parent-data
        (let [interval (or (:interval @data) "P1")
              multiplier (or (:multiplier @data) 1)]
-         [:div {:class "flex flex-col space-y-2 items-start text-xl"}
+         [:div {:class "flex flex-col space-y-2 items-start"}
           [:label {:class "space-x-4"}
            [:span {:class "font-semibold"} "Interval"]
            [select {:class "p-1 rounded-md border-2 border-gray-400 nodrag"
@@ -86,4 +86,4 @@
                                                                                                 :pcis pcis}])))
                          :onStopNoteInput #()
                          :width width}])]))])
-       [:p {:class "text-lg"} "Need an input"])]))
+       [:p "Need an input"])]))

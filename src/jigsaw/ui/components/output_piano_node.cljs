@@ -32,7 +32,7 @@
                 width (* key-width (- midi-range-end midi-range-start))]
             [:<>
              (when (and (some (partial contains? data) label-types) display-label-options?)
-               [:div {:class "self-start flex space-x-2 items-center mb-2 text-lg"}
+               [:div {:class "self-start flex space-x-2 items-center mb-2"}
                 [:label "Key Labels"]
                 [select {:value (or @selected-label "")
                          :on-change #(reset! selected-label (keyword (-> % .-target .-value)))
@@ -53,7 +53,7 @@
                                          (midi->label midi)]))))
                 :activeNotes midis
                 :width width}]]])
-          [:p {:class "text-lg"} "Nothing selected"])))))
+          [:p "Nothing selected"])))))
 
 (def white-key-color "#CBCBCB")
 (def white-key-border-color "#AAA")

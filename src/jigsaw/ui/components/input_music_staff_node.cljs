@@ -216,7 +216,7 @@
              :id id
              :data @data
              :handles [{:type "source" :position "right"}]}
-       [:div {:class "flex flex-col space-y-4 nodrag text-xl"}
+       [:div {:class "flex flex-col space-y-4 nodrag"}
         ;; Key signature dropdown
         [:div {:class "flex items-center space-x-2"}
          [:label {:class "font-semibold"} "Key Signature:"]

@@ -7,7 +7,7 @@
    ["react-piano" :refer [ControlledPiano]]
    [re-frame.core :as re-frame]))
 
-(def key-width 30)
+(def key-width 20)
 
 (defn previous-c [midi]
   (- midi (rem midi 12)))
@@ -24,7 +24,7 @@
            :data @data
            :handles [{:type "source" :position "right"}]}
      [:div {:class "flex flex-col gap-2"}
-      [:div {:class "flex justify-between font-semibold text-xl"}
+      [:div {:class "flex justify-between font-semibold"}
        [:div
         [:button
          {:class "px-2 py-1 bg-gray-200 hover:bg-gray-100 cursor-pointer text-black rounded border cursor-pointer!"

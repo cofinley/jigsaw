@@ -86,7 +86,7 @@
        [:text {:key (str "label-" i)
                :x (+ center-x text-x) :y (+ center-y text-y)
                :text-anchor "middle" :dominant-baseline "middle"
-               :class (str "text-lg font-semibold "
+               :class (str "font-semibold "
                            (if highlighted?
                              (if is-starting-pitch? "fill-green-400" "fill-indigo-400")
                              "fill-gray-500"))}
@@ -100,4 +100,4 @@
     (if (seq notes)
       (let [pitch-set (set pitches)]
         [draw-circle-of-fifths pitch-set starting-pitch])
-      [:p {:class "text-lg"} "No notes to display"])))
+      [:p "No notes to display"])))

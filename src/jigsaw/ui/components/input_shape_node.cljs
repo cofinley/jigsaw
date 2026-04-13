@@ -25,7 +25,7 @@
              :id id
              :data @data
              :handles [{:type "source" :position "right"}]}
-       [:div {:class "flex flex-col text-xl items-start space-y-4"}
+       [:div {:class "flex flex-col items-start space-y-4"}
         ;; Starting pitch
         [:label {:class "space-x-4"}
          [:span {:class "font-semibold"} (if (= shape-type :chord) "Root" "Tonic")]

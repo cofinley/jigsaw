@@ -8,4 +8,4 @@
 (defn loading-indicator []
   [:div {:class "flex flex-col items-center justify-center p-4 text-gray-500"}
    [spinner {:size "24px" :class "border-blue-400"}]
-   [:p {:class "mt-2 text-xl"} "Loading..."]])
+   [:p {:class "mt-2"} "Loading..."]])

@@ -21,7 +21,7 @@
                      {:type "source" :position "right"}]}
      (if (= (count @parent-data) 2)
        (let [max-shapes (or (:max-shapes @data) 1)]
-         [:div {:class "flex flex-col space-y-2 items-start text-xl"}
+         [:div {:class "flex flex-col space-y-2 items-start"}
           [:label {:class "space-x-4"}
            [:span {:class "font-semibold"} "Max shapes"]
            [:input {:class "p-1 rounded-md border-2 border-gray-400 nodrag"
@@ -43,4 +43,4 @@
                     :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id shape]))}])])
-       [:p {:class "text-lg"} "Need two inputs"])]))
+       [:p "Need two inputs"])]))

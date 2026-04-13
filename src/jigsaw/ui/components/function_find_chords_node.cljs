@@ -22,7 +22,7 @@
                      {:type "source" :position "right"}]}
      (if @parent-data
        (if (theory/scale? @parent-data)
-         [:div {:class "flex flex-col text-xl items-start space-y-4"}
+         [:div {:class "flex flex-col items-start space-y-4"}
           (when @chords
             [table {:ms @chords
                     :row-render {"Root" :pitch
@@ -38,5 +38,5 @@
                     :on-row-click (fn [shape]
                                     (re-frame/dispatch [::events/update-node-data id
                                                         (jigsaw/->shape (assoc shape :note (theory/pitch->note (:pitch shape))))]))}])]
-         [:p {:class "text-lg"} "Input is not a scale"])
-       [:p {:class "text-lg"} "No input"])]))
+         [:p "Input is not a scale"])
+       [:p "No input"])]))

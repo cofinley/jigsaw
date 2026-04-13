@@ -63,7 +63,7 @@
        [:tr {:class "sticky w-full top-0 bg-neutral-700 z-10"}
         (doall (for [header (keys row-render)]
                  ^{:key (str "header-" header)}
-                 [:th {:class "text-xl"} header]))]]
+                 [:th header]))]]
       [:tbody
        (doall
         (for [m ms
@@ -89,7 +89,7 @@
                                      :onDragEnd handle-drag-end))
              (doall (for [[header col-render-fn] row-render]
                       ^{:key (str "row-" header)}
-                      [:td {:class "text-xl"} (col-render-fn m)]))])))]]]))
+                      [:td (col-render-fn m)]))])))]]]))
 
 (defn table [props]
   [:f> table-impl props])

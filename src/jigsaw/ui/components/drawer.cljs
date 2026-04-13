@@ -9,7 +9,7 @@
                           (when-not show? (if (= side :left) "-translate-x-full" "translate-x-full"))
                           "fixed top-0 z-40 h-screen p-4 overflow-y-auto transition-transform bg-white min-w-80 dark:bg-neutral-800 shadow-xl dark:shadow-neutral-900"])}
    [:h2
-    {:class "mb-4 text-xl font-semibold text-gray-500 dark:text-gray-300"}
+    {:class "mb-4 font-semibold text-gray-500 dark:text-gray-300"}
     title]
    [button
     {:on-click on-close
