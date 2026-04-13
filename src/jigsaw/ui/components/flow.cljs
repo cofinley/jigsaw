@@ -65,7 +65,7 @@
                                 (.preventDefault e)
                                 (let [pane (-> ref .-current .getBoundingClientRect)]
                                   (set-node-menu
-                                   (cond-> {:top (and (< (.-clientY e) (- (.-height pane) 200)) (.-clientY e))
+                                   (cond-> {:top (and (< (.-clientY e) (- (.-height pane) 0)) (- (.-clientY e) 60))
                                             :left (and (< (.-clientX e) (- (.-width pane) 200)) (.-clientX e))
                                             :right (and (>= (.-clientX e) (- (.-width pane) 200)) (- (.-width pane) (.-clientX e)))
                                             :bottom (and (>= (.-clientY e) (- (.-height pane) 200)) (- (.-height pane) (.-clientY e)))

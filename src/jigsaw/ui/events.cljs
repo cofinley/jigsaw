@@ -232,9 +232,9 @@
        (every? #(contains? % :notes) parent-data)))
 (defmethod compute-node :function-cluster-shapes [parent-data data]
   (let [max-results (or (:max-results data) 1)
-        max-shapes (or (:max-shapes data) 5)
+        max-shapes (or (:max-shapes data) 3)
         note-seqs (map :notes parent-data)
-        max-clusters (or (:max-clusters data) (dec (count note-seqs)))]
+        max-clusters (or (:max-clusters data) (dec (count note-seqs)) 2)]
     (jigsaw/cluster note-seqs
                     :max-results max-results
                     :max-shapes max-shapes

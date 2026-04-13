@@ -232,8 +232,8 @@
   "
   [xs & {:keys [shape-type max-results max-shapes max-clusters]
          :or {shape-type :chord
-              max-results 3
-              max-shapes 5
+              max-results 1
+              max-shapes 3
               max-clusters 2}}]
   (let [shapes (if (every? theory/shape? xs)
                  (map vector xs)

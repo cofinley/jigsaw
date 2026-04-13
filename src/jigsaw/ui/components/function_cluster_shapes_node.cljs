@@ -62,11 +62,12 @@
       (let [data (re-frame/subscribe [::subs/data id])
             parent-data (re-frame/subscribe [::subs/multi-parent-data id])
             results (re-frame/subscribe [::subs/function-result id])
-            clustering (re-frame/subscribe [::subs/clustering id])]
+            clustering (re-frame/subscribe [::subs/clustering? id])]
         [node {:title "Cluster Shapes"
                :id id
                :data @data
                :parent-data @parent-data
+               ; TODO: handle for each cluster selection
                :handles [{:type "target" :position "left"}
                          {:type "source" :position "right"}]}
          (when @clustering
@@ -75,14 +76,14 @@
           [:label {:class "flex gap-2 items-center mb-4 text-xl"}
            [:span {:class "font-semibold "} "Max Clusters"]
            [:input {:type "number"
-                    :value (or (:max-clusters @data) 1)
+                    :value (or (:max-clusters @data) 2)
                     :on-change #(re-frame/dispatch [::events/update-node-data id {:max-clusters (-> % .-target .-value int)}])
                     :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
                     :size 2}]]
           [:label {:class "flex gap-2 items-center mb-4 text-xl"}
            [:span {:class "font-semibold "} "Max Shapes"]
            [:input {:type "number"
-                    :value (or (:max-shapes @data) 1)
+                    :value (or (:max-shapes @data) 3)
                     :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (-> % .-target .-value int)}])
                     :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
                     :size 2}]]
@@ -127,6 +128,7 @@
                                                           [matched-shape @parent-data id {:input input
                                                                                           :found found
                                                                                           :context context}])))))}
+                           ; TODO: allow multiple selections (one for each cluster)
                            :on-row-click (fn [shape-ref] (re-frame/dispatch [::events/update-node-data id (jigsaw/->shape (theory/pitch->note (:pitch shape-ref)) (:name shape-ref))]))
                            :row-selected? (fn [shape-ref] (and (= (:pitch @data) (:pitch shape-ref))
                                                                (= (:name @data) (:name shape-ref))))}]]))]
