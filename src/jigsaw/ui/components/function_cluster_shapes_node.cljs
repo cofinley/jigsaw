@@ -123,6 +123,7 @@
                                                                                  (utils/in? cluster (theory/->shape-ref found))) (:trace result))]
                                                      (doall
                                                       (for [[input found] cluster-trace]
+                                                        ; TODO: able to move to compute event?
                                                         (let [context (jigsaw/contextualize shape (jigsaw/->shape found))]
                                                           ^{:key (str i shape-ref input context)}
                                                           [matched-shape @parent-data id {:input input

@@ -72,7 +72,7 @@
              (let [view-type (:view-type data)]
                [:div {:class "flex flex-col space-y-4"}
                 [:div {:class "flex space-x-2 items-center mt-4"}
-                 [:span {:class "font-semibold"} "View"]
+                 [:span "View"]
                  [select {:value (or view-type "")
                           :on-change #(re-frame/dispatch [::events/update-node-data id {:view-type (let [value (-> % .-target .-value)]
                                                                                                      (when (not= "" value) (keyword value)))}])}

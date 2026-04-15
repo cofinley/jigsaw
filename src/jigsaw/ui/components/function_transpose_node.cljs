@@ -11,7 +11,7 @@
    ["react-piano" :refer [ControlledPiano]]
    [re-frame.core :as re-frame]))
 
-(def key-width 30)
+(def key-width 20)
 
 (defn function-transpose-node [{:keys [id]}]
   (let [data (re-frame/subscribe [::subs/data id])
@@ -66,24 +66,17 @@
                                               :row-selected? (fn [shape] (and (= (:pitch @data) (:pitch shape)) (= (:name @data) (:name shape))))
                                               :on-row-click (fn [shape]
                                                               (re-frame/dispatch [::events/update-node-data id shape]))}]
-              :else [:div {:class "nodrag"}
-                     (let [first-midi 60
-                           octaves 2
-                           last-midi (dec (+ first-midi (* octaves 12)))
-                           width (* key-width (- last-midi first-midi))]
+              :else [:div {:class "nodrag max-w-xl overflow-x-scroll"}
+                     (let [first-midi 21
+                           last-midi 108
+                           width (* key-width (- last-midi first-midi) 1)]
                        [:> ControlledPiano
                         {:class "nodrag"
                          :noteRange {:first first-midi :last last-midi}
                          :playNote (fn [midi] midi)
                          :stopNote #()
                          :activeNotes (map (comp theory/note->midi keyword) (:notes @result))
-                         :onPlayNoteInput (fn [midi prev]
-                                            (let [midis (set (js->clj prev))
-                                                  new-midis ((if (some? (some #{midi} midis)) disj conj) midis midi)
-                                                  notes (set (map theory/midi->note new-midis))
-                                                  pcis (set (map #(-> % theory/parts :pci) notes))]
-                                              (re-frame/dispatch [::events/update-node-data id {:notes notes
-                                                                                                :pcis pcis}])))
+                         :onPlayNoteInput #(fn [_ _] nil)
                          :onStopNoteInput #()
                          :width width}])]))])
        [:p "Need an input"])]))

@@ -92,9 +92,11 @@
   /* Align children .ReactPiano__NoteLabel to the bottom of the key */
   align-self: flex-end;
   color: var(--xy-node-background-color, var(--xy-node-background-color-default));
-  font-size: 1.2rem;
-  opacity: 0.5;
-  font-weight: bold;
+  font-weight: bolder;
+}
+
+.ReactPiano__Key--active .ReactPiano__NoteLabelContainer {
+  color: white
 }
 
 .ReactPiano__NoteLabel {

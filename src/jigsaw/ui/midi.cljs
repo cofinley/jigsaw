@@ -46,7 +46,7 @@
     (doseq [note notes] (play-note out note))))
 
 (defn play-scale [out notes & {:keys [broken-delay broken-duration]
-                               :or {broken-delay 300 broken-duration 1000}}]
+                               :or {broken-delay 300 broken-duration 700}}]
   (let [now (now)]
       ;; TODO: improve scheduling of individual notes, maybe with setTimeouts
       ;; otherwise, notes have a swing to them

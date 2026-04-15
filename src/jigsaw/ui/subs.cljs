@@ -84,7 +84,8 @@
 
 (re-frame/reg-sub
  ::play-chords-broken?
- :-> :play-chords-broken?)
+ (fn [db]
+   (-> db :settings :play-chords-broken?)))
 
 (re-frame/reg-sub
  ::midi-triggers

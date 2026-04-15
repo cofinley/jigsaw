@@ -38,11 +38,14 @@
 (defn stale-function-ancestors
   "Find ancestor function nodes for recomputing"
   [db]
-  (let [fn-type? #(str/includes? (.-type %) "function")
+  (let [fn-node? #(str/includes? (.-type %) "function")
+        input-node? #(and % (:type %) (str/includes? (name (:type %)) "input"))
         ancestor? #(let [parent-node (get-parent-data-for-node db (.-id %))]
-                     (and parent-node (:type parent-node) (str/includes? (name (:type parent-node)) "input")))]
+                     (if (seq? parent-node)
+                       (every? input-node? parent-node)
+                       (input-node? parent-node)))]
     (->> (:nodes db)
-         (filter #(and (fn-type? %) (ancestor? %)))
+         (filter #(and (fn-node? %) (ancestor? %)))
          (map #(.-id %)))))
 
 (re-frame/reg-event-fx
@@ -54,18 +57,11 @@
 (re-frame/reg-event-fx  ;; Use -fx over -db to access cofx
  ::initialize-db
  [(re-frame/inject-cofx :local-store-data)]  ;; Custom interceptor using cofx (defined in db.cljs), read from localStorage on init
- (fn [{:keys [db local-store-data]} _]
-   (let [stale-ids (stale-function-ancestors db)]
-     {:db (merge db/default-db
-                 (if (keys local-store-data) local-store-data {}))
-      :fx [[:dispatch [::initialize-stale-nodes]]]})))
+ (fn [{:keys [_ local-store-data]} _]
+   {:db (merge db/default-db
+               (if (keys local-store-data) local-store-data {}))
+    :fx [[:dispatch [::initialize-stale-nodes]]]}))
 
-(def data->local-store (re-frame/after db/data->local-store))  ;; Store state in localStorage after each event
-
-(def interceptors [#_(re-frame/path :data)
-                   data->local-store])  ;; Define all interceptors
-
-;; Effectful handlers handle whole :db but sometimes we still need to save the nested :data to localStorage
 (def db->local-store [(re-frame/after (fn [db _] (db/data->local-store db)))])
 
 ;; Computation declarations
@@ -172,7 +168,7 @@
 
 (re-frame/reg-event-db
  ::delete-node
- interceptors
+ db->local-store
  (fn [db [_ id]]
    (delete-node db id)))
 
@@ -348,7 +344,7 @@
 ;; Drag and drop functionality
 (re-frame/reg-event-db
  ::create-node-from-drag
- interceptors
+ db->local-store
  (fn [db [_ shape-data position]]
    (when (theory/shape-ref? shape-data)
      (let [node-type (cond
@@ -473,11 +469,11 @@
  ::play-notes-midi
  (fn
    ([{:keys [db]} [_ notes & {:keys [broken? individual-notes?]
-                              :or {broken? (:play-chords-broken? db)
+                              :or {broken? (get-in db [:settings :play-chords-broken?])
                                    individual-notes? false}}]]
 
     (let [midis (map theory/note->midi notes)
-          output-name (:midi-output db)
+          output-name (get-in db [:settings :midi-output])
           outputs (some->> db :midi-access .-outputs .values)
           output (some->> outputs (filter #(= (.-name %) output-name)) first)]
       {::play-notes {:output output :notes midis :broken? broken? :individual-notes? individual-notes?}}))))
@@ -496,19 +492,19 @@
 
 (re-frame/reg-event-db
  ::on-midi-select-output
- interceptors
+ db->local-store
  (fn [db [_ output-name]]
    (assoc-in db [:settings :midi-output] output-name)))
 
 (re-frame/reg-event-db
  ::on-play-chords-broken-change
- interceptors
+ db->local-store
  (fn [db [_ broken?]]
    (assoc-in db [:settings :play-chords-broken?] broken?)))
 
 (re-frame/reg-event-db
  ::reset-settings
- interceptors
+ db->local-store
  (fn [db _]
    (assoc db
           :settings {:midi-input nil

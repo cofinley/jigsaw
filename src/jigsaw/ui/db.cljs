@@ -10,6 +10,7 @@
    :midi-access nil
    :settings {:midi-input nil
               :midi-output nil
+              :play-chords-broken? false
               :midi-triggers {:new-node nil
                               :new-node-find-shapes nil
                               :toggle-clustering nil
