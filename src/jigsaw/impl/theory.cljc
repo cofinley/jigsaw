@@ -935,12 +935,12 @@
     (count (set/difference larger smaller))))
 
 (def heuristic-labels
-  {:contains? "partially contains"
-   :fully-contains? "fully contains"
-   :contained-in? "is partially contained by"
-   :fully-contained-in? "is fully contained by"
+  {:contains? "contains"
+   #_#_:fully-contains? "fully contains"
+   :contained-in? "is contained by"
+   #_#_:fully-contained-in? "is fully contained by"
    :overlap "overlaps with"
-   :ldist "has a diff of"})
+   #_#_:ldist "has a diff of"})
 
 (defn heuristic->float [x]
   (case x

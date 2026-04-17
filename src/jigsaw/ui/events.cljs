@@ -228,11 +228,11 @@
         selected-pitch (or (:selected-pitch data) "")
         heuristic (or (:heuristic data) :overlap)
         max-shapes (or (:max-shapes data) 10)
-        shapes (jigsaw/notes->shapes-memo notes
-                                          selected-shape-type
-                                          :max-shapes max-shapes
-                                          :heuristic (keyword heuristic)
-                                          :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
+        shapes (jigsaw/notes->shapes notes
+                                     :shape-type selected-shape-type
+                                     :max-shapes max-shapes
+                                     :heuristic heuristic
+                                     :selected-pitch (if (= selected-pitch :all) nil selected-pitch))
         resolved-shapes (map #(merge % (jigsaw/->shape (theory/pitch->note (:pitch %)) (:name %))) shapes)]
     resolved-shapes))
 
