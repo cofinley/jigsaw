@@ -267,21 +267,15 @@
                         (comp - :avg-connection-overlap)))
          (take max-results))))
 
-(comment
-  (notes->shapes #{:E4 :G4 :B4})
-  (cluster [#{:C4 :E4 :G4} #{:D4 :F4 :A4} #{:E4 :G4 :B4}])
-  (cluster (map ->shape [:C_maj :D_maj :E_m]) :max-clusters 2)
-
-  (cluster [#{:Eb4 :Bb4 :C5 :F5}
-            #{:Ab2 :Eb3 :Bb3 :Eb4}
-            #{:Gb2 :Db3 :B3 :E4}] :max-results 3))
-
 ;; TODO
 ;;  - Preview scales on top of chord (progression)
 ;;    - With different licks/melody rhythm patterns
 ;;  - Key signature, proper accidentals on music staff
 ;;  - highlight overlapping nodes
 ;;  - mood identification, scale and progression, add colors
+;;  - cluster + fit to force the outlier into the original cluster
+;;    - think about when to relax constraints and when to force them; when to allow the thread to wander and when it must hit certain marks
+;;    - if max clusters == 1, maybe go by connections first then work backward to find closest to force cluster (maybe that would be _min_ clusters)?
 
 (comment
   ;; Resolve a shape from a reference
@@ -290,18 +284,23 @@
   ;; (shorthand, single keywords)
   (->shape :C_maj)
   (->shape :C_major)
-  ;; Shape of shapes
-  (->progression :C_major [:ii :V :I])
-  ;; Shape -> shapes
+  ;; Raw notes -> nearby shapes, based on note overlap
+  (notes->shapes (:notes (->shape :C4_maj)) :chord)
+  ;; Shape -> parent/child/sibling (neighbor) shapes
   (chord->scales (->shape :C :maj))
   (scale->chords (->shape :C :minor))
   (scale->modes (->shape :G_lydian-pentatonic))
-  (notes->shapes (:notes (->shape :C4_maj)) :chord)
   ;; (generalized version)
   (shape->shapes (->shape :C_maj))
   (shape->shapes (->shape :C_major))
-  ;; Shapes -> common parent shape(s)
+  ;; Shapes -> shared neighbor shape(s)
+  ;;; Single neighborhood
   (cluster [(->shape :C_maj) (->shape :D_m) (->shape :E_m)])
-  (cluster [[:F4 :A4 :C5] [:Bb5 :D6 :F6]] :max-shapes 5 :max-results 1 :max-clusters 1)
-  ;; Shape -> ? -> shape
-  (fit (->shape :C4 :major) (:notes (->shape :C4 :m))))
+  ;;; Multiple neighborhood; shared common neighbor not found between all shapes
+  (cluster [#{:Eb4 :Bb4 :C5 :F5}
+            #{:Ab2 :Eb3 :Bb3 :Eb4}
+            #{:Gb2 :Db3 :B3 :E4}] :max-clusters 2)
+  ;; Shape -> ? -> shape, like notes->shapes but with constraining context
+  (fit (->shape :C4 :major) (:notes (->shape :C4 :m)))
+  ;; Shape of shapes
+  (->progression :C_major [:ii :V :I]))
