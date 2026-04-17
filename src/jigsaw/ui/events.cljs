@@ -188,6 +188,19 @@
      {:db new-db
       :fx [[:dispatch ^:flush-dom [::recompute id]]]})))
 
+(re-frame/reg-event-db
+ ::on-select
+ db->local-store
+ (fn [db [_ {:keys [nodes edges]}]]
+   (cond
+     (and (= 0 (count edges))
+          (= 1 (count nodes)))
+     (assoc db :selected-node (-> nodes first :id))
+     (and (= 0 (count edges))
+          (= 0 (count nodes)))
+     (assoc db :selected-node nil)
+     :else db)))
+
 ;; Computation
 
 (defmethod should-compute? :function-scale-chords [parent-data data]
@@ -371,7 +384,7 @@
     #_(-> db (update-in db [:node-data recording-id :notes] conj note))))
 
 (defn add-new-input-midi-node [db]
-  (let [child-id (:clustering-id db)
+  (let [child-id (:connecting-id db)
         [id new-db] (create-node db {:type :input-piano})]
     (cond-> new-db
       true (assoc :recording-id id)
@@ -383,12 +396,12 @@
     (-> db''
         (assoc :recording-id id))))
 
-(defn toggle-clustering [db]
-  (let [clustering-id (:clustering-id db)]
-    (if clustering-id
-      (assoc db :clustering-id nil)
+(defn toggle-connecting [db]
+  (let [connecting-id (:connecting-id db)]
+    (if connecting-id
+      (assoc db :connecting-id nil)
       (let [[id db'] (create-node db {:type :function-cluster-shapes})]
-        (assoc db' :clustering-id id)))))
+        (assoc db' :connecting-id id)))))
 
 (re-frame/reg-event-db
  ::toggle-recording
@@ -413,7 +426,7 @@
          recording-id (:recording-id db)
          note (theory/midi->note (:note event))
          new-node-midi-trigger? (= note (-> db :settings :midi-triggers :new-node))
-         toggle-clustering-midi-trigger? (= note (-> db :settings :midi-triggers :toggle-clustering))
+         toggle-connecting-midi-trigger? (= note (-> db :settings :midi-triggers :toggle-connecting))
          new-node-find-shapes-midi-trigger? (= note (-> db :settings :midi-triggers :new-node-find-shapes))
          stop-recording-midi-trigger? (= note (-> db :settings :midi-triggers :stop-recording))
          ;; TODO process db changes in separate function, maybe all of this, maybe just live-note part
@@ -422,11 +435,11 @@
                              stop-recording-midi-trigger? (assoc db :recording-id nil)
                              new-node-midi-trigger? (add-new-input-midi-node db)
                              new-node-find-shapes-midi-trigger? (add-new-input-and-find-shapes-node db)
-                             toggle-clustering-midi-trigger? (toggle-clustering db)
+                             toggle-connecting-midi-trigger? (toggle-connecting db)
                              recording-id (case recording-id
                                             :new-node (update-trigger db :new-node note)
                                             :new-node-find-shapes (update-trigger db :new-node-find-shapes note)
-                                            :toggle-clustering (update-trigger db :toggle-clustering note)
+                                            :toggle-connecting (update-trigger db :toggle-connecting note)
                                             :stop-recording (update-trigger db :stop-recording note)
                                             (add-note db note)))
                   #_#_note-off? (when-not recording-id
@@ -511,3 +524,8 @@
                      :midi-output nil
                      :midi-triggers {:new-node nil
                                      :stop-recording nil}})))
+(re-frame/reg-event-db
+ ::update-drawer-component
+ db->local-store
+ (fn [db [_ side component]]
+   (assoc db (keyword (str (name side) "-drawer-component")) component)))

@@ -3,7 +3,8 @@
    [re-frame.core :as re-frame]
    [jigsaw.ui.events :as events]
    [jigsaw.ui.subs :as subs]
-   [jigsaw.ui.components.button :refer [button]]))
+   [jigsaw.ui.components.button :refer [button]]
+   [clojure.string :as str]))
 
 (defn settings-panel []
   (let [access @(re-frame/subscribe [::subs/midi-access])
@@ -31,11 +32,11 @@
        (for [output outputs]
          ^{:key (.-id output)}
          [:option (.-name output)])]]
-     [:div
+     [:div.flex.flex-col.gap-2
       [:label.font-bold.flex.gap-x-2 "MIDI triggers"]
       (for [[midi-trigger note] midi-triggers]
         ^{:key midi-trigger}
-        [:label.flex.gap-x-2 midi-trigger
+        [:label.flex.gap-x-2.capitalize (str/replace (name midi-trigger) #"-" " ")
          [button {:on-click (fn [e]
                               (.stopPropagation e)
                               (if (and (not (= recording-id midi-trigger))

@@ -62,33 +62,33 @@
       (let [data (re-frame/subscribe [::subs/data id])
             parent-data (re-frame/subscribe [::subs/multi-parent-data id])
             results (re-frame/subscribe [::subs/function-result id])
-            clustering (re-frame/subscribe [::subs/clustering? id])]
-        [node {:title "Cluster Shapes"
+            connecting? (re-frame/subscribe [::subs/connecting? id])]
+        [node {:title "Find Connections"
                :id id
                :data @data
                :parent-data @parent-data
                ; TODO: handle for each cluster selection
                :handles [{:type "target" :position "left"}
                          {:type "source" :position "right"}]}
-         (when @clustering
-           [:span "Clustering..."])
+         (when @connecting?
+           [:span "Connecting..."])
          [:div {:class "flex gap-4"}
           [:label {:class "flex gap-2 items-center mb-4"}
-           [:span {:class "font-semibold "} "Max Clusters"]
-           [:input {:type "number"
-                    :value (or (:max-clusters @data) 2)
-                    :on-change #(re-frame/dispatch [::events/update-node-data id {:max-clusters (-> % .-target .-value int)}])
-                    :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
-                    :size 2}]]
-          [:label {:class "flex gap-2 items-center mb-4"}
-           [:span {:class "font-semibold "} "Max Shapes"]
+           [:span {:class "font-semibold" :title "Maximum closest shapes to find for each input. Increases number of combinations to attempt."} "Max Shapes"]
            [:input {:type "number"
                     :value (or (:max-shapes @data) 3)
                     :on-change #(re-frame/dispatch [::events/update-node-data id {:max-shapes (-> % .-target .-value int)}])
                     :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
                     :size 2}]]
           [:label {:class "flex gap-2 items-center mb-4"}
-           [:span {:class "font-semibold "} "Max Results"]
+           [:span {:class "font-semibold" :title "Maximum groups to try to fit the inputs into. If not all inputs can fit into one common parent shape (e.g. key), try increasing."} "Max Clusters"]
+           [:input {:type "number"
+                    :value (or (:max-clusters @data) 2)
+                    :on-change #(re-frame/dispatch [::events/update-node-data id {:max-clusters (-> % .-target .-value int)}])
+                    :class "p-1 rounded-md border-2 border-neutral-400 nodrag"
+                    :size 2}]]
+          [:label {:class "flex gap-2 items-center mb-4"}
+           [:span {:class "font-semibold" :title "Maximum number of connection combinations. Use the < and > buttons to page through them."} "Max Results"]
            [:input {:type "number"
                     :value (or (:max-results @data) 1)
                     :on-change #(re-frame/dispatch [::events/update-node-data id {:max-results (-> % .-target .-value int)}])

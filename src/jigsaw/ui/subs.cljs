@@ -23,6 +23,11 @@
    (get-parent-id db id)))
 
 (re-frame/reg-sub
+ ::selected-node
+ (fn [db]
+   (get-in db [:node-data (:selected-node db)])))
+
+(re-frame/reg-sub
  ::parent-data
  (fn [db [_ id]]
    (assoc (get-in db [:node-data (get-parent-id db id)]) :id id)))
@@ -111,6 +116,11 @@
    (= id (:recording-id db))))
 
 (re-frame/reg-sub
- ::clustering?
+ ::connecting?
  (fn [db [_ id]]
-   (= id (:clustering-id db))))
+   (= id (:connecting-id db))))
+
+(re-frame/reg-sub
+ ::drawer-component
+ (fn [db [_ side]]
+   (get db (keyword (str (name side) "-drawer-component")))))

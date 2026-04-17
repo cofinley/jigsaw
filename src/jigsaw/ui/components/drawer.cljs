@@ -7,10 +7,11 @@
   [:div
    {:class (str/join " " [(if (= side :left) "left-0" "right-0")
                           (when-not show? (if (= side :left) "-translate-x-full" "translate-x-full"))
-                          "fixed top-0 z-40 h-screen p-4 overflow-y-auto transition-transform bg-white min-w-80 dark:bg-neutral-800 shadow-xl dark:shadow-neutral-900"])}
+                          "fixed top-[] z-40 h-screen p-4 overflow-y-auto transition-transform bg-white min-w-80 dark:bg-neutral-900 dark:text-neutral-100 shadow-xl dark:shadow-neutral-900"])}
    [:h2
     {:class "mb-4 font-semibold text-gray-500 dark:text-gray-300"}
     title]
+   [:hr {:class "p-2"}]
    [button
     {:on-click on-close
      :class "text-gray-400 hover:bg-gray-200 hover:text-neutral-900 rounded-lg text-sm w-8 h-8 absolute top-2.5 right-2.5 inline-flex items-center justify-center dark:hover:bg-neutral-600 dark:hover:text-white border-0"}

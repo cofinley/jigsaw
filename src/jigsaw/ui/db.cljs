@@ -13,10 +13,12 @@
               :play-chords-broken? false
               :midi-triggers {:new-node nil
                               :new-node-find-shapes nil
-                              :toggle-clustering nil
+                              :toggle-connecting nil
                               :stop-recording nil}}
    :recording-id nil
-   :clustering-id nil})
+   :connecting-id nil
+   :right-drawer-component nil
+   :left-drawer-component nil})
 
 (defn ->node [props & [parent-props]]
   (merge

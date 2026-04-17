@@ -50,7 +50,7 @@
     :component function-find-shape-node}
    {:type :function-cluster-shapes
     :category :function
-    :label "Cluster Shapes"
+    :label "Find Connections"
     :component function-cluster-shapes-node}
    {:type :function-fit-shape
     :category :function

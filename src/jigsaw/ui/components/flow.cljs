@@ -117,6 +117,7 @@
                     :onDrop on-drop
                     :nodeTypes flow-node-types
                     :edgeTypes edge-types
+                    :onSelectionChange #(re-frame/dispatch [::events/on-select (js->clj % :keywordize-keys true)])
                     :fitView true
                     :colorMode "dark"}
       [:> Panel {:position "top-right"}

@@ -315,6 +315,6 @@
                     #{:B :E :G} {:name :m, :pitch :E, :db/id 857}}}))
 
            (map #(assoc % :avg-partition-jaccard-index (str (:avg-partition-jaccard-index %)))
-                (jd/cluster [#{:C :E :G}
-                             #{:D :F :A}
-                             #{:E :G :B}]))))))
+                (jd/cluster jd/db [#{:C :E :G}
+                                   #{:D :F :A}
+                                   #{:E :G :B}]))))))
