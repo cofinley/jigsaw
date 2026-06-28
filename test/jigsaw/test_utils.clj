@@ -5,6 +5,7 @@
 
 (defmacro are+
   "are but with assertion message like with `is`"
+  {:clj-kondo/lint-as 'clojure.test/are}
   [argv expr & args]
   (if (or
        (and (empty? argv) (empty? args))

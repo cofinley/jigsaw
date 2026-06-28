@@ -24,6 +24,7 @@
 !docs/
 !resources/
 resources/public/css/tailwind.css
+resources/public/data
 !src/
 !test/
 

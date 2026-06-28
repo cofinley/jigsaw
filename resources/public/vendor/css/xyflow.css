@@ -486,7 +486,7 @@ svg.react-flow__connectionline {
   padding: 10px;
   border-radius: var(--xy-node-border-radius, var(--xy-node-border-radius-default));
   width: 150px;
-  font-size: 12px;
+  /* font-size: 12px; */
   color: var(--xy-node-color, var(--xy-node-color-default));
   text-align: center;
   border: var(--xy-node-border, var(--xy-node-border-default));

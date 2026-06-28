@@ -190,3 +190,8 @@ all: test-ci dist clean  ## Call test-ci dist and clean targets, used for CI
 flowstorm:
 	$(info --------- Run Flowstorm ---------)
 	clojure -A:flowstorm -M:test/env:repl/basic
+
+profiler:
+	sudo sysctl -w kernel.kptr_restrict=0
+	sudo sysctl -w kernel.perf_event_paranoid=1
+	clj -A:profiler

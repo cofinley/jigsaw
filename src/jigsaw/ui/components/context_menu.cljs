@@ -1,0 +1,49 @@
+(ns jigsaw.ui.components.context-menu
+  (:require
+   [jigsaw.ui.components.node-types :refer [node-types]]
+   [jigsaw.ui.events :as events]
+   [jigsaw.utils :as utils]
+   [reagent.core :as r]
+   [re-frame.core :as re-frame]))
+
+(defn context-menu [{:keys [top right bottom left]} & body]
+  [:div {:style {:top top :right right :bottom bottom :left left}
+         :class "flex flex-col items-start py-2 bg-white rounded border border-black absolute z-30 shadow-lg"}
+   body])
+
+(defn menu-item [props label]
+  [:button (r/merge-props
+            {:class "p-2 w-full text-left hover:bg-black hover:text-white cursor-pointer"}
+            props)
+   label])
+
+(defn add-node-menu-item [context-menu-props node-type label]
+  [menu-item
+   {:on-click (fn []
+                (re-frame/dispatch [::events/add-node {:type node-type
+                                                       :mouse-x (:mouse-x context-menu-props)
+                                                       :mouse-y (:mouse-y context-menu-props)
+                                                       :flow-instance (:flow-instance context-menu-props)}
+                                    (:id context-menu-props)])
+                ((:on-click context-menu-props)))}
+   label])
+
+(def node-type-allowed-children
+  {nil (map :type node-types)
+   :input-chord [:function-chord-scales :function-find-shape :function-transpose]
+   :input-scale [:function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]
+   :input-piano [:function-find-shape :function-transpose]
+   :input-music-staff [:function-find-shape :function-transpose]
+   :function-chord-scales [:function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]
+   :function-scale-chords [:function-chord-scales :function-find-shape :function-transpose]
+   :function-find-shape [:function-chord-scales :function-scale-chords :function-find-shape :function-transpose]
+   :function-fit-shape [:function-chord-scales :function-scale-chords :function-find-shape :function-transpose]
+   :function-cluster-shapes [:function-scale-chords :function-find-shape :function-transpose]
+   :function-transpose [:function-chord-scales :function-scale-chords :function-chords-by-degrees :function-find-shape :function-transpose]})
+
+(defn node-context-menu [{:keys [type] :as props}]
+  [context-menu props
+   (for [node-type node-types
+         :when (utils/in? (node-type-allowed-children type) (:type node-type))]
+     ^{:key node-type}
+     [add-node-menu-item props (:type node-type) (:label node-type)])])
