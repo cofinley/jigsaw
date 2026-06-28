@@ -15,13 +15,13 @@
   [:div
    [:div {:class "flex items-center gap-x-2"}
     [:h1.text-3xl.font-bold.tracking-tight
-     "Jigsaw"]
+     "Jigsaw"]]
+   [:div.text-sm.dark:text-neutral-400.flex.gap-2.items-center
+    [:span "Music theory, explored"]
     [:a
-     {:class "ml-2" :href "https://github.com/cofinley/jigsaw" :target "_blank" :title "Source code"}
+     {:href "https://github.com/cofinley/jigsaw" :target "_blank" :title "Source code"}
      [github-icon
-      {:class "w-7 h-7"}]]]
-   [:span.text-sm.dark:text-neutral-400
-    "Music theory, explored"]])
+      {:class "w-4 h-4 !fill-neutral-400"}]]]])
 
 (defn right-drawer []
   (let [component (re-frame/subscribe [::subs/drawer-component :right])]
@@ -29,7 +29,7 @@
       [drawer
        {:title (case @component
                  :settings "Settings"
-                 :info "Info")
+                 :info "Node Info")
         :side :right
         :show? (some? @component)
         :on-close #(re-frame/dispatch [::events/update-drawer-component :right nil])}
@@ -44,7 +44,7 @@
       :on-click #(re-frame/dispatch [::events/update-drawer-component :right (if (= :info @component) nil :info)])}
      [info-icon
       {:class "w-4 h-4"}]
-     "Info"]))
+     "Node Info"]))
 
 (defn settings-button []
   (let [component (re-frame/subscribe [::subs/drawer-component :right])]

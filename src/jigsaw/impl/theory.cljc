@@ -855,6 +855,18 @@
      :roman-numeral roman-numeral
      :name (keyword adjusted-chord-name)}))
 
+(defn flatten-pitch [pitch nflats]
+  (let [semitone (pitches pitch)]
+    (pci->default-pitch (mod (- semitone nflats) 12))))
+
+(defn sharpen-pitch [pitch nsharps]
+  (let [semitone (pitches pitch)]
+    (pci->default-pitch (mod (+ semitone nsharps) 12))))
+
+(comment
+  (flatten-pitch :C 3)
+  (sharpen-pitch :C 3))
+
 (defn resolve-chord-degree
   [scale chord-degree]
   ; TODO: allow secondary chords? (i.e. V/V (represented as :V-V))
@@ -866,6 +878,7 @@
                                         (zipmap (:degrees scale) (:pitches scale)))
         chord-degree-int (roman-numeral->int roman-numeral)
         pitch (scale-degree-int->pitch chord-degree-int)
+        ; TODO: fix; accidentals applied to other accidentals breaks things, need to actually transpose
         new-pitch (keyword (str (name pitch) accidental))]
     {:pitch new-pitch
      :name chord-name

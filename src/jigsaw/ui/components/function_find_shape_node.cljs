@@ -19,10 +19,11 @@
            :id id
            :data @data
            :parent-data @parent-data
+           ; TODO: maybe add 'context' handle to absorb 'fit' node functionality
            :handles [{:type "target" :position "left"}
                      {:type "source" :position "right"}]}
      (if @parent-data
-       (if-let [notes (seq (get-in @parent-data [:notes]))]
+       (if (seq (get-in @parent-data [:notes]))
          (let [incoming-shape-type (cond
                                      (contains? @parent-data :degrees) :scale
                                      (contains? @parent-data :intervals) :chord

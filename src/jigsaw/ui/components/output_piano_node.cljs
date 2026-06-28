@@ -1,6 +1,5 @@
 (ns jigsaw.ui.components.output-piano-node
   (:require
-   [clojure.set :as set]
    [jigsaw.core :as jigsaw]
    [jigsaw.impl.theory :as theory]
    [jigsaw.ui.components.select :refer [select]]
@@ -21,6 +20,7 @@
             key-width (or (:key-width props) 30)
             display-label-options? (if-some [a (:display-label-options? props)] a true)]
         (if (seq notes)
+          ;; TODO:move bass note to first, drop an octave if need be 
           (let [midis (map theory/note->midi notes)
                 ; parent-midis (map theory/note->midi parent-notes)
                 midi->label (zipmap midis (get data @selected-label))
@@ -81,28 +81,34 @@
 
 (def margin-keys #{:A :B :D :E :G})
 
-(defn piano-preview [shape & {:keys [parent-notes]
-                              :or {parent-notes []}}]
+(defn piano-preview [shape & {:keys [parent-notes
+                                     show-added?
+                                     show-subtracted?
+                                     show-same?]
+                              :or {parent-notes []
+                                   show-added? true
+                                   show-subtracted? true
+                                   show-same? true}}]
   (let [full-shape (if (contains? shape :notes)
                      shape
                      (jigsaw/->shape (assoc shape :note (theory/pitch->note (:pitch shape)))))
         notes (:notes full-shape)
-        chromas (map theory/pitches (:pitches full-shape))
+        pcis (map theory/pitches (:pitches full-shape))
         midis (map theory/note->midi notes)
         parent-midis (map theory/note->midi parent-notes)
-        parent-chromas (map #(-> % theory/parts :pitch theory/pitches) parent-notes)
-        white-key-width 20
+        parent-pcis (map #(-> % theory/parts :pitch theory/pitches) parent-notes)
+        white-key-width 15
         first-midi (first midis)
         midi-range-start (- first-midi (mod first-midi 12))
         midi-range-end (+ 23 midi-range-start)
         piano-key-span (filter #(<= midi-range-start (:midi %) midi-range-end) piano-keys)
         num-white-keys (count (filter #(= :w (:color %)) piano-key-span))
-        current-specific-notes (set/difference (set midis) (set parent-midis))
-        current-specific-chromas (set/difference (set chromas) (set parent-chromas))
-        parent-specific-notes (set/difference (set parent-midis) (set midis))
-        parent-specific-chromas (set/difference (set parent-chromas) (set chromas))
-        shared-notes (set/intersection (set midis) (set parent-midis))
-        shared-pitches (set/intersection (set chromas) (set parent-chromas))
+        ; current-specific-notes (set/difference (set midis) (set parent-midis))
+        ; current-specific-pcis (set/difference (set pcis) (set parent-pcis))
+        ; parent-specific-notes (set/difference (set parent-midis) (set midis))
+        ; parent-specific-pcis (set/difference (set parent-pcis) (set pcis))
+        ; shared-notes (set/intersection (set midis) (set parent-midis))
+        ; shared-pitches (set/intersection (set pcis) (set parent-pcis))
         piano-width (* white-key-width num-white-keys)
         piano-height (* 2.3 white-key-width)
         border-width (* 0.0015 piano-width)
@@ -115,24 +121,42 @@
       :title "Click to play"
       :on-click (fn [e]
                   (.stopPropagation e)
-                  (re-frame/dispatch [::events/play-shape full-shape]))}
+                  (let [scale? (theory/scale? full-shape)
+                        notes (if scale? (conj
+                                          (:notes full-shape) (theory/transpose (first (:notes full-shape)) :P8))
+                                  (:notes full-shape))]
+                    (re-frame/dispatch [::events/play-shape full-shape]
+                                       #_[::events/play-notes-midi notes :individual-notes? scale?])))}
      (for [key piano-key-span
-           :let [pitch (:pitch key)
-                 chroma (theory/pitches pitch)
+           :let [midi (:midi key)
+                 pitch (:pitch key)
+                 pci (theory/pitches pitch)
                  white? (= :w (:color key))
-                 highlighted? (utils/in? (if (seq parent-midis) parent-midis midis) (:midi key))
-                 parent-specific-note? (utils/in? parent-specific-notes (:midi key))
-                 parent-specific-chroma? (utils/in? parent-specific-chromas chroma)
-                 current-specific-note? (if (seq parent-midis) (utils/in? current-specific-notes (:midi key)) false)
-                 current-specific-chroma? (utils/in? current-specific-chromas chroma)
-                 shared-note? (utils/in? shared-notes (:midi key))
-                 shared-chroma? (utils/in? shared-pitches chroma)
+                 highlighted? (utils/in? midis (:midi key))
+                 ; parent-specific-note? (utils/in? parent-specific-notes (:midi key))
+                 ; parent-specific-pci? (utils/in? parent-specific-pcis pci)
+                 ; current-specific-note? (if (seq parent-midis) (utils/in? current-specific-notes (:midi key)) false)
+                 ; current-specific-pci? (utils/in? current-specific-pcis pci)
+                 ; shared-note? (utils/in? shared-notes (:midi key))
+                 ; shared-pci? (utils/in? shared-pitches pci)
                  key-color (cond
-                             (and parent-specific-note? parent-specific-chroma?) key-removed-in-chord
-                             (and current-specific-note? current-specific-chroma?) key-added-in-chord
-                             shared-note? key-kept-in-chord
-                             (and highlighted? shared-chroma?) key-kept-in-chord
+                             ; (and parent-specific-note? parent-specific-pci?) key-removed-in-chord
+                             ; (and current-specific-note? current-specific-pci?) key-added-in-chord
+                             ; shared-note? key-kept-in-chord
+                             ; (and highlighted? shared-pci?) (if white? white-key-color-played black-key-color-played)
+                             ; highlighted? (if white? white-key-color-played black-key-color-played)
                              highlighted? (if white? white-key-color-played black-key-color-played)
+                             (and (or (and (utils/in? parent-midis midi) (not (utils/in? midis midi)))
+                                      #_(and (utils/in? parent-pcis pci) (not (utils/in? pcis pci))))
+                                  show-subtracted?) key-removed-in-chord
+
+                             (and (or (and (utils/in? midis midi) (not (utils/in? parent-midis midi)))
+                                      #_(and (utils/in? pcis pci) (not (utils/in? parent-pcis pci))))
+                                  show-added?) key-added-in-chord
+
+                             (and (or (and (utils/in? midis midi) (utils/in? parent-midis midi))
+                                      #_(and (utils/in? pcis pci) (utils/in? parent-pcis pci)))
+                                  show-same?) key-kept-in-chord
                              :else (if white? white-key-color black-key-color))
                  border (str border-width "px solid rgba(0,0,0,0.5)")]]
 
