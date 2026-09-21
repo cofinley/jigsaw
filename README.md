@@ -1,24 +1,48 @@
 # Jigsaw
 
-AKA Chordian Knot
+AKA Chordian Knot\
 AKA Alt<sup>o</sup>
 
 Exploring music theory as a graph with heuristics and logic to find harmony and see how the puzzle pieces fit together
 
 Project created with [deps-new](https://github.com/seancorfield/deps-new) and the [practicalli/application template](https://github.com/practicalli/project-templates)
 
-## Run the service
+## About
 
-Run the service (clojure.main)
+A spiritual successor to [why-does-that-sound-good](https://github.com/cofinley/why-does-that-sound-good), I wanted a whiteboard-style app to explore connections with what I was playing to music theory.
 
-```shell
-clojure -M:run/app
+Inspired by [Bret Victor](https://worrydream.com/), I believe tools can raise our ceiling of abilities. Tools for thinking seem limited, but what does thinking look like? For me, it's visual and graph-like. It's slowly exposing the bigger picture. With a graph, you define your entities and rules for compatibility. Data-oriented programming and entity component systems tell us we can simplify our architecture around the presence or absence of simple keys/attributes and not get hung up around each combination of entities. I decided to take a page from that world and focus the underlying architecture of this project around music 'shapes.' These shapes are defined using spec and the presence/absence of certain keys mean certain things and it allows the algorithms to not really worry about whether I'm talking about a note or chord or scale; they're more or less the same 'stuff.' See more in [theory.cljc](./src/jigsaw/impl/theory.cljc).
+
+## Installation
+
+```
+make deps
+npm ci
 ```
 
-Run the greet function (clojure.exec), optionally passing a `:name` key and value as arguments
+## Usage
+
+### CLJS
+
+Run the app:
 
 ```shell
-clojure -X:run/greet :team-name '"team name"'
+make app
+```
+
+To build tailwind css to get things running and as you introduce new styles:
+
+```
+make tailwind
+```
+
+### CLJ
+
+```
+make repl
+# or
+make repl-basic
+# jack in with nrepl on port 8777
 ```
 
 ## Development
