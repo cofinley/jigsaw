@@ -7,6 +7,16 @@ Exploring music theory as a graph with heuristics and logic to find harmony and 
 
 Project created with [deps-new](https://github.com/seancorfield/deps-new) and the [practicalli/application template](https://github.com/practicalli/project-templates)
 
+## Web App
+
+https://cofinley.github.io/jigsaw/
+
+## Demo
+
+Click the image below to see the video
+
+[![Demo video](https://img.youtube.com/vi/dvYJnbo5tS0/maxresdefault.jpg)](https://www.youtube.com/watch?v=dvYJnbo5tS0)
+
 ## About
 
 A spiritual successor to [why-does-that-sound-good](https://github.com/cofinley/why-does-that-sound-good), I wanted a whiteboard-style app to explore connections with what I was playing to music theory.
